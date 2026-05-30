@@ -7169,6 +7169,7 @@ let auth={users:[],profiles:[]};
 let session=null;
 const CUR={user:null,nome:"",profile:null};
 let editProfileId=null;
+let editUserName=null;
 let _capCode="";
 
 function loadAuth(){try{const r=localStorage.getItem(AKEY);if(r)auth=JSON.parse(r);}catch(e){}auth.users=auth.users||[];auth.profiles=auth.profiles||[];}
@@ -7275,15 +7276,16 @@ function renderConfig(){
    '<div class="cadcard"><h4>Usuarios</h4><div class="cad-grid">'+
      '<div class="fld"><label>Nome</label><input id="usNome"></div>'+
      '<div class="fld"><label>Usuario (login)</label><input id="usUser"></div>'+
-     '<div class="fld"><label>Senha</label><input id="usPass" type="password"></div>'+
+     '<div class="fld"><label>Senha</label><input id="usPass" type="password" placeholder="min. 4 caracteres"></div>'+
      '<div class="fld"><label>Perfil</label><select id="usProf">'+profOpts+'</select></div>'+
-   '</div><div style="margin-top:10px"><button class="btn primary" id="usSave">Criar usuario</button></div></div>'+
+   '</div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="usSave">Criar usuario</button><button class="btn hidden" id="usCancel">Cancelar edicao</button></div></div>'+
    '<div id="usList"></div>';
   body.innerHTML=html;
   // listeners
   $("#pfSave").addEventListener("click",saveProfileFromForm);
   $("#pfClear").addEventListener("click",()=>{editProfileId=null;$("#pfNome").value="";body.querySelectorAll(".pf-tab,.pf-act,.pf-fil,.pf-uf").forEach(c=>c.checked=false);$("#pfSave").textContent="Salvar perfil";});
   $("#usSave").addEventListener("click",saveUserFromForm);
+  $("#usCancel").addEventListener("click",clearUserForm);
   renderProfilesList();renderUsersList();
 }
 function renderProfilesList(){
@@ -7310,25 +7312,49 @@ function saveProfileFromForm(){
 function renderUsersList(){
   const wrap=$("#usList");if(!wrap)return;
   let h='<table class="dtable"><thead><tr><th>Usuario</th><th>Nome</th><th>Perfil</th><th></th></tr></thead><tbody>';
-  auth.users.forEach(u=>{const p=profileById(u.profileId);h+='<tr><td class="b">'+u.user+(u.user===CUR.user?' <span class="tag lib">voce</span>':'')+'</td><td>'+(u.nome||"-")+'</td><td>'+(p?p.nome:"-")+'</td><td class="num"><button class="btn ghost urem" data-u="'+u.user+'" style="padding:3px 9px;font-size:11px">Remover</button></td></tr>';});
+  auth.users.forEach(u=>{const p=profileById(u.profileId);h+='<tr><td class="b">'+u.user+(u.user===CUR.user?' <span class="tag lib">voce</span>':'')+'</td><td>'+(u.nome||"-")+'</td><td>'+(p?p.nome:"-")+'</td><td class="num"><button class="btn uedit" data-u="'+u.user+'" style="padding:3px 9px;font-size:11px">Editar</button> <button class="btn ghost urem" data-u="'+u.user+'" style="padding:3px 9px;font-size:11px">Remover</button></td></tr>';});
   h+='</tbody></table>';wrap.innerHTML=h;labelTables();
-  wrap.querySelectorAll(".urem").forEach(b=>b.addEventListener("click",()=>{const us=b.dataset.u;if(us===CUR.user){toast("Voce nao pode remover o proprio usuario logado.","err");return;}const u=auth.users.find(x=>x.user===us);if(u&&profileById(u.profileId)&&profileById(u.profileId).master&&auth.users.filter(x=>{const pp=profileById(x.profileId);return pp&&pp.master;}).length<=1){toast("Nao e possivel remover o unico usuario master.","err");return;}auth.users=auth.users.filter(x=>x.user!==us);saveAuth();logAction("usuario_removido",us);renderUsersList();}));
+  wrap.querySelectorAll(".uedit").forEach(b=>b.addEventListener("click",()=>editUser(b.dataset.u)));
+  wrap.querySelectorAll(".urem").forEach(b=>b.addEventListener("click",()=>{const us=b.dataset.u;if(us===CUR.user){toast("Voce nao pode remover o proprio usuario logado.","err");return;}const u=auth.users.find(x=>x.user===us);if(u&&profileById(u.profileId)&&profileById(u.profileId).master&&auth.users.filter(x=>{const pp=profileById(x.profileId);return pp&&pp.master;}).length<=1){toast("Nao e possivel remover o unico usuario master.","err");return;}auth.users=auth.users.filter(x=>x.user!==us);saveAuth();logAction("usuario_removido",us);if(editUserName===us)clearUserForm();renderUsersList();}));
+}
+function clearUserForm(){editUserName=null;["usNome","usUser","usPass"].forEach(id=>{const e=$("#"+id);if(e)e.value="";});const us=$("#usUser");if(us)us.disabled=false;const p=$("#usPass");if(p)p.placeholder="min. 4 caracteres";const sv=$("#usSave");if(sv)sv.textContent="Criar usuario";const c=$("#usCancel");if(c)c.classList.add("hidden");}
+function editUser(user){
+  const u=auth.users.find(x=>x.user===user);if(!u)return;
+  editUserName=user;
+  $("#usNome").value=u.nome||"";$("#usUser").value=u.user;$("#usUser").disabled=true;
+  $("#usPass").value="";$("#usPass").placeholder="deixe em branco para manter a senha atual";
+  $("#usProf").value=u.profileId;
+  $("#usSave").textContent="Salvar alteracoes";$("#usCancel").classList.remove("hidden");
 }
 function saveUserFromForm(){
-  const nome=$("#usNome").value.trim(),user=$("#usUser").value.trim().toLowerCase(),pass=$("#usPass").value,pid=$("#usProf").value;
+  const nome=$("#usNome").value.trim(),pass=$("#usPass").value,pid=$("#usProf").value;
+  if(editUserName){
+    const u=auth.users.find(x=>x.user===editUserName);if(!u){clearUserForm();return;}
+    if(!nome){toast("Informe o nome.","err");return;}
+    // impede deixar o sistema sem nenhum master
+    const novoPerfil=profileById(pid);const eraMaster=profileById(u.profileId)&&profileById(u.profileId).master;
+    const masters=auth.users.filter(x=>{const pp=profileById(x.profileId);return pp&&pp.master;}).length;
+    if(eraMaster&&!(novoPerfil&&novoPerfil.master)&&masters<=1){toast("Nao e possivel tirar o acesso master do unico usuario master.","err");return;}
+    u.nome=nome;u.profileId=pid;
+    if(pass){if(pass.length<4){toast("Senha minima de 4 caracteres.","err");return;}u.salt=genSalt();u.hash=hashPass(pass,u.salt);}
+    saveAuth();logAction("usuario_editado",editUserName);
+    if(editUserName===CUR.user){CUR.nome=nome;CUR.profile=profileById(pid)||CUR.profile;applyPermissions();renderAll();}
+    clearUserForm();renderUsersList();toast("Usuario atualizado.","ok");return;
+  }
+  const user=$("#usUser").value.trim().toLowerCase();
   if(!nome||!user||!pass){toast("Preencha nome, usuario e senha.","err");return;}
   if(pass.length<4){toast("Senha minima de 4 caracteres.","err");return;}
   if(auth.users.some(u=>u.user===user)){toast("Ja existe um usuario com esse login.","err");return;}
   const salt=genSalt();auth.users.push({user,nome,profileId:pid,salt,hash:hashPass(pass,salt)});saveAuth();
   logAction("usuario_criado",user);
-  ["usNome","usUser","usPass"].forEach(id=>$("#"+id).value="");
+  clearUserForm();
   renderUsersList();toast("Usuario criado.","ok");
 }
 
 /* ===== MONITORIA ===== */
 function fmtDur(sec){sec=Math.max(0,Math.round(sec||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h?h+"h ":"")+(m||h?m+"min ":"")+s+"s";}
 function fmtDT(ts){const d=new Date(ts);const p=n=>n<10?"0"+n:n;return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());}
-function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_removido:"Removeu usuario",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
 function renderMonitoria(){
   const body=$("#monBody");if(!body)return;
   if(!canSee("monitoria")){body.innerHTML='<div class="empty">Acesso restrito.</div>';return;}
