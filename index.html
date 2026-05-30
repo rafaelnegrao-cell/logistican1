@@ -5937,6 +5937,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <input id="capInput" placeholder="Digite o codigo acima" autocomplete="off">
         <label class="caprobot"><input type="checkbox" id="capChk"> Nao sou um robo</label>
       </div>
+      <label class="caprobot" style="margin:2px 0 8px"><input type="checkbox" id="liKeep"> Manter-me conectado neste dispositivo</label>
       <button class="btn primary" id="liBtn">Entrar</button>
       <div id="authMsg" class="authmsg"></div>
     </div>
@@ -7162,7 +7163,9 @@ function resetState(){
 /* ================= /PERSISTENCIA ================= */
 
 /* ================= AUTENTICACAO / PERFIS / AUDITORIA ================= */
-const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1";
+const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
+const INACT_MS=24*60*60*1000;
+let _lastActTs=0;
 const TABS_DEF=[["formador","Formador de Cargas"],["frete","Tabela de Frete"],["fob","Pedidos FOB / Retira"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
 const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["limpar","Limpar dados"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
@@ -7200,10 +7203,26 @@ function newCaptcha(){const ch="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";_capCode="";fo
 /* perfil master padrao */
 function ensureMasterProfile(){let m=auth.profiles.find(p=>p.master);if(!m){m={id:"PMASTER",nome:"Master (acesso total)",master:true,tabs:TABS_DEF.map(t=>t[0]),actions:ACTIONS_DEF.map(a=>a[0])};auth.profiles.unshift(m);}return m;}
 
+/* sessao persistente ("manter conectado") */
+function saveRemember(keep){const rec={user:CUR.user,lastActivity:Date.now(),keep:!!keep};try{(keep?localStorage:sessionStorage).setItem(RKEY,JSON.stringify(rec));(keep?sessionStorage:localStorage).removeItem(RKEY);}catch(e){}}
+function getRemember(){try{let r=localStorage.getItem(RKEY);if(r)return{rec:JSON.parse(r),local:true};r=sessionStorage.getItem(RKEY);if(r)return{rec:JSON.parse(r),local:false};}catch(e){}return null;}
+function clearRemember(){try{localStorage.removeItem(RKEY);sessionStorage.removeItem(RKEY);}catch(e){}}
+function updateActivity(){const g=getRemember();if(!g)return;g.rec.lastActivity=Date.now();try{(g.local?localStorage:sessionStorage).setItem(RKEY,JSON.stringify(g.rec));}catch(e){}}
+function tryRestoreSession(){
+  const g=getRemember();if(!g||!g.rec||!g.rec.user)return false;
+  if(Date.now()-(g.rec.lastActivity||0)>INACT_MS){clearRemember();return false;}
+  const u=auth.users.find(x=>x.user===g.rec.user);if(!u){clearRemember();return false;}
+  CUR.user=u.user;CUR.nome=u.nome;CUR.profile=profileById(u.profileId)||ensureMasterProfile();
+  updateActivity();
+  return true;
+}
+function heartbeat(){touchSession();const g=getRemember();if(g&&g.rec&&(Date.now()-(g.rec.lastActivity||0)>INACT_MS)){toast("Sessao encerrada por 24h de inatividade. Faca login novamente.","info",6000);logout();}}
+
 /* fluxo de boot */
 function bootAuth(){loadAuth();const gate=$("#authGate");gate.classList.remove("ok");
-  if(!auth.users.length){$("#authSetup").classList.remove("hidden");$("#authLogin").classList.add("hidden");}
-  else{$("#authSetup").classList.add("hidden");$("#authLogin").classList.remove("hidden");newCaptcha();$("#liUser").focus&&$("#liUser").focus();}
+  if(!auth.users.length){$("#authSetup").classList.remove("hidden");$("#authLogin").classList.add("hidden");return;}
+  if(tryRestoreSession()){gate.classList.add("ok");startApp();return;}
+  $("#authSetup").classList.add("hidden");$("#authLogin").classList.remove("hidden");newCaptcha();if($("#liKeep"))$("#liKeep").checked=false;$("#liUser").focus&&$("#liUser").focus();
 }
 function doSetupMaster(){
   const nome=$("#suNome").value.trim(),user=$("#suUser").value.trim().toLowerCase(),p1=$("#suPass").value,p2=$("#suPass2").value;
@@ -7226,11 +7245,12 @@ function doLogin(){
   if(!u||u.hash!==hashPass(pass,u.salt)){msg.textContent="Usuario ou senha invalidos.";newCaptcha();return;}
   const prof=profileById(u.profileId)||ensureMasterProfile();
   CUR.user=u.user;CUR.nome=u.nome;CUR.profile=prof;
+  saveRemember($("#liKeep").checked);
   $("#authGate").classList.add("ok");
   $("#liPass").value="";
   startApp();
 }
-function logout(){touchSession();logActionSafe("logout","");if(session)session=null;CUR.user=null;CUR.nome="";CUR.profile=null;bootAuth();}
+function logout(){touchSession();logActionSafe("logout","");clearRemember();if(session)session=null;CUR.user=null;CUR.nome="";CUR.profile=null;bootAuth();}
 function logActionSafe(a,d){try{logAction(a,d);}catch(e){}}
 
 function startApp(){
@@ -7239,7 +7259,7 @@ function startApp(){
   renderAll();
   startSession();
   logAction("login","");
-  if(!_sessTimer)_sessTimer=setInterval(touchSession,30000);
+  if(!_sessTimer)_sessTimer=setInterval(heartbeat,30000);
   const first=TABS_DEF.map(t=>t[0]).find(canSee)||"formador";
   setTab(canSee(state.tab)?state.tab:first,true);
 }
@@ -7421,6 +7441,7 @@ $("#capInput").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 $("#liPass").addEventListener("keydown",e=>{if(e.key==="Enter"&&$("#capInput").value)doLogin();});
 $("#btnLogout").addEventListener("click",logout);
 window.addEventListener("beforeunload",touchSession);
+["click","keydown","touchstart","scroll"].forEach(ev=>document.addEventListener(ev,()=>{const n=Date.now();if(n-_lastActTs>20000){_lastActTs=n;updateActivity();}},{passive:true}));
 setupBankDrop();
 bootAuth();
 </script>
