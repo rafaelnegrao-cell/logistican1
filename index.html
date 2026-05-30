@@ -6515,8 +6515,8 @@ function ingest(rows){
 }
 
 /* helpers de selecao */
-const bancoPeds=()=>state.pedidos.filter(p=>!p.fob);              // banco = nao-FOB
-const fobPeds=()=>state.pedidos.filter(p=>p.fob);
+const bancoPeds=()=>state.pedidos.filter(p=>!p.fob&&inScope(p));              // banco = nao-FOB, dentro do escopo do perfil
+const fobPeds=()=>state.pedidos.filter(p=>p.fob&&inScope(p));
 
 /* filters */
 function buildFilters(){
@@ -6595,7 +6595,7 @@ function loadFreight(t){
 }
 
 function truckLoad(t){return state.pedidos.filter(p=>p.assignedTo===t.id).reduce((s,p)=>s+p.peso,0);}
-function assign(p,t){p.assignedTo=t.id;if(p.bloqueado)toast("Atencao: Pedido #"+p.pedido+" encontra-se Bloqueado. O faturamento dependera de liberacao financeira.","info");}
+function assign(p,t){if(!inScope(p)){toast("Pedido fora do seu escopo de filial/estado.","err");return;}p.assignedTo=t.id;if(p.bloqueado)toast("Atencao: Pedido #"+p.pedido+" encontra-se Bloqueado. O faturamento dependera de liberacao financeira.","info");}
 function unassign(p){p.assignedTo=null;renderAll();}
 
 /* adicionar por toque (alternativa ao arrastar) */
@@ -6652,7 +6652,7 @@ function truckCard(t){
 
 function renderTrucks(){
   const area=$("#trucksArea");area.innerHTML="";
-  const montadas=state.trucks.filter(t=>t.status==="montada");
+  const montadas=state.trucks.filter(t=>t.status==="montada"&&truckInScope(t));
   montadas.forEach(t=>area.appendChild(truckCard(t)));
   const tile=el("div","add-truck");tile.innerHTML='<div class="plus">+</div><span>Criar Nova Carga</span>';
   tile.addEventListener("click",()=>openModal(null));area.appendChild(tile);
@@ -6661,7 +6661,7 @@ function renderTrucks(){
 
 /* AUTO-PREENCHER (criterios de priorizacao do doc) */
 function bestRouteForVehicle(cap){
-  const avail=state.pedidos.filter(p=>p.assignedTo===null&&!p.fob&&p.apto);
+  const avail=state.pedidos.filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&inScope(p));
   if(!avail.length)return null;
   const lim=DEST_LIMIT[String(cap)]||1;
   const byRoute={};
@@ -6687,7 +6687,7 @@ function autoFill(t){
     t.rota=r; auto=true;
   }
   const tr=normRota(t.rota);const lim=DEST_LIMIT[String(t.cap)]||1;
-  let avail=state.pedidos.filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&normRota(p.rota)===tr);
+  let avail=state.pedidos.filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&inScope(p)&&normRota(p.rota)===tr);
   if(!avail.length){toast("Nenhum pedido APTO disponivel para a rota \""+t.rota+"\".","info");return;}
   avail.sort((a,b)=>b.score-a.score);
   // cidades ja na carga
@@ -6739,7 +6739,7 @@ function renderFob(){
 function transporteCompleto(t){return !!(t.transp&&t.transp.trim()&&isRegisteredCarrier(t.transp)&&t.placa&&t.placa.trim()&&t.mot&&t.mot.trim()&&t.fretePago>0&&t.eta&&String(t.eta).trim());}
 function fmtEta(s){if(!s)return "";const p=String(s).split("-");return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:String(s);}
 function renderFechadas(){
-  const fechadas=state.trucks.filter(t=>t.status==="fechada");
+  const fechadas=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t));
   setBadge("fech",fechadas.length);
   $("#fechMeta").textContent=fechadas.length+(fechadas.length===1?" carga":" cargas");
   $("#btnExportFech").disabled=fechadas.length===0;
@@ -6779,7 +6779,7 @@ function embarcarCarga(t){
 
 /* PAINEL CONTRATADAS */
 function renderContratadas(){
-  const cs=state.trucks.filter(t=>t.status==="contratada");
+  const cs=state.trucks.filter(t=>t.status==="contratada"&&truckInScope(t));
   setBadge("contr",cs.length);
   $("#contrMeta").textContent=cs.length+(cs.length===1?" carga":" cargas");
   $("#btnExportContr").disabled=cs.length===0;
@@ -6806,8 +6806,8 @@ function renderContratadas(){
 
 /* PAINEL EMBARCADAS */
 function renderEmbarcadas(){
-  const cs=state.trucks.filter(t=>t.status==="embarcada");
-  const fobEmb=state.pedidos.filter(p=>p.fob&&p.embarcado);
+  const cs=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
+  const fobEmb=state.pedidos.filter(p=>p.fob&&p.embarcado&&inScope(p));
   setBadge("emb",cs.length+fobEmb.length);
   if($("#embMeta"))$("#embMeta").textContent=cs.length+" carga(s) CIF + "+fobEmb.length+" pedido(s) FOB";
   if($("#btnExportEmb"))$("#btnExportEmb").disabled=cs.length===0;
@@ -6879,11 +6879,11 @@ function renderKpis(){
   const aloc=state.pedidos.filter(p=>p.assignedTo!==null).reduce((s,p)=>s+p.peso,0);
   $("#kAptos").textContent=aptos;$("#kLib").textContent=lib;$("#kBloq").textContent=bloq;$("#kFob").textContent=fob;
   $("#kPeso").textContent=fmtT(dispPeso);
-  $("#kCargas").textContent=state.trucks.filter(t=>t.status==="montada").length;
-  $("#kFech").textContent=state.trucks.filter(t=>t.status==="fechada").length;
-  const contr=state.trucks.filter(t=>t.status==="contratada");
+  $("#kCargas").textContent=state.trucks.filter(t=>t.status==="montada"&&truckInScope(t)).length;
+  $("#kFech").textContent=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t)).length;
+  const contr=state.trucks.filter(t=>t.status==="contratada"&&truckInScope(t));
   $("#kContr").textContent=contr.length;
-  const emb=state.trucks.filter(t=>t.status==="embarcada");
+  const emb=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
   if($("#kEmb"))$("#kEmb").textContent=emb.length;
   const saldo=contr.concat(emb).reduce((s,t)=>s+loadFreight(t).saldo,0);
   const ks=$("#kSaldo");ks.textContent=(saldo>=0?"":"-")+"R$ "+Math.abs(saldo).toLocaleString("pt-BR",{maximumFractionDigits:0});
@@ -7180,6 +7180,10 @@ function isMaster(){return !!(CUR.profile&&CUR.profile.master);}
 function can(a){if(!CUR.profile)return false;if(CUR.profile.master)return true;return (CUR.profile.actions||[]).indexOf(a)>-1;}
 function canSee(tab){if(!CUR.profile)return false;if(CUR.profile.master)return true;if(tab==="config")return can("gerenciar");if(tab==="monitoria")return (CUR.profile.tabs||[]).indexOf("monitoria")>-1;return (CUR.profile.tabs||[]).indexOf(tab)>-1;}
 function requirePerm(a){if(can(a))return true;toast("Voce nao tem permissao para esta acao.","err");return false;}
+function inScope(p){if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];const okF=!fl.length||fl.indexOf(p.filial)>-1;const okU=!uf.length||uf.indexOf(String(p.uf||"").toUpperCase())>-1;return okF&&okU;}
+function truckInScope(t){if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];if(!fl.length&&!uf.length)return true;const ps=state.pedidos.filter(p=>p.assignedTo===t.id);if(!ps.length)return true;return ps.some(inScope);}
+function allFiliais(){const s=new Set(["MATRIZ","SP"]);state.pedidos.forEach(p=>{if(p.filial)s.add(p.filial);});return [...s].sort();}
+function allUFs(){const s=new Set();state.pedidos.forEach(p=>{if(p.uf)s.add(p.uf);});Object.values(state.freightTable).forEach(r=>{if(r.uf)s.add(r.uf);});if(!s.size)"AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ").forEach(u=>s.add(u));return [...s].sort();}
 
 /* auditoria */
 function loadAudit(){let a={sessions:[],logs:[]};try{const r=localStorage.getItem(AUDKEY);if(r)a=JSON.parse(r);}catch(e){}a.sessions=a.sessions||[];a.logs=a.logs||[];return a;}
@@ -7255,12 +7259,16 @@ function renderConfig(){
   if(!can("gerenciar")){body.innerHTML='<div class="empty">Acesso restrito ao perfil master / gerentes autorizados.</div>';return;}
   const tabCk=TABS_DEF.map(([id,l])=>'<label class="ckbox"><input type="checkbox" class="pf-tab" value="'+id+'"> '+l+'</label>').join("");
   const actCk=ACTIONS_DEF.map(([id,l])=>'<label class="ckbox"><input type="checkbox" class="pf-act" value="'+id+'"> '+l+'</label>').join("");
+  const filCk=allFiliais().map(fl=>'<label class="ckbox"><input type="checkbox" class="pf-fil" value="'+fl+'"> '+fl+'</label>').join("");
+  const ufCk=allUFs().map(u=>'<label class="ckbox"><input type="checkbox" class="pf-uf" value="'+u+'"> '+u+'</label>').join("");
   const profOpts=auth.profiles.map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join("");
   let html=
    '<div class="cadcard"><h4>Perfis de acesso</h4>'+
-     '<div class="afld"><label>Nome do perfil</label><input id="pfNome" placeholder="Ex: Operador Logistica"></div>'+
+     '<div class="afld"><label>Nome do perfil</label><input id="pfNome" placeholder="Ex: Operador Logistica SP"></div>'+
      '<div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--cinza)">PODE VER (abas)</div><div class="ckgrid">'+tabCk+'</div>'+
      '<div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--cinza)">PODE FAZER (acoes)</div><div class="ckgrid">'+actCk+'</div>'+
+     '<div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--cinza)">PEDIDOS DE QUAIS FILIAIS <span style="font-weight:500;text-transform:none">(nenhuma marcada = todas)</span></div><div class="ckgrid">'+filCk+'</div>'+
+     '<div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--cinza)">PEDIDOS DE QUAIS ESTADOS (UF) <span style="font-weight:500;text-transform:none">(nenhum marcado = todos)</span></div><div class="ckgrid">'+ufCk+'</div>'+
      '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="pfSave">Salvar perfil</button><button class="btn" id="pfClear">Limpar</button></div>'+
    '</div>'+
    '<div id="pfList"></div>'+
@@ -7274,25 +7282,27 @@ function renderConfig(){
   body.innerHTML=html;
   // listeners
   $("#pfSave").addEventListener("click",saveProfileFromForm);
-  $("#pfClear").addEventListener("click",()=>{editProfileId=null;$("#pfNome").value="";body.querySelectorAll(".pf-tab,.pf-act").forEach(c=>c.checked=false);$("#pfSave").textContent="Salvar perfil";});
+  $("#pfClear").addEventListener("click",()=>{editProfileId=null;$("#pfNome").value="";body.querySelectorAll(".pf-tab,.pf-act,.pf-fil,.pf-uf").forEach(c=>c.checked=false);$("#pfSave").textContent="Salvar perfil";});
   $("#usSave").addEventListener("click",saveUserFromForm);
   renderProfilesList();renderUsersList();
 }
 function renderProfilesList(){
   const wrap=$("#pfList");if(!wrap)return;
-  let h='<table class="dtable"><thead><tr><th>Perfil</th><th>Abas</th><th>Acoes</th><th></th></tr></thead><tbody>';
-  auth.profiles.forEach(p=>{h+='<tr><td class="b">'+p.nome+(p.master?' <span class="tag prio">MASTER</span>':'')+'</td><td>'+(p.master?"todas":(p.tabs||[]).length)+'</td><td>'+(p.master?"todas":(p.actions||[]).length)+'</td><td class="num">'+(p.master?'':'<button class="btn pedit" data-id="'+p.id+'" style="padding:3px 9px;font-size:11px">Editar</button> <button class="btn ghost prem" data-id="'+p.id+'" style="padding:3px 9px;font-size:11px">Remover</button>')+'</td></tr>';});
+  let h='<table class="dtable"><thead><tr><th>Perfil</th><th>Abas</th><th>Acoes</th><th>Filiais</th><th>Estados</th><th></th></tr></thead><tbody>';
+  auth.profiles.forEach(p=>{const fl=p.master?"todas":((p.filiais||[]).length?(p.filiais).join(", "):"todas");const uf=p.master?"todos":((p.ufs||[]).length?(p.ufs).join(", "):"todos");h+='<tr><td class="b">'+p.nome+(p.master?' <span class="tag prio">MASTER</span>':'')+'</td><td>'+(p.master?"todas":(p.tabs||[]).length)+'</td><td>'+(p.master?"todas":(p.actions||[]).length)+'</td><td>'+fl+'</td><td>'+uf+'</td><td class="num">'+(p.master?'':'<button class="btn pedit" data-id="'+p.id+'" style="padding:3px 9px;font-size:11px">Editar</button> <button class="btn ghost prem" data-id="'+p.id+'" style="padding:3px 9px;font-size:11px">Remover</button>')+'</td></tr>';});
   h+='</tbody></table>';wrap.innerHTML=h;labelTables();
   wrap.querySelectorAll(".pedit").forEach(b=>b.addEventListener("click",()=>editProfile(b.dataset.id)));
   wrap.querySelectorAll(".prem").forEach(b=>b.addEventListener("click",()=>{if(auth.users.some(u=>u.profileId===b.dataset.id)){toast("Ha usuarios usando este perfil.","err");return;}auth.profiles=auth.profiles.filter(p=>p.id!==b.dataset.id);saveAuth();logAction("perfil_removido",b.dataset.id);renderConfig();}));
 }
-function editProfile(id){const p=profileById(id);if(!p)return;editProfileId=id;$("#pfNome").value=p.nome;document.querySelectorAll(".pf-tab").forEach(c=>c.checked=(p.tabs||[]).indexOf(c.value)>-1);document.querySelectorAll(".pf-act").forEach(c=>c.checked=(p.actions||[]).indexOf(c.value)>-1);$("#pfSave").textContent="Salvar alteracoes";}
+function editProfile(id){const p=profileById(id);if(!p)return;editProfileId=id;$("#pfNome").value=p.nome;document.querySelectorAll(".pf-tab").forEach(c=>c.checked=(p.tabs||[]).indexOf(c.value)>-1);document.querySelectorAll(".pf-act").forEach(c=>c.checked=(p.actions||[]).indexOf(c.value)>-1);document.querySelectorAll(".pf-fil").forEach(c=>c.checked=(p.filiais||[]).indexOf(c.value)>-1);document.querySelectorAll(".pf-uf").forEach(c=>c.checked=(p.ufs||[]).indexOf(c.value)>-1);$("#pfSave").textContent="Salvar alteracoes";}
 function saveProfileFromForm(){
   const nome=$("#pfNome").value.trim();if(!nome){toast("Informe o nome do perfil.","err");return;}
   const tabs=[...document.querySelectorAll(".pf-tab:checked")].map(c=>c.value);
   const actions=[...document.querySelectorAll(".pf-act:checked")].map(c=>c.value);
-  if(editProfileId){const p=profileById(editProfileId);if(p&&!p.master){p.nome=nome;p.tabs=tabs;p.actions=actions;}logAction("perfil_editado",nome);}
-  else{auth.profiles.push({id:"P"+Date.now(),nome,tabs,actions});logAction("perfil_criado",nome);}
+  const filiais=[...document.querySelectorAll(".pf-fil:checked")].map(c=>c.value);
+  const ufs=[...document.querySelectorAll(".pf-uf:checked")].map(c=>c.value);
+  if(editProfileId){const p=profileById(editProfileId);if(p&&!p.master){p.nome=nome;p.tabs=tabs;p.actions=actions;p.filiais=filiais;p.ufs=ufs;}logAction("perfil_editado",nome);}
+  else{auth.profiles.push({id:"P"+Date.now(),nome,tabs,actions,filiais,ufs});logAction("perfil_criado",nome);}
   editProfileId=null;saveAuth();renderConfig();
   if(CUR.profile)CUR.profile=profileById(CUR.profile.id)||CUR.profile;applyPermissions();
   toast("Perfil salvo.","ok");

@@ -46,7 +46,8 @@ git push -u origin main
 - Na primeira abertura, o sistema pede para **criar a conta MASTER** (nome, usuário e senha).
 - Depois, todo acesso passa pela tela de **login** com **verificação anti-robô** (código + "Não sou um robô").
 - Com o perfil **master**, use a aba **Configurações** para:
-  - criar **perfis de acesso** (marcando o que cada perfil pode **ver** e quais **ações** pode fazer);
+  - criar **perfis de acesso** (marcando o que cada perfil pode **ver**, quais **ações** pode fazer,
+    e **de quais filiais e estados (UF)** ele pode ver/trabalhar os pedidos);
   - criar **usuários** vinculados a um perfil.
 - A aba **Monitoria** mostra acessos (data/hora), tempo de navegação e o **log de ações dos últimos 90 dias**.
 
