@@ -6004,7 +6004,6 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <span class="meta" id="savedInfo" title="O sistema salva automaticamente no proprio navegador (pedidos, tabela de frete e cargas)."></span>
         <span class="spacer"></span>
         <div class="top-actions">
-          <button class="btn ghost" id="btnReset" title="Apaga os dados salvos neste navegador">&#128465; Limpar dados</button>
           <button class="btn" id="btnExport" disabled>&#11015; Exportar Romaneio</button>
           <button class="btn primary" id="btnNovaCarga">+ Criar Nova Carga</button>
         </div>
@@ -7149,7 +7148,7 @@ function loadState(){
   }catch(e){_restoring=false;return false;}
 }
 function resetState(){
-  if(!requirePerm("limpar"))return;
+  if(!isMaster()){toast("Apenas o perfil master pode limpar os dados.","err");return;}
   if(!confirm("Apagar TODOS os dados salvos (pedidos, tabela de frete, transportadoras e cargas montadas/fechadas/contratadas)? Esta acao nao pode ser desfeita."))return;
   try{localStorage.removeItem(SKEY);}catch(e){}
   state.pedidos=[];state.trucks=[];state.carriers=[];state.freightTable={};state.freightSource="pedidos";state.freightFile="";state.fileName="";state.hasFrete=false;state.maxMcRs=1;state.nextTruck=1;
@@ -7158,6 +7157,7 @@ function resetState(){
   _restoring=true;renderAll();_restoring=false;
   try{localStorage.removeItem(SKEY);}catch(e){}
   updateSavedInfo(null);
+  logAction("limpar","dados operacionais apagados");
   toast("Dados apagados. O sistema esta limpo.","info");
 }
 /* ================= /PERSISTENCIA ================= */
@@ -7167,7 +7167,7 @@ const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
 const INACT_MS=24*60*60*1000;
 let _lastActTs=0;
 const TABS_DEF=[["formador","Formador de Cargas"],["frete","Tabela de Frete"],["fob","Pedidos FOB / Retira"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
-const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["limpar","Limpar dados"],["gerenciar","Gerenciar usuarios e perfis"]];
+const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
 let session=null;
 const CUR={user:null,nome:"",profile:null};
@@ -7268,7 +7268,7 @@ let _sessTimer=null;
 function applyPermissions(){
   TABS_DEF.forEach(([t])=>{const show=canSee(t);document.querySelectorAll('[data-tab="'+t+'"]').forEach(b=>b.classList.toggle("hidden",!show));});
   const setBtn=(sel,a)=>{const e=$(sel);if(e)e.classList.toggle("hidden",!can(a));};
-  setBtn("#btnImport","importPed");setBtn("#btnNovaCarga","criarCarga");setBtn("#btnReset","limpar");setBtn("#btnImportFrete","importFrete");
+  setBtn("#btnImport","importPed");setBtn("#btnNovaCarga","criarCarga");setBtn("#btnImportFrete","importFrete");
   ["#btnExport","#btnExportFech","#btnExportContr","#btnExportEmb"].forEach(s=>setBtn(s,"exportar"));
   const lbl=$("#curUser");if(lbl)lbl.textContent=CUR.user?(CUR.nome||CUR.user)+(CUR.profile?" - "+CUR.profile.nome:""):"";
   if(CUR.profile&&!canSee(state.tab)){const first=TABS_DEF.map(t=>t[0]).find(canSee);if(first)setTab(first,true);}
@@ -7299,13 +7299,15 @@ function renderConfig(){
      '<div class="fld"><label>Senha</label><input id="usPass" type="password" placeholder="min. 4 caracteres"></div>'+
      '<div class="fld"><label>Perfil</label><select id="usProf">'+profOpts+'</select></div>'+
    '</div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="usSave">Criar usuario</button><button class="btn hidden" id="usCancel">Cancelar edicao</button></div></div>'+
-   '<div id="usList"></div>';
+   '<div id="usList"></div>'+
+   (isMaster()?'<div class="cadcard" style="border:1px solid #f3c6cb;background:#fcf2f3"><h4 style="color:var(--risco)">Manutencao de dados (somente master)</h4><p style="font-size:12px;color:var(--cinza);margin:2px 0 10px">Apaga TODOS os pedidos, tabela de frete, transportadoras e cargas salvos neste navegador. Nao afeta usuarios, perfis nem a monitoria. Acao irreversivel.</p><button class="btn ghost" id="btnReset" style="border-color:var(--risco);color:var(--risco)">&#128465; Limpar dados</button></div>':'');
   body.innerHTML=html;
   // listeners
   $("#pfSave").addEventListener("click",saveProfileFromForm);
   $("#pfClear").addEventListener("click",()=>{editProfileId=null;$("#pfNome").value="";body.querySelectorAll(".pf-tab,.pf-act,.pf-fil,.pf-uf").forEach(c=>c.checked=false);$("#pfSave").textContent="Salvar perfil";});
   $("#usSave").addEventListener("click",saveUserFromForm);
   $("#usCancel").addEventListener("click",clearUserForm);
+  if(isMaster()&&$("#btnReset"))$("#btnReset").addEventListener("click",resetState);
   renderProfilesList();renderUsersList();
 }
 function renderProfilesList(){
@@ -7433,7 +7435,6 @@ $("#cRFile").addEventListener("change",e=>{if(e.target.files[0])importFreightTab
 $("#mTranspToggle").addEventListener("click",()=>{const a=$("#mTranspAdd");a.classList.toggle("hidden");if(!a.classList.contains("hidden")){$("#mTNome").value=$("#mTransp").value;["mTCnpj","mTTel","mTContato"].forEach(id=>$("#"+id).value="");$("#mTNome").focus();}});
 $("#mTranspCancel").addEventListener("click",()=>$("#mTranspAdd").classList.add("hidden"));
 $("#mTranspSave").addEventListener("click",()=>{if(!requirePerm("cadTransp"))return;const nm=$("#mTNome").value.trim();if(!nm){toast("Informe o nome da transportadora.","err");return;}if(!$("#mTCnpj").value.trim()){toast("CNPJ e obrigatorio.","err");return;}if(addCarrier(nm,$("#mTCnpj").value.trim(),$("#mTTel").value.trim(),$("#mTContato").value.trim())){renderCarriers();$("#mTransp").value=nm;$("#mTranspAdd").classList.add("hidden");logAction("cad_transp",nm);toast("Transportadora cadastrada e selecionada.","ok");}else{$("#mTransp").value=nm;$("#mTranspAdd").classList.add("hidden");}});
-$("#btnReset").addEventListener("click",resetState);
 $("#suBtn").addEventListener("click",doSetupMaster);
 $("#liBtn").addEventListener("click",doLogin);
 $("#capReload").addEventListener("click",newCaptcha);
