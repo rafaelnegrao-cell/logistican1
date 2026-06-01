@@ -5988,6 +5988,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
       </div>
     </div>
     <div class="kpistats">
+      <div class="kpi neutral"><span class="ic">&#128230;</span><span class="txt"><span class="lbl">Peso total</span><span class="val" id="kPesoTot">0 t</span></span></div>
       <div class="kpi neutral"><span class="ic">&#9878;</span><span class="txt"><span class="lbl">Peso disponivel</span><span class="val" id="kPeso">0 t</span></span></div>
       <div class="kpi neutral"><span class="ic">&#128202;</span><span class="txt"><span class="lbl">Peso alocado</span><span class="val" id="kAloc">0 t</span></span></div>
       <div class="kpi neutral" id="kSaldoCard"><span class="ic">&#128176;</span><span class="txt"><span class="lbl">Saldo frete</span><span class="val" id="kSaldo">R$ 0</span></span></div>
@@ -6186,17 +6187,17 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         </div>
 
         <div class="cadcard">
-          <h4>Auto-Preencher e limite de destinos por veiculo</h4>
+          <h4>Auto-Preencher e limite de pedidos por carga</h4>
           <ul>
-            <li>Dentro da rota, adiciona pedidos <b>por score</b> (ancora = maior score), respeitando a <b>capacidade</b> e o <b>limite de destinos (cidades)</b>.</li>
+            <li>Dentro da rota, adiciona pedidos <b>por score</b> (ancora = maior score), respeitando a <b>capacidade</b> e o <b>limite de pedidos por carga</b>.</li>
             <li>Sem rota informada, o sistema <b>escolhe a melhor rota</b> para o veiculo: prioridades &rarr; ocupacao da capacidade &rarr; score.</li>
           </ul>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
-            <span class="tag rota">Truck &middot; 15 t &middot; ate 6 destinos</span>
-            <span class="tag rota">Bitruck &middot; 22 t &middot; ate 4 destinos</span>
-            <span class="tag rota">Carreta &middot; 33 t &middot; ate 2 destinos</span>
-            <span class="tag rota">Bitrem &middot; 40 t &middot; 1 destino</span>
-            <span class="tag rota">Rodotrem &middot; 49 t &middot; 1 destino</span>
+            <span class="tag rota">Truck &middot; 15 t &middot; ate 6 pedidos</span>
+            <span class="tag rota">Bitruck &middot; 22 t &middot; ate 4 pedidos</span>
+            <span class="tag rota">Carreta &middot; 33 t &middot; ate 2 pedidos</span>
+            <span class="tag rota">Bitrem &middot; 40 t &middot; 1 pedido</span>
+            <span class="tag rota">Rodotrem &middot; 49 t &middot; 1 pedido</span>
           </div>
           <p style="font-size:11.5px;color:var(--cinza);margin-top:8px">Bate-carga: abaixo de 95% mostra o que falta &middot; 95&ndash;100% carga otimizada &middot; acima de 100% excesso de peso.</p>
         </div>
@@ -6324,7 +6325,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 "use strict";
 /* ===== FORMADOR DE CARGA V6 — N1 ALIMENTOS ===== */
 const VEHICLES={"49000":"Rodotrem","40000":"Bitrem","33000":"Carreta","22000":"Bitruck","15000":"Truck"};
-const DEST_LIMIT={"15000":6,"22000":4,"33000":2,"40000":1,"49000":1}; // limite de destinos (cidades) por veiculo
+const PED_LIMIT={"15000":6,"22000":4,"33000":2,"40000":1,"49000":1}; // limite de PEDIDOS por carga, por tipo de veiculo
 const STD_TIERS=[{label:"Até 5t",max:5000},{label:"Até 8t",max:8000},{label:"Até 13,5t",max:13500},{label:"Até 25t",max:25000},{label:"Acima 25t",max:0}];
 const OVERRIDES=["IBY4687","IBY4683"]; // liberacoes manuais fixas (doc)
 
@@ -6663,15 +6664,16 @@ function renderTrucks(){
 function bestRouteForVehicle(cap){
   const avail=state.pedidos.filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&inScope(p));
   if(!avail.length)return null;
-  const lim=DEST_LIMIT[String(cap)]||1;
+  const lim=PED_LIMIT[String(cap)]||1;
   const byRoute={};
   avail.forEach(p=>{const k=normRota(p.rota)||"-";(byRoute[k]=byRoute[k]||{name:p.rota||"",items:[]}).items.push(p);});
   let best=null,bestMetric=-1;
   Object.values(byRoute).forEach(r=>{
     const sorted=r.items.slice().sort((a,b)=>b.score-a.score);
-    let load=0,scoreSum=0,prio=0;const cities=new Set();
-    for(const p of sorted){const ck=(p.cidade||"")+"|"+(p.uf||"");const novo=!cities.has(ck);
-      if(load+p.peso<=cap&&(!novo||cities.size<lim)){load+=p.peso;scoreSum+=p.score;if(p.prio)prio++;cities.add(ck);}}
+    let load=0,scoreSum=0,prio=0,count=0;
+    for(const p of sorted){
+      if(count>=lim)break;
+      if(load+p.peso<=cap){load+=p.peso;scoreSum+=p.score;if(p.prio)prio++;count++;}}
     if(load<=0)return;
     const metric=prio*100000 + (load/cap)*10000 + scoreSum;
     if(metric>bestMetric){bestMetric=metric;best=r.name;}
@@ -6686,19 +6688,19 @@ function autoFill(t){
     if(!r){toast("Nenhum pedido APTO disponivel para preencher.","info");return;}
     t.rota=r; auto=true;
   }
-  const tr=normRota(t.rota);const lim=DEST_LIMIT[String(t.cap)]||1;
+  const tr=normRota(t.rota);const lim=PED_LIMIT[String(t.cap)]||1;
   let avail=state.pedidos.filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&inScope(p)&&normRota(p.rota)===tr);
   if(!avail.length){toast("Nenhum pedido APTO disponivel para a rota \""+t.rota+"\".","info");return;}
   avail.sort((a,b)=>b.score-a.score);
-  // cidades ja na carga
-  const cities=new Set(state.pedidos.filter(p=>p.assignedTo===t.id).map(p=>(p.cidade||"")+"|"+(p.uf||"")));
   let load=truckLoad(t),added=0,greens=0;
-  for(const p of avail){const ck=(p.cidade||"")+"|"+(p.uf||"");const novo=!cities.has(ck);
-    if(load+p.peso<=t.cap && (!novo||cities.size<lim)){p.assignedTo=t.id;load+=p.peso;added++;if(p.prio)greens++;cities.add(ck);}}
+  let count=state.pedidos.filter(p=>p.assignedTo===t.id).length; // pedidos ja na carga
+  for(const p of avail){
+    if(count>=lim)break;
+    if(load+p.peso<=t.cap){p.assignedTo=t.id;load+=p.peso;added++;count++;if(p.prio)greens++;}}
   renderAll();
-  if(!added){toast("Os pedidos APTOS da rota nao cabem na capacidade/limite de destinos.","info");return;}
+  if(!added){toast(count>=lim?"A carga ja atingiu o limite de "+lim+" pedido(s) para este veiculo.":"Os pedidos APTOS da rota nao cabem na capacidade do veiculo.","info");return;}
   const fr=loadFreight(t);
-  toast((auto?"Rota escolhida: \""+t.rota+"\". ":"")+added+" pedido(s) &middot; "+cities.size+"/"+lim+" destino(s) &middot; "+greens+" priorizados &middot; "+fmtKg(load)+" &middot; Preco frete "+fmtMoney(fr.total)+".","ok",7000);logAction("auto_preencher",(t.rota||"")+" - "+added+" pedidos");
+  toast((auto?"Rota escolhida: \""+t.rota+"\". ":"")+added+" pedido(s) adicionados &middot; "+count+"/"+lim+" pedidos na carga &middot; "+greens+" priorizados &middot; "+fmtKg(load)+" &middot; Preco frete "+fmtMoney(fr.total)+".","ok",7000);logAction("auto_preencher",(t.rota||"")+" - "+added+" pedidos");
 }
 
 /* FECHAR / REABRIR CARGA */
@@ -6870,14 +6872,16 @@ function renderFrete(){renderFreteTab();}
 
 /* KPIs */
 function renderKpis(){
-  const bp=bancoPeds();
+  const bp=applyFilters(bancoPeds());
   const aptos=bp.filter(p=>p.apto).length;
   const lib=bp.filter(p=>!p.bloqueado&&p.mcPct>=0).length;
   const bloq=bp.filter(p=>p.bloqueado).length;
-  const fob=fobPeds().length;
+  const fob=applyFilters(fobPeds()).length;
+  const pesoTot=bp.reduce((s,p)=>s+p.peso,0);
   const dispPeso=bp.filter(p=>p.assignedTo===null&&p.apto).reduce((s,p)=>s+p.peso,0);
   const aloc=state.pedidos.filter(p=>p.assignedTo!==null).reduce((s,p)=>s+p.peso,0);
   $("#kAptos").textContent=aptos;$("#kLib").textContent=lib;$("#kBloq").textContent=bloq;$("#kFob").textContent=fob;
+  if($("#kPesoTot"))$("#kPesoTot").textContent=fmtT(pesoTot);
   $("#kPeso").textContent=fmtT(dispPeso);
   $("#kCargas").textContent=state.trucks.filter(t=>t.status==="montada"&&truckInScope(t)).length;
   $("#kFech").textContent=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t)).length;
@@ -7300,6 +7304,7 @@ function renderConfig(){
      '<div class="fld"><label>Perfil</label><select id="usProf">'+profOpts+'</select></div>'+
    '</div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="usSave">Criar usuario</button><button class="btn hidden" id="usCancel">Cancelar edicao</button></div></div>'+
    '<div id="usList"></div>'+
+   (isMaster()?'<div class="cadcard"><h4>Backup e restauracao de acessos</h4><p style="font-size:12px;color:var(--cinza);margin:2px 0 10px">Exporte um arquivo com os usuarios e perfis para guardar com seguranca. Use a importacao para restaurar em outro navegador, dispositivo ou apos uma atualizacao - sem precisar recriar nada. Recomenda-se exportar sempre que criar ou alterar usuarios/perfis.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="btnExpAuth">&#11015; Exportar acessos</button><button class="btn" id="btnImpAuth">&#11014; Importar acessos</button><input type="file" id="impAuthFile" accept=".json,application/json" style="display:none"></div></div>':'')+
    (isMaster()?'<div class="cadcard" style="border:1px solid #f3c6cb;background:#fcf2f3"><h4 style="color:var(--risco)">Manutencao de dados (somente master)</h4><p style="font-size:12px;color:var(--cinza);margin:2px 0 10px">Apaga TODOS os pedidos, tabela de frete, transportadoras e cargas salvos neste navegador. Nao afeta usuarios, perfis nem a monitoria. Acao irreversivel.</p><button class="btn ghost" id="btnReset" style="border-color:var(--risco);color:var(--risco)">&#128465; Limpar dados</button></div>':'');
   body.innerHTML=html;
   // listeners
@@ -7308,6 +7313,9 @@ function renderConfig(){
   $("#usSave").addEventListener("click",saveUserFromForm);
   $("#usCancel").addEventListener("click",clearUserForm);
   if(isMaster()&&$("#btnReset"))$("#btnReset").addEventListener("click",resetState);
+  if(isMaster()&&$("#btnExpAuth"))$("#btnExpAuth").addEventListener("click",exportAuthConfig);
+  if(isMaster()&&$("#btnImpAuth"))$("#btnImpAuth").addEventListener("click",()=>$("#impAuthFile").click());
+  if(isMaster()&&$("#impAuthFile"))$("#impAuthFile").addEventListener("change",e=>{if(e.target.files[0])importAuthConfig(e.target.files[0]);e.target.value="";});
   renderProfilesList();renderUsersList();
 }
 function renderProfilesList(){
@@ -7373,10 +7381,41 @@ function saveUserFromForm(){
   renderUsersList();toast("Usuario criado.","ok");
 }
 
+/* backup / restauracao de acessos (usuarios + perfis) */
+function exportAuthConfig(){
+  if(!isMaster())return;
+  const data=JSON.stringify({type:"n1_acessos",version:1,exportedAt:new Date().toISOString(),profiles:auth.profiles,users:auth.users},null,2);
+  try{
+    const blob=new Blob([data],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="n1_acessos_backup.json";document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){toast("Falha ao gerar o arquivo de backup.","err");return;}
+  logAction("export_acessos",auth.users.length+" usuarios / "+auth.profiles.length+" perfis");
+  toast("Backup de acessos exportado.","ok");
+}
+function importAuthConfig(file){
+  if(!isMaster())return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let d;try{d=JSON.parse(r.result);}catch(e){toast("Arquivo invalido (nao e um backup valido).","err");return;}
+    if(!d||!Array.isArray(d.users)||!Array.isArray(d.profiles)){toast("Arquivo invalido: nao contem usuarios e perfis.","err");return;}
+    if(!confirm("Substituir os usuarios e perfis atuais pelos do backup?\n\n"+d.users.length+" usuario(s) e "+d.profiles.length+" perfil(is) serao restaurados.\nOs logs de monitoria nao sao afetados."))return;
+    auth.profiles=d.profiles;auth.users=d.users;ensureMasterProfile();saveAuth();
+    const u=auth.users.find(x=>x.user===CUR.user);
+    if(u){CUR.nome=u.nome;CUR.profile=profileById(u.profileId)||CUR.profile;}
+    logAction("import_acessos",d.users.length+" usuarios / "+d.profiles.length+" perfis");
+    applyPermissions();renderConfig();
+    toast("Acessos restaurados a partir do backup.","ok");
+  };
+  r.onerror=()=>toast("Nao foi possivel ler o arquivo.","err");
+  r.readAsText(file);
+}
+
 /* ===== MONITORIA ===== */
 function fmtDur(sec){sec=Math.max(0,Math.round(sec||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h?h+"h ":"")+(m||h?m+"min ":"")+s+"s";}
 function fmtDT(ts){const d=new Date(ts);const p=n=>n<10?"0"+n:n;return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());}
-function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
 function renderMonitoria(){
   const body=$("#monBody");if(!body)return;
   if(!canSee("monitoria")){body.innerHTML='<div class="empty">Acesso restrito.</div>';return;}
@@ -7415,8 +7454,8 @@ $("#btnImportFrete").addEventListener("click",()=>$("#freteFileInput").click());
 $("#freteFileInput").addEventListener("change",e=>{if(e.target.files[0])importFreightTable(e.target.files[0]);e.target.value="";});
 $("#ffFilial").addEventListener("change",renderFreteTab);
 $("#ffBusca").addEventListener("input",renderFreteTab);
-["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).addEventListener("change",renderPedidos));
-$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");renderPedidos();});
+["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).addEventListener("change",()=>{renderPedidos();renderKpis();}));
+$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");renderPedidos();renderKpis();});
 document.querySelectorAll(".navbtn,.botnav button,#legHelp").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("#pickClose").addEventListener("click",()=>$("#pickOverlay").classList.remove("open"));
 $("#pickOverlay").addEventListener("click",e=>{if(e.target.id==="pickOverlay")$("#pickOverlay").classList.remove("open");});
