@@ -5642,6 +5642,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .kpibox .gl{font-size:9px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:#9aa6ad;padding-left:2px}
   .kpigrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .kpistats{display:flex;flex-direction:column;gap:8px;justify-content:center;min-width:0}
+  .kpibar .kpi.stat{flex:1 1 150px;min-width:140px;background:linear-gradient(#ffffff,#f8fafb);box-shadow:0 1px 3px rgba(1,46,32,.05);padding:9px 14px}
+  .kpibar .kpi.stat .val{font-size:20px}
   .kpi{display:flex;align-items:center;gap:9px;min-width:0;background:var(--bg);border:1px solid var(--grade);border-left:4px solid #cfd8dd;border-radius:10px;padding:7px 13px 7px 11px}
   .kpistats .kpi{background:linear-gradient(#ffffff,#f8fafb);box-shadow:0 1px 3px rgba(1,46,32,.05)}
   .kpi .ic{font-size:16px;line-height:1;opacity:.85;flex:0 0 auto}
@@ -5744,7 +5746,9 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   @keyframes blink{50%{opacity:.45}}
   .bate{margin-top:7px;font-size:11px;font-weight:700}
   .bate.ok{color:var(--ok)}.bate.over{color:var(--risco)}.bate.norm{color:var(--cinza)}
-  .truck-auto{padding:9px 15px;border-bottom:1px solid var(--grade);display:flex;gap:8px}
+  .truck-auto{padding:9px 15px;border-bottom:1px solid var(--grade);display:flex;gap:8px;flex-wrap:wrap}
+  .btn-parcial{flex:0 0 auto;padding:9px 12px;border:1px solid #e6b800;border-radius:9px;cursor:pointer;font-weight:700;font-size:12px;background:#fff7e0;color:#8a6d00;transition:.15s}
+  .btn-parcial:hover{background:#ffefc0}
   .btn-auto{flex:1;padding:9px;border:none;border-radius:9px;cursor:pointer;font-weight:700;font-size:12px;background:linear-gradient(135deg,#0a4a31,var(--verde));color:#fff;display:flex;align-items:center;justify-content:center;gap:7px;transition:.15s}
   .btn-auto:hover{filter:brightness(1.08)}
   .btn-close{flex:0 0 auto;padding:9px 12px;border:none;border-radius:9px;cursor:pointer;font-weight:700;font-size:12px;background:#0a3a8a;color:#fff;transition:.15s}
@@ -5953,6 +5957,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     <button class="navbtn active" data-tab="formador">&#128666; Formador de Cargas</button>
     <button class="navbtn" data-tab="frete">&#128202; Tabela de Frete</button>
     <button class="navbtn" data-tab="fob"><span>&#128230; Pedidos FOB / Retira</span><span class="nbadge" data-badge="fob">0</span></button>
+    <button class="navbtn" data-tab="parcial"><span>&#9201; Fechado Parcial</span><span class="nbadge" data-badge="parcial">0</span></button>
     <button class="navbtn" data-tab="fechadas"><span>&#9203; Aguardando Contratacao</span><span class="nbadge" data-badge="fech">0</span></button>
     <button class="navbtn" data-tab="contratadas"><span>&#128467; Cargas Programadas</span><span class="nbadge" data-badge="contr">0</span></button>
     <button class="navbtn" data-tab="embarcadas"><span>&#128666; Cargas Embarcadas</span><span class="nbadge" data-badge="emb">0</span></button>
@@ -5969,30 +5974,10 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 
   <!-- KPI BAR FIXA -->
   <div class="kpibar" id="kpibar">
-    <div class="kpibox">
-      <span class="gl">Pedidos a faturar</span>
-      <div class="kpigrid">
-        <div class="kpi neutral"><span class="ic">&#128203;</span><span class="txt"><span class="lbl">Aptos</span><span class="val" id="kAptos">0</span></span></div>
-        <div class="kpi gray"><span class="ic">&#128230;</span><span class="txt"><span class="lbl">FOB / Retira</span><span class="val" id="kFob">0</span></span></div>
-        <div class="kpi green"><span class="ic">&#9989;</span><span class="txt"><span class="lbl">Liberados</span><span class="val" id="kLib">0</span></span></div>
-        <div class="kpi alert"><span class="ic">&#128274;</span><span class="txt"><span class="lbl">Bloqueados</span><span class="val" id="kBloq">0</span></span></div>
-      </div>
-    </div>
-    <div class="kpibox">
-      <span class="gl">Cargas / Expedicao</span>
-      <div class="kpigrid">
-        <div class="kpi blue"><span class="ic">&#129513;</span><span class="txt"><span class="lbl">Montadas</span><span class="val" id="kCargas">0</span></span></div>
-        <div class="kpi green"><span class="ic">&#9203;</span><span class="txt"><span class="lbl">Aguardando</span><span class="val" id="kFech">0</span></span></div>
-        <div class="kpi neutral"><span class="ic">&#128467;</span><span class="txt"><span class="lbl">Programadas</span><span class="val" id="kContr">0</span></span></div>
-        <div class="kpi blue"><span class="ic">&#128666;</span><span class="txt"><span class="lbl">Embarcadas</span><span class="val" id="kEmb">0</span></span></div>
-      </div>
-    </div>
-    <div class="kpistats">
-      <div class="kpi neutral"><span class="ic">&#128230;</span><span class="txt"><span class="lbl">Peso total</span><span class="val" id="kPesoTot">0 t</span></span></div>
-      <div class="kpi neutral"><span class="ic">&#9878;</span><span class="txt"><span class="lbl">Peso disponivel</span><span class="val" id="kPeso">0 t</span></span></div>
-      <div class="kpi neutral"><span class="ic">&#128202;</span><span class="txt"><span class="lbl">Peso alocado</span><span class="val" id="kAloc">0 t</span></span></div>
-      <div class="kpi neutral" id="kSaldoCard"><span class="ic">&#128176;</span><span class="txt"><span class="lbl">Saldo frete</span><span class="val" id="kSaldo">R$ 0</span></span></div>
-    </div>
+    <div class="kpi neutral stat"><span class="ic">&#128230;</span><span class="txt"><span class="lbl">Peso total</span><span class="val" id="kPesoTot">0 t</span></span></div>
+    <div class="kpi neutral stat"><span class="ic">&#9878;</span><span class="txt"><span class="lbl">Peso disponivel</span><span class="val" id="kPeso">0 t</span></span></div>
+    <div class="kpi neutral stat"><span class="ic">&#128202;</span><span class="txt"><span class="lbl">Peso alocado</span><span class="val" id="kAloc">0 t</span></span></div>
+    <div class="kpi neutral stat" id="kSaldoCard"><span class="ic">&#128176;</span><span class="txt"><span class="lbl">Saldo frete</span><span class="val" id="kSaldo">R$ 0</span></span></div>
   </div>
 
   <div class="panels">
@@ -6055,6 +6040,11 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     </section>
 
     <!-- PANEL FECHADAS (Aguardando Contratacao) -->
+    <section class="panel" data-panel="parcial">
+      <div class="panel-head"><h2>Fechado Parcial</h2><span class="meta" id="parcialMeta">0 cargas</span></div>
+      <div class="panel-body" id="parcialBody"><div class="empty">Nenhuma carga em fechamento parcial.</div></div>
+    </section>
+
     <section class="panel" data-panel="fechadas">
       <div class="panel-head"><h2>Aguardando Contratacao</h2><span class="meta" id="fechMeta">0 cargas</span><span class="spacer" style="flex:1"></span><button class="btn" id="btnExportFech" disabled>&#11015; Exportar</button></div>
       <div class="panel-body" id="fechBody"><div class="empty">Nenhuma carga aguardando contratacao. Monte uma carga e clique em "Fechar Carga".</div></div>
@@ -6216,14 +6206,16 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
           <h4>Fluxo das cargas</h4>
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;font-weight:600">
             <span class="tag" style="background:#eef4fb;color:#1454b3;border-color:#d3e3f7">Montar Carga</span>
-            <span style="color:var(--cinza)">&mdash;[Fechar Carga]&rarr;</span>
+            <span style="color:var(--cinza)">&mdash;[Fechar Parcial]&rarr;</span>
+            <span class="tag" style="background:#fff7e0;color:#8a6d00;border-color:#e6cf8a">Fechado Parcial</span>
+            <span style="color:var(--cinza)">&mdash;[Fechar Carga &ge;90%]&rarr;</span>
             <span class="tag" style="background:#eef0f2">Aguardando Contratacao</span>
             <span style="color:var(--cinza)">&mdash;[Contratar veiculo]&rarr;</span>
             <span class="tag" style="background:var(--verde-bg);color:#0a5d44;border-color:#bfe6cf">Cargas Programadas</span>
             <span style="color:var(--cinza)">&mdash;[Embarcado]&rarr;</span>
             <span class="tag" style="background:#eaf1fe;color:#1454b3;border-color:#cfe0fb">Cargas Embarcadas</span>
           </div>
-          <p style="font-size:11.5px;color:var(--cinza);margin-top:8px">Para <b>contratar o veiculo</b> e preciso transportadora cadastrada + placa + motorista + frete/ton pago. Todas as transicoes tem volta (Reabrir / Voltar).</p>
+          <p style="font-size:11.5px;color:var(--cinza);margin-top:8px"><b>Fechado Parcial:</b> carga iniciada que ainda nao atingiu 90% da capacidade; aguarda mais pedidos da regiao (use Auto-Preencher) ate liberar o fechamento definitivo. O <b>Fechar Carga</b> exige no minimo 90% da capacidade. Para <b>contratar o veiculo</b> e preciso transportadora cadastrada + placa + motorista + frete/ton pago + data de embarque. Todas as transicoes tem volta (Reabrir / Voltar).</p>
         </div>
 
       </div>
@@ -6302,6 +6294,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   <button data-tab="formador" class="active"><span class="bi">&#128666;</span>Formador</button>
   <button data-tab="frete"><span class="bi">&#128202;</span>Frete</button>
   <button data-tab="fob"><span class="bi">&#128230;</span>FOB<span class="nbadge" data-badge="fob">0</span></button>
+  <button data-tab="parcial"><span class="bi">&#9201;</span>Parcial<span class="nbadge" data-badge="parcial">0</span></button>
   <button data-tab="fechadas"><span class="bi">&#9203;</span>Aguard.<span class="nbadge" data-badge="fech">0</span></button>
   <button data-tab="contratadas"><span class="bi">&#128467;</span>Program.<span class="nbadge" data-badge="contr">0</span></button>
   <button data-tab="embarcadas"><span class="bi">&#128666;</span>Embarc.<span class="nbadge" data-badge="emb">0</span></button>
@@ -6635,7 +6628,7 @@ function truckCard(t){
     '<div class="truck-head"><div class="th-top"><div><div class="th-rota">'+(t.rota||"Rota nao informada")+'</div><div class="th-tipo">'+VEHICLES[String(cap)]+' &middot; '+fmtKg(cap)+'</div></div><div class="th-actions"><button class="icobtn mapb" title="Mapa dos destinos">&#128506;</button><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div>'+
     '<div class="th-info"><span>Transp: <b>'+(t.transp||"Nao informado")+'</b></span><span>Placa: <b>'+(t.placa||"Nao informado")+'</b></span><span>Motorista: <b>'+(t.mot||"Nao informado")+'</b></span></div></div>'+
     '<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+fillCls+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+bateCls+'">'+bate+'</div></div>'+
-    '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button><button class="btn-close" '+(assigned.length?'':'disabled')+'>&#9989; Fechar Carga</button></div>'+
+    '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button><button class="btn-parcial" '+(assigned.length?'':'disabled')+' title="Fechar parcial: aguarda mais pedidos da regiao ate atingir 90%">&#9201; Fechar Parcial</button><button class="btn-close" '+(assigned.length?'':'disabled')+' title="Fechar carga (minimo 90% da capacidade)">&#9989; Fechar Carga</button></div>'+
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="body-'+t.id+'">'+(assigned.length?'':'Arraste pedidos aqui ou use o Auto-Preencher')+'</div>'+
     '<div class="truck-foot"><div class="tf-line"><span>Preco frete (tabela do pedido)</span><b>'+fmtMoney(fr.total)+'</b></div><div class="tf-line"><span>R$/ton efetivo (proporcional)</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+(t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo (preco - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'')+'</div>';
   const body=card.querySelector("#body-"+t.id);
@@ -6644,6 +6637,7 @@ function truckCard(t){
   card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
   card.querySelector(".del").addEventListener("click",()=>{if(confirm("Excluir esta carga? Os pedidos voltam para o banco.")){state.pedidos.forEach(p=>{if(p.assignedTo===t.id)p.assignedTo=null;});state.trucks=state.trucks.filter(x=>x.id!==t.id);renderAll();}});
   card.querySelector(".btn-auto").addEventListener("click",()=>autoFill(t));
+  card.querySelector(".btn-parcial").addEventListener("click",()=>fecharParcial(t));
   card.querySelector(".btn-close").addEventListener("click",()=>fecharCarga(t));
   card.addEventListener("dragover",e=>{e.preventDefault();card.classList.add("over");});
   card.addEventListener("dragleave",()=>card.classList.remove("over"));
@@ -6704,15 +6698,57 @@ function autoFill(t){
 }
 
 /* FECHAR / REABRIR CARGA */
+const MIN_CLOSE_PCT=90; // % minimo da capacidade para fechamento definitivo
 function fecharCarga(t){
   if(!requirePerm("fechar"))return;
   const assigned=state.pedidos.filter(p=>p.assignedTo===t.id);
   if(!assigned.length){toast("Adicione pedidos antes de fechar a carga.","err");return;}
+  const load=truckLoad(t),pct=t.cap?load/t.cap*100:0;
+  if(pct<MIN_CLOSE_PCT){toast("A carga esta com "+pct.toFixed(0)+"% da capacidade. O fechamento definitivo exige no minimo "+MIN_CLOSE_PCT+"%. Use \"Fechar Parcial\" para aguardar mais pedidos da regiao.","info",7000);return;}
   t.status="fechada";t.closedAt=new Date();
   renderAll();
-  toast("Carga da rota \""+(t.rota||"-")+"\" fechada e movida para Cargas Fechadas (aguardando contratacao).","ok");
+  toast("Carga da rota \""+(t.rota||"-")+"\" fechada e movida para Aguardando Contratacao.","ok");logAction("fechar_carga",(t.rota||"")+" "+pct.toFixed(0)+"%");
+}
+function fecharParcial(t){
+  if(!requirePerm("fechar"))return;
+  const assigned=state.pedidos.filter(p=>p.assignedTo===t.id);
+  if(!assigned.length){toast("Adicione ao menos um pedido para fechar parcialmente.","err");return;}
+  const load=truckLoad(t),pct=t.cap?load/t.cap*100:0;
+  t.status="parcial";t.partialAt=new Date();
+  renderAll();setTab("parcial");
+  toast("Carga \""+(t.rota||"-")+"\" movida para Fechado Parcial ("+pct.toFixed(0)+"%). Complete o volume ate "+MIN_CLOSE_PCT+"% para fechar.","ok",7000);logAction("fechar_parcial",(t.rota||"")+" "+pct.toFixed(0)+"%");
 }
 function reabrirCarga(t){t.status="montada";renderAll();setTab("formador");toast("Carga reaberta no Formador.","info");}
+
+/* PAINEL FECHADO PARCIAL */
+function renderParcial(){
+  const cs=state.trucks.filter(t=>t.status==="parcial"&&truckInScope(t));
+  setBadge("parcial",cs.length);
+  if($("#parcialMeta"))$("#parcialMeta").textContent=cs.length+(cs.length===1?" carga":" cargas");
+  const body=$("#parcialBody");if(!body)return;
+  if(!cs.length){body.innerHTML='<div class="empty">Nenhuma carga em fechamento parcial. No Formador, comece uma carga e use "Fechar Parcial" quando ainda faltar volume para atingir '+MIN_CLOSE_PCT+'% da capacidade.</div>';return;}
+  body.innerHTML="";
+  cs.forEach(t=>{
+    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort((a,b)=>b.score-a.score);
+    const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;
+    const min=t.cap*MIN_CLOSE_PCT/100,faltam=Math.max(0,min-load),atinge=load>=min-0.001;
+    const card=el("div","clcard");
+    let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td>'+(p.cidade||"-")+(p.uf?"/"+p.uf:"")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
+    card.innerHTML=
+      '<div class="clh"><div><div class="clrota">'+(t.rota||"Rota nao informada")+'</div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%</div></div>'+
+      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn reab">Reabrir no Formador</button><button class="clbtn fech" '+(atinge?'':'disabled style="opacity:.45;cursor:not-allowed"')+'>&#9989; Fechar Carga</button></div></div>'+
+      '<div class="progress-wrap" style="padding:11px 16px"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(t.cap)+' &middot; minimo '+MIN_CLOSE_PCT+'% = '+fmtKg(min)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(atinge?"otim":"")+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+(atinge?"ok":"norm")+'">'+(atinge?"&#128994; Volume minimo atingido — pronto para fechar":"Faltam "+fmtKg(faltam)+" para atingir "+MIN_CLOSE_PCT+"% (adicione pedidos da regiao com Auto-Preencher ou reabra no Formador)")+'</div></div>'+
+      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Cidade</th><th class="num">Peso</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
+    card.querySelector(".auto").addEventListener("click",()=>autoFill(t));
+    card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
+    card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
+    const fb=card.querySelector(".fech");
+    if(atinge) fb.addEventListener("click",()=>fecharCarga(t));
+    else fb.addEventListener("click",()=>toast("Ainda faltam "+fmtKg(faltam)+" para "+MIN_CLOSE_PCT+"%. Adicione pedidos da regiao (Auto-Preencher) ou reabra no Formador.","info",6000));
+    body.appendChild(card);
+  });
+}
 
 /* PAINEL FOB */
 function renderFob(){
@@ -6880,13 +6916,16 @@ function renderKpis(){
   const pesoTot=bp.reduce((s,p)=>s+p.peso,0);
   const dispPeso=bp.filter(p=>p.assignedTo===null&&p.apto).reduce((s,p)=>s+p.peso,0);
   const aloc=state.pedidos.filter(p=>p.assignedTo!==null).reduce((s,p)=>s+p.peso,0);
-  $("#kAptos").textContent=aptos;$("#kLib").textContent=lib;$("#kBloq").textContent=bloq;$("#kFob").textContent=fob;
+  if($("#kAptos"))$("#kAptos").textContent=aptos;
+  if($("#kLib"))$("#kLib").textContent=lib;
+  if($("#kBloq"))$("#kBloq").textContent=bloq;
+  if($("#kFob"))$("#kFob").textContent=fob;
   if($("#kPesoTot"))$("#kPesoTot").textContent=fmtT(pesoTot);
   $("#kPeso").textContent=fmtT(dispPeso);
-  $("#kCargas").textContent=state.trucks.filter(t=>t.status==="montada"&&truckInScope(t)).length;
-  $("#kFech").textContent=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t)).length;
+  if($("#kCargas"))$("#kCargas").textContent=state.trucks.filter(t=>t.status==="montada"&&truckInScope(t)).length;
+  if($("#kFech"))$("#kFech").textContent=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t)).length;
   const contr=state.trucks.filter(t=>t.status==="contratada"&&truckInScope(t));
-  $("#kContr").textContent=contr.length;
+  if($("#kContr"))$("#kContr").textContent=contr.length;
   const emb=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
   if($("#kEmb"))$("#kEmb").textContent=emb.length;
   const saldo=contr.concat(emb).reduce((s,t)=>s+loadFreight(t).saldo,0);
@@ -6896,7 +6935,7 @@ function renderKpis(){
   $("#btnExport").disabled=state.trucks.length===0;
 }
 
-function renderAll(){renderPedidos();renderTrucks();renderFreteTab();buildFreightFilters();renderFob();renderFechadas();renderContratadas();renderEmbarcadas();renderCarriers();renderRoutes();renderKpis();labelTables();saveState();}
+function renderAll(){renderPedidos();renderTrucks();renderFreteTab();buildFreightFilters();renderFob();renderParcial();renderFechadas();renderContratadas();renderEmbarcadas();renderCarriers();renderRoutes();renderKpis();labelTables();saveState();}
 
 /* modal */
 function openModal(t){state.editingTruck=t;refreshCarrierList();$("#mTranspAdd").classList.add("hidden");["mTNome","mTCnpj","mTTel","mTContato"].forEach(id=>{const e=$("#"+id);if(e)e.value="";});$("#modalTitle").textContent=t?"Editar Carga":"Criar Nova Carga";$("#mTipo").value=t?String(t.cap):"33000";$("#mRota").value=t?(t.rota||""):"";$("#mTransp").value=t?(t.transp||""):"";$("#mPlaca").value=t?(t.placa||""):"";$("#mMot").value=t?(t.mot||""):"";const fr=t?loadFreight(t):null;$("#mFrete").value=fr&&fr.total?(fmtMoney(fr.rate)+"/ton  ("+fmtMoney(fr.total)+" total)"):"calculado dos pedidos";$("#mFretePago").value=t&&t.fretePago?t.fretePago:"";$("#mEta").value=t&&t.eta?t.eta:"";$("#overlay").classList.add("open");}
@@ -7170,7 +7209,7 @@ function resetState(){
 const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
 const INACT_MS=24*60*60*1000;
 let _lastActTs=0;
-const TABS_DEF=[["formador","Formador de Cargas"],["frete","Tabela de Frete"],["fob","Pedidos FOB / Retira"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
+const TABS_DEF=[["formador","Formador de Cargas"],["frete","Tabela de Frete"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
 const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
 let session=null;
@@ -7415,7 +7454,7 @@ function importAuthConfig(file){
 /* ===== MONITORIA ===== */
 function fmtDur(sec){sec=Math.max(0,Math.round(sec||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h?h+"h ":"")+(m||h?m+"min ":"")+s+"s";}
 function fmtDT(ts){const d=new Date(ts);const p=n=>n<10?"0"+n:n;return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());}
-function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
 function renderMonitoria(){
   const body=$("#monBody");if(!body)return;
   if(!canSee("monitoria")){body.innerHTML='<div class="empty">Acesso restrito.</div>';return;}
