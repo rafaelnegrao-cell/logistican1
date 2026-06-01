@@ -5955,12 +5955,12 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   <div class="sb-sub">Areas</div>
   <div class="nav">
     <button class="navbtn active" data-tab="formador">&#128666; Formador de Cargas</button>
-    <button class="navbtn" data-tab="frete">&#128202; Tabela de Frete</button>
     <button class="navbtn" data-tab="fob"><span>&#128230; Pedidos FOB / Retira</span><span class="nbadge" data-badge="fob">0</span></button>
     <button class="navbtn" data-tab="parcial"><span>&#9201; Fechado Parcial</span><span class="nbadge" data-badge="parcial">0</span></button>
     <button class="navbtn" data-tab="fechadas"><span>&#9203; Aguardando Contratacao</span><span class="nbadge" data-badge="fech">0</span></button>
     <button class="navbtn" data-tab="contratadas"><span>&#128467; Cargas Programadas</span><span class="nbadge" data-badge="contr">0</span></button>
     <button class="navbtn" data-tab="embarcadas"><span>&#128666; Cargas Embarcadas</span><span class="nbadge" data-badge="emb">0</span></button>
+    <button class="navbtn" data-tab="frete">&#128202; Tabela de Frete</button>
     <button class="navbtn" data-tab="cadastros">&#128221; Cadastros</button>
     <button class="navbtn" data-tab="legenda">&#128214; Legenda &amp; Criterios</button>
     <button class="navbtn" data-tab="monitoria">&#128202; Monitoria</button>
@@ -6292,12 +6292,12 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 <!-- NAV INFERIOR (mobile) -->
 <nav class="botnav">
   <button data-tab="formador" class="active"><span class="bi">&#128666;</span>Formador</button>
-  <button data-tab="frete"><span class="bi">&#128202;</span>Frete</button>
   <button data-tab="fob"><span class="bi">&#128230;</span>FOB<span class="nbadge" data-badge="fob">0</span></button>
   <button data-tab="parcial"><span class="bi">&#9201;</span>Parcial<span class="nbadge" data-badge="parcial">0</span></button>
   <button data-tab="fechadas"><span class="bi">&#9203;</span>Aguard.<span class="nbadge" data-badge="fech">0</span></button>
   <button data-tab="contratadas"><span class="bi">&#128467;</span>Program.<span class="nbadge" data-badge="contr">0</span></button>
   <button data-tab="embarcadas"><span class="bi">&#128666;</span>Embarc.<span class="nbadge" data-badge="emb">0</span></button>
+  <button data-tab="frete"><span class="bi">&#128202;</span>Frete</button>
   <button data-tab="cadastros"><span class="bi">&#128221;</span>Cadastros</button>
   <button data-tab="legenda"><span class="bi">&#128214;</span>Legenda</button>
   <button data-tab="monitoria"><span class="bi">&#128202;</span>Monitoria</button>
@@ -7209,7 +7209,7 @@ function resetState(){
 const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
 const INACT_MS=24*60*60*1000;
 let _lastActTs=0;
-const TABS_DEF=[["formador","Formador de Cargas"],["frete","Tabela de Frete"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
+const TABS_DEF=[["formador","Formador de Cargas"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["frete","Tabela de Frete"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
 const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
 let session=null;
