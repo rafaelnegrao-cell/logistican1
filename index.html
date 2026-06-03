@@ -5623,6 +5623,9 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .brand h1{font-size:14px;font-weight:700;line-height:1.15;color:#fff}
   .brand small{display:block;font-size:10px;font-weight:500;color:var(--verde-2);letter-spacing:.5px;text-transform:uppercase}
   .btn-import{width:100%;margin-top:14px;padding:12px;border:none;border-radius:10px;cursor:pointer;background:linear-gradient(135deg,var(--verde),var(--verde-2));color:#012E20;font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;box-shadow:0 4px 14px rgba(65,192,151,.25)}
+  .btn-import2{width:100%;margin-top:8px;padding:9px;border:1px solid var(--verde-2);border-radius:10px;cursor:pointer;background:#fff;color:#0a5d44;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;gap:7px;transition:.15s}
+  .btn-import2:hover{background:var(--verde-bg)}
+  .prio-meta{font-size:10.5px;color:var(--cinza);margin-top:6px;line-height:1.35}
   .btn-import:hover{transform:translateY(-1px)}
   .sb-sub{font-size:10.5px;color:#7fbfa6;margin:18px 0 8px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
   .nav{display:flex;flex-direction:column;gap:6px}
@@ -5685,6 +5688,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .filters{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}
   .filters select{width:100%;padding:7px 9px;border:1px solid var(--grade);border-radius:7px;font-size:11.5px;background:#fff;color:var(--texto);font-family:var(--font)}
   .filters select:focus{outline:none;border-color:var(--verde-2)}
+  .filters input[type=search]{grid-column:1/-1;width:100%;padding:7px 9px;border:1px solid var(--grade);border-radius:7px;font-size:11.5px;background:#fff;color:var(--texto);font-family:var(--font)}
+  .filters input[type=search]:focus{outline:none;border-color:var(--verde-2)}
   .clear-f{grid-column:1/-1;font-size:11px;color:var(--cinza);background:none;border:none;cursor:pointer;text-align:left;padding:2px;text-decoration:underline}
   .pedidos-list{flex:1;overflow-y:auto;padding:11px 13px;display:flex;flex-direction:column;gap:9px}
 
@@ -5952,6 +5957,9 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   <div class="brand"><div class="logo">N1</div><div><h1>N1 Alimentos</h1><small>Logistica</small></div></div>
   <button class="btn-import" id="btnImport">&#128193; Importar Pedidos a Faturar</button>
   <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden">
+  <button class="btn-import2" id="btnImportPrio">&#11088; Atualizar Priorizados</button>
+  <input type="file" id="prioFileInput" accept=".csv,.xlsx,.xls" class="hidden">
+  <div class="prio-meta" id="prioMeta"></div>
   <div class="sb-sub">Areas</div>
   <div class="nav">
     <button class="navbtn active" data-tab="formador">&#128666; Formador de Cargas</button>
@@ -6003,6 +6011,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
               <select id="fRota"><option value="">Todas rotas</option></select>
               <select id="fProduto"><option value="">Todos produtos</option></select>
               <select id="fFin"><option value="">Status</option></select>
+              <input id="fBusca" type="search" placeholder="Buscar pedido ou cliente..." autocomplete="off">
               <button class="clear-f" id="clearF">Limpar filtros</button>
             </div>
           </div>
@@ -6322,7 +6331,7 @@ const PED_LIMIT={"15000":6,"22000":4,"33000":2,"40000":1,"49000":1}; // limite d
 const STD_TIERS=[{label:"Até 5t",max:5000},{label:"Até 8t",max:8000},{label:"Até 13,5t",max:13500},{label:"Até 25t",max:25000},{label:"Acima 25t",max:0}];
 const OVERRIDES=["IBY4687","IBY4683"]; // liberacoes manuais fixas (doc)
 
-const state={pedidos:[],trucks:[],carriers:[],nextTruck:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null};
+const state={pedidos:[],trucks:[],carriers:[],nextTruck:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null,prioMap:{},prioFileName:"",prioUpdatedAt:""};
 
 const $=s=>document.querySelector(s);
 const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
@@ -6487,25 +6496,79 @@ function ingest(rows){
     const mcPct=g.pesoMc>0?(g.mcW/g.pesoMc):0;
     const fob=isFOB(g.tipo);
     const bloq=isBloqueado(g.finRaw);
-    const prio=g.prio;
+    const prioFile=g.prio;
+    const prio=prioFile||!!(state.prioMap&&state.prioMap[String(g.pedido)]);
     const override=OVERRIDES.indexOf(g.pedido)>-1;
     // APTO (doc): CIF + MC>=0 + (liberado OU prio OU override). MC<0 nunca apto.
     const apto = !fob && mcPct>=0 && (!bloq || prio || override);
     const cor = prio?"verde":(mcPct<0?"vermelho":"azul");
     peds.push({id:"P"+peds.length,pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
       rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),peso,valor:g.valor,mcRs:g.mcRs,mcPct,
-      prio,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:g.frete,finRaw:g.finRaw,cor,produtos:g.produtos,assignedTo:null,score:0});
+      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:g.frete,finRaw:g.finRaw,cor,produtos:g.produtos,assignedTo:null,score:0});
   });
-  // score: prio_boost + mc%*0.4 + (mcRs/maxMcRs)*60
-  const aptos=peds.filter(p=>p.apto);
-  state.maxMcRs=Math.max(1,...aptos.map(p=>p.mcRs));
-  peds.forEach(p=>{p.score=(p.prio?1000:0)+(p.mcPct*0.4)+(p.mcRs>0?(p.mcRs/state.maxMcRs*60):0);});
-  state.pedidos=peds;
+  // MERGE: atualiza os ja registrados (preservando atribuicao a cargas), adiciona novos e mantem os existentes
+  const freshNums={};peds.forEach(p=>freshNums[String(p.pedido)]=true);
+  const oldNums={};state.pedidos.forEach(p=>oldNums[String(p.pedido)]=true);
+  let nNew=0,nUpd=0;peds.forEach(p=>{if(oldNums[String(p.pedido)])nUpd++;else nNew++;});
+  const nKept=state.pedidos.filter(p=>!freshNums[String(p.pedido)]).length;
+  state.pedidos=mergePedidos(state.pedidos,peds);
+  state.pedidos.forEach((p,i)=>p.id="P"+i);
+  applyPrioToState();
   buildFreightTableFromPeds();
   buildFilters(); renderAll();
-  logAction("import_pedidos",peds.length+" pedidos");
-  const nf=peds.filter(p=>p.fob).length;
-  toast(peds.length+" pedidos ("+aptos.length+" aptos, "+nf+" FOB).","ok");
+  logAction("import_pedidos",peds.length+" no arquivo / "+nNew+" novos / "+nUpd+" atualizados / "+nKept+" mantidos");
+  const aptos=state.pedidos.filter(p=>p.apto),nf=peds.filter(p=>p.fob).length;
+  toast(peds.length+" pedidos no arquivo: "+nNew+" novos, "+nUpd+" atualizados"+(nKept?", "+nKept+" mantidos (nao constavam no arquivo)":"")+". Total "+state.pedidos.length+" ("+aptos.length+" aptos, "+nf+" FOB).","ok",8000);
+}
+
+/* merge preservando o trabalho ja feito (atribuicao a cargas, datas FOB, embarque) */
+function mergePedidos(old,fresh){
+  if(!old||!old.length)return fresh;
+  const byNum={};old.forEach(p=>{byNum[String(p.pedido)]=p;});
+  const seen={},result=[];
+  fresh.forEach(np=>{const key=String(np.pedido);seen[key]=true;const ex=byNum[key];
+    if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;}
+    result.push(np);});
+  old.forEach(p=>{if(!seen[String(p.pedido)])result.push(p);}); // mantem os que nao vieram no arquivo
+  return result;
+}
+
+/* (re)aplica prioridade (coluna do arquivo + lista de priorizados salva) e recalcula apto/cor/score */
+function applyPrioToState(){
+  state.pedidos.forEach(p=>{
+    const override=OVERRIDES.indexOf(p.pedido)>-1;
+    p.prio=!!p.prioFile||!!(state.prioMap&&state.prioMap[String(p.pedido)]);
+    p.apto=!p.fob&&p.mcPct>=0&&(!p.bloqueado||p.prio||override);
+    p.cor=p.prio?"verde":(p.mcPct<0?"vermelho":"azul");
+  });
+  const aptos=state.pedidos.filter(p=>p.apto);
+  state.maxMcRs=Math.max(1,...aptos.map(p=>p.mcRs));
+  state.pedidos.forEach(p=>{p.score=(p.prio?1000:0)+(p.mcPct*0.4)+(p.mcRs>0?(p.mcRs/state.maxMcRs*60):0);});
+}
+
+/* importacao do arquivo de priorizados (lista salva e reaplicada) */
+function updatePrioMeta(){const e=$("#prioMeta");if(!e)return;const n=state.prioMap?Object.keys(state.prioMap).length:0;
+  e.textContent=state.prioFileName?("Priorizados salvos: "+n+" pedido(s)"+(state.prioUpdatedAt?" - "+fmtDT(state.prioUpdatedAt):"")):"";}
+function readPrioFile(file){
+  if(!requirePerm("importPed"))return;
+  const reader=new FileReader();
+  reader.onload=e=>{try{
+    const wb=XLSX.read(e.target.result,{type:"array"});const ws=wb.Sheets[wb.SheetNames[0]];
+    const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true,blankrows:false});
+    if(!aoa.length){toast("Arquivo de priorizados vazio.","err");return;}
+    let pedCol=-1,startRow=0;
+    for(let i=0;i<Math.min(aoa.length,6);i++){const row=(aoa[i]||[]).map(c=>norm(String(c)));const idx=row.findIndex(c=>c==="pedido"||c.indexOf("pedido")>-1||c==="num pedido"||c.indexOf("nro")>-1);if(idx>-1){pedCol=idx;startRow=i+1;break;}}
+    const nums={};
+    if(pedCol>-1){for(let i=startRow;i<aoa.length;i++){const v=(aoa[i]||[])[pedCol];if(v!=null&&String(v).trim()!=="")nums[String(v).trim()]=true;}}
+    else{aoa.forEach(row=>{const v=(row||[])[0];if(v!=null&&String(v).trim()!==""){const sv=String(v).trim();if(norm(sv)!=="pedido")nums[sv]=true;}});}
+    const n=Object.keys(nums).length;
+    if(!n){toast("Nao encontrei numeros de pedido no arquivo de priorizados. Use uma coluna 'Pedido' ou a 1a coluna com os numeros.","err");return;}
+    state.prioMap=nums;state.prioFileName=file.name;state.prioUpdatedAt=Date.now();
+    applyPrioToState();buildFilters();renderAll();updatePrioMeta();
+    logAction("import_priorizados",file.name+" - "+n+" pedidos");
+    toast("Priorizados atualizados: "+n+" pedido(s). A lista fica salva e e reaplicada automaticamente nas proximas importacoes de pedidos.","ok",8000);
+  }catch(err){toast("Erro ao ler priorizados: "+err.message,"err");}};
+  reader.readAsArrayBuffer(file);
 }
 
 /* helpers de selecao */
@@ -6523,18 +6586,20 @@ function buildFilters(){
   $("#fFin").innerHTML='<option value="">Status</option><option>Apto</option><option>Bloqueado</option><option>MC negativa</option>';
   $("#rotaList").innerHTML=[...new Set(bp.map(p=>p.rota).filter(Boolean))].map(r=>'<option value="'+r+'">').join("");
 }
-function applyFilters(list){
-  const ff=$("#fFilial").value,fr=$("#fRota").value,fp=$("#fProduto").value,fin=$("#fFin").value;
-  return list.filter(p=>{
+function filterPred(){
+  const ff=$("#fFilial").value,fr=$("#fRota").value,fp=$("#fProduto").value,fin=$("#fFin").value,fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
+  return p=>{
     if(ff&&p.filial!==ff)return false;
     if(fr&&p.rota!==fr)return false;
     if(fp&&p.produtos.indexOf(fp)===-1)return false;
     if(fin==="Apto"&&!p.apto)return false;
     if(fin==="Bloqueado"&&!p.bloqueado)return false;
     if(fin==="MC negativa"&&!(p.mcPct<0))return false;
+    if(fb){const hay=(String(p.pedido)+" "+(p.cliente||"")).toLowerCase();if(hay.indexOf(fb)===-1)return false;}
     return true;
-  });
+  };
 }
+function applyFilters(list){return list.filter(filterPred());}
 
 /* pedido card */
 function pedidoCard(p,inTruck){
@@ -6908,14 +6973,16 @@ function renderFrete(){renderFreteTab();}
 
 /* KPIs */
 function renderKpis(){
-  const bp=applyFilters(bancoPeds());
+  const pred=filterPred();
+  const bp=bancoPeds().filter(pred);
   const aptos=bp.filter(p=>p.apto).length;
   const lib=bp.filter(p=>!p.bloqueado&&p.mcPct>=0).length;
   const bloq=bp.filter(p=>p.bloqueado).length;
-  const fob=applyFilters(fobPeds()).length;
+  const fob=fobPeds().filter(pred).length;
   const pesoTot=bp.reduce((s,p)=>s+p.peso,0);
   const dispPeso=bp.filter(p=>p.assignedTo===null&&p.apto).reduce((s,p)=>s+p.peso,0);
-  const aloc=state.pedidos.filter(p=>p.assignedTo!==null).reduce((s,p)=>s+p.peso,0);
+  const aloc=state.pedidos.filter(p=>p.assignedTo!==null&&inScope(p)&&pred(p)).reduce((s,p)=>s+p.peso,0);
+  const truckInFilter=t=>state.pedidos.some(p=>p.assignedTo===t.id&&inScope(p)&&pred(p));
   if($("#kAptos"))$("#kAptos").textContent=aptos;
   if($("#kLib"))$("#kLib").textContent=lib;
   if($("#kBloq"))$("#kBloq").textContent=bloq;
@@ -6928,7 +6995,7 @@ function renderKpis(){
   if($("#kContr"))$("#kContr").textContent=contr.length;
   const emb=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
   if($("#kEmb"))$("#kEmb").textContent=emb.length;
-  const saldo=contr.concat(emb).reduce((s,t)=>s+loadFreight(t).saldo,0);
+  const saldo=contr.concat(emb).filter(truckInFilter).reduce((s,t)=>s+loadFreight(t).saldo,0);
   const ks=$("#kSaldo");ks.textContent=(saldo>=0?"":"-")+"R$ "+Math.abs(saldo).toLocaleString("pt-BR",{maximumFractionDigits:0});
   const ksc=$("#kSaldoCard");if(ksc){ksc.classList.toggle("green",saldo>=0);ksc.classList.toggle("alert",saldo<0);ksc.classList.toggle("neutral",false);}
   $("#kAloc").textContent=fmtT(aloc);
@@ -7157,7 +7224,7 @@ function updateSavedInfo(ts,fail){
 function saveState(){
   if(_restoring)return;
   try{
-    const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable};
+    const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
     localStorage.setItem(SKEY,JSON.stringify(data));
     updateSavedInfo(data.ts);
   }catch(err){updateSavedInfo(null,true);}
@@ -7178,7 +7245,11 @@ function loadState(){
     state.hasFrete=!!d.hasFrete;
     state.maxMcRs=d.maxMcRs||1;
     state.nextTruck=d.nextTruck||(state.trucks.length+1);
+    state.prioMap=d.prioMap&&typeof d.prioMap==="object"?d.prioMap:{};
+    state.prioFileName=d.prioFileName||"";
+    state.prioUpdatedAt=d.prioUpdatedAt||"";
     if(state.fileName)$("#fileMeta").textContent=state.fileName+" (restaurado)";
+    updatePrioMeta();
     refreshCarrierList();
     if(state.pedidos.length)buildFilters();
     buildFreightFilters();
@@ -7311,7 +7382,7 @@ let _sessTimer=null;
 function applyPermissions(){
   TABS_DEF.forEach(([t])=>{const show=canSee(t);document.querySelectorAll('[data-tab="'+t+'"]').forEach(b=>b.classList.toggle("hidden",!show));});
   const setBtn=(sel,a)=>{const e=$(sel);if(e)e.classList.toggle("hidden",!can(a));};
-  setBtn("#btnImport","importPed");setBtn("#btnNovaCarga","criarCarga");setBtn("#btnImportFrete","importFrete");
+  setBtn("#btnImport","importPed");setBtn("#btnImportPrio","importPed");setBtn("#btnNovaCarga","criarCarga");setBtn("#btnImportFrete","importFrete");
   ["#btnExport","#btnExportFech","#btnExportContr","#btnExportEmb"].forEach(s=>setBtn(s,"exportar"));
   const lbl=$("#curUser");if(lbl)lbl.textContent=CUR.user?(CUR.nome||CUR.user)+(CUR.profile?" - "+CUR.profile.nome:""):"";
   if(CUR.profile&&!canSee(state.tab)){const first=TABS_DEF.map(t=>t[0]).find(canSee);if(first)setTab(first,true);}
@@ -7454,7 +7525,7 @@ function importAuthConfig(file){
 /* ===== MONITORIA ===== */
 function fmtDur(sec){sec=Math.max(0,Math.round(sec||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h?h+"h ":"")+(m||h?m+"min ":"")+s+"s";}
 function fmtDT(ts){const d=new Date(ts);const p=n=>n<10?"0"+n:n;return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());}
-function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
 function renderMonitoria(){
   const body=$("#monBody");if(!body)return;
   if(!canSee("monitoria")){body.innerHTML='<div class="empty">Acesso restrito.</div>';return;}
@@ -7482,6 +7553,8 @@ function renderMonitoria(){
 /* wire */
 $("#btnImport").addEventListener("click",()=>$("#fileInput").click());
 $("#fileInput").addEventListener("change",e=>{if(e.target.files[0])readFile(e.target.files[0]);e.target.value="";});
+$("#btnImportPrio").addEventListener("click",()=>$("#prioFileInput").click());
+$("#prioFileInput").addEventListener("change",e=>{if(e.target.files[0])readPrioFile(e.target.files[0]);e.target.value="";});
 $("#btnNovaCarga").addEventListener("click",()=>openModal(null));
 $("#modalClose").addEventListener("click",closeModal);$("#modalCancel").addEventListener("click",closeModal);$("#modalSave").addEventListener("click",saveTruck);
 $("#overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeModal();});
@@ -7494,7 +7567,8 @@ $("#freteFileInput").addEventListener("change",e=>{if(e.target.files[0])importFr
 $("#ffFilial").addEventListener("change",renderFreteTab);
 $("#ffBusca").addEventListener("input",renderFreteTab);
 ["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).addEventListener("change",()=>{renderPedidos();renderKpis();}));
-$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");renderPedidos();renderKpis();});
+$("#fBusca").addEventListener("input",()=>{renderPedidos();renderKpis();});
+$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");$("#fBusca").value="";renderPedidos();renderKpis();});
 document.querySelectorAll(".navbtn,.botnav button,#legHelp").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("#pickClose").addEventListener("click",()=>$("#pickOverlay").classList.remove("open"));
 $("#pickOverlay").addEventListener("click",e=>{if(e.target.id==="pickOverlay")$("#pickOverlay").classList.remove("open");});
