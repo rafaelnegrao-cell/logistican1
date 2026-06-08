@@ -6333,6 +6333,38 @@ const OVERRIDES=["IBY4687","IBY4683"]; // liberacoes manuais fixas (doc)
 
 const state={pedidos:[],trucks:[],carriers:[],nextTruck:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null,prioMap:{},prioFileName:"",prioUpdatedAt:""};
 
+/* ===== SINCRONIZACAO COM O SERVIDOR (dados compartilhados pelo time) ===== */
+const NET={on:false,appRev:0,authRev:0,audRev:0,appData:null};
+let AUD={sessions:[],logs:[]};
+async function apiGet(p){const r=await fetch("/api"+p,{cache:"no-store"});if(!r.ok)throw new Error("http "+r.status);return r.json();}
+async function apiPut(p,data){const r=await fetch("/api"+p,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({data})});if(!r.ok)throw new Error("http "+r.status);return r.json();}
+let _appT=null,_appPend=null,_authT=null,_audT=null;
+function pushApp(data){if(!NET.on)return;_appPend=data;if(_appT)return;_appT=setTimeout(()=>{_appT=null;const d=_appPend;_appPend=null;apiPut("/app",d).then(r=>{NET.appRev=r.rev;}).catch(()=>{});},700);}
+function pushAuth(){if(!NET.on)return;if(_authT)return;_authT=setTimeout(()=>{_authT=null;apiPut("/auth",auth).then(r=>{NET.authRev=r.rev;}).catch(()=>{});},350);}
+function pushAudit(){if(!NET.on)return;if(_audT)return;_audT=setTimeout(()=>{_audT=null;apiPut("/audit",AUD).then(r=>{NET.audRev=r.rev;}).catch(()=>{});},900);}
+async function netInit(){
+  try{
+    const all=await apiGet("/all");NET.on=true;
+    if(all.auth&&all.auth.data&&typeof all.auth.data==="object")auth=all.auth.data;
+    auth.users=auth.users||[];auth.profiles=auth.profiles||[];NET.authRev=all.auth?all.auth.rev:0;
+    NET.appData=all.app&&all.app.data?all.app.data:null;NET.appRev=all.app?all.app.rev:0;
+    AUD=all.audit&&all.audit.data?all.audit.data:{sessions:[],logs:[]};AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];NET.audRev=all.audit?all.audit.rev:0;
+    return true;
+  }catch(e){NET.on=false;try{const r=localStorage.getItem(AUDKEY);if(r){AUD=JSON.parse(r);AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];}}catch(_){}return false;}
+}
+let _pollTimer=null;
+async function netBoot(){await netInit();bootAuth();if(NET.on&&!_pollTimer)_pollTimer=setInterval(netPoll,7000);}
+async function netPoll(){
+  if(!NET.on||!CUR.user)return;
+  if(document.querySelector(".overlay.open"))return; // nao sobrescreve enquanto um modal esta aberto
+  try{
+    const rev=await apiGet("/rev");
+    if(rev.auth>NET.authRev){const a=await apiGet("/auth");if(a.data){auth=a.data;auth.users=auth.users||[];auth.profiles=auth.profiles||[];}NET.authRev=a.rev;const u=auth.users.find(x=>x.user===CUR.user);if(u){CUR.nome=u.nome;CUR.profile=profileById(u.profileId)||CUR.profile;}applyPermissions();if(state.tab==="config")renderConfig();}
+    if(rev.app>NET.appRev){const ap=await apiGet("/app");NET.appData=ap.data;NET.appRev=ap.rev;if(applyAppData(ap.data)){_restoring=true;renderAll();_restoring=false;}}
+  }catch(e){}
+}
+async function refreshAudit(){if(!NET.on)return;try{const a=await apiGet("/audit");if(a.data){AUD=a.data;AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];NET.audRev=a.rev;}}catch(e){}}
+
 const $=s=>document.querySelector(s);
 const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
 function norm(s){return (s==null?"":String(s)).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9%]/g,"");}
@@ -7037,7 +7069,7 @@ function readFile(file){state.fileName=file.name;$("#fileMeta").textContent=file
 function setupBankDrop(){const bank=$("#pedidosList");bank.addEventListener("dragover",e=>e.preventDefault());bank.addEventListener("drop",e=>{e.preventDefault();const id=e.dataTransfer.getData("text/plain");const p=state.pedidos.find(x=>x.id===id);if(p&&p.assignedTo!==null){p.assignedTo=null;renderAll();}});}
 
 /* tabs */
-function setTab(tab,force){if(!force&&typeof CUR!=="undefined"&&CUR.profile&&!canSee(tab))return;state.tab=tab;document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.panel===tab));if(tab==="config")renderConfig();if(tab==="monitoria")renderMonitoria();labelTables();window.scrollTo(0,0);}
+function setTab(tab,force){if(!force&&typeof CUR!=="undefined"&&CUR.profile&&!canSee(tab))return;state.tab=tab;document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.panel===tab));if(tab==="config")renderConfig();if(tab==="monitoria"){refreshAudit().then(renderMonitoria);}labelTables();window.scrollTo(0,0);}
 
 /* ================= MAPA DOS DESTINOS (offline) ================= */
 let _muniMap=null;
@@ -7223,43 +7255,44 @@ function updateSavedInfo(ts,fail){
 }
 function saveState(){
   if(_restoring)return;
-  try{
-    const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
-    localStorage.setItem(SKEY,JSON.stringify(data));
-    updateSavedInfo(data.ts);
-  }catch(err){updateSavedInfo(null,true);}
+  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
+  try{localStorage.setItem(SKEY,JSON.stringify(data));updateSavedInfo(data.ts);}catch(err){updateSavedInfo(null,true);}
+  pushApp(data);
+}
+function applyAppData(d){
+  if(!d||!Array.isArray(d.pedidos))return false;
+  _restoring=true;
+  state.pedidos=d.pedidos;
+  state.trucks=Array.isArray(d.trucks)?d.trucks:[];
+  state.carriers=Array.isArray(d.carriers)?d.carriers:[];
+  state.freightTable=d.freightTable&&typeof d.freightTable==="object"?d.freightTable:{};
+  state.freightSource=d.freightSource||"pedidos";
+  state.freightFile=d.freightFile||"";
+  state.fileName=d.fileName||"";
+  state.hasFrete=!!d.hasFrete;
+  state.maxMcRs=d.maxMcRs||1;
+  state.nextTruck=d.nextTruck||(state.trucks.length+1);
+  state.prioMap=d.prioMap&&typeof d.prioMap==="object"?d.prioMap:{};
+  state.prioFileName=d.prioFileName||"";
+  state.prioUpdatedAt=d.prioUpdatedAt||"";
+  if(state.fileName&&$("#fileMeta"))$("#fileMeta").textContent=state.fileName+(NET.on?"":" (restaurado)");
+  updatePrioMeta();
+  refreshCarrierList();
+  if(state.pedidos.length)buildFilters();
+  buildFreightFilters();
+  _restoring=false;
+  return true;
 }
 function loadState(){
-  let raw=null;try{raw=localStorage.getItem(SKEY);}catch(e){updateSavedInfo(null,true);return false;}
-  if(!raw)return false;
-  try{
-    const d=JSON.parse(raw);if(!d||!Array.isArray(d.pedidos))return false;
-    _restoring=true;
-    state.pedidos=d.pedidos;
-    state.trucks=Array.isArray(d.trucks)?d.trucks:[];
-    state.carriers=Array.isArray(d.carriers)?d.carriers:[];
-    state.freightTable=d.freightTable&&typeof d.freightTable==="object"?d.freightTable:{};
-    state.freightSource=d.freightSource||"pedidos";
-    state.freightFile=d.freightFile||"";
-    state.fileName=d.fileName||"";
-    state.hasFrete=!!d.hasFrete;
-    state.maxMcRs=d.maxMcRs||1;
-    state.nextTruck=d.nextTruck||(state.trucks.length+1);
-    state.prioMap=d.prioMap&&typeof d.prioMap==="object"?d.prioMap:{};
-    state.prioFileName=d.prioFileName||"";
-    state.prioUpdatedAt=d.prioUpdatedAt||"";
-    if(state.fileName)$("#fileMeta").textContent=state.fileName+" (restaurado)";
-    updatePrioMeta();
-    refreshCarrierList();
-    if(state.pedidos.length)buildFilters();
-    buildFreightFilters();
-    _restoring=false;
-    updateSavedInfo(d.ts);
-    const nc=state.trucks.filter(t=>t.status==="montada").length,nf=state.trucks.filter(t=>t.status==="fechada").length,ncr=state.trucks.filter(t=>t.status==="contratada").length,nemb=state.trucks.filter(t=>t.status==="embarcada").length;
-    if(state.pedidos.length||state.trucks.length)
-      toast("Sessao anterior restaurada: "+state.pedidos.length+" pedidos, "+Object.keys(state.freightTable).length+" rotas, cargas "+nc+" em montagem / "+nf+" aguardando / "+ncr+" programadas / "+nemb+" embarcadas.","ok",6500);
-    return true;
-  }catch(e){_restoring=false;return false;}
+  let d=null;
+  if(NET.on){d=NET.appData;}
+  else{try{const raw=localStorage.getItem(SKEY);if(raw)d=JSON.parse(raw);}catch(e){updateSavedInfo(null,true);return false;}}
+  if(!applyAppData(d))return false;
+  updateSavedInfo(d.ts||Date.now());
+  const nc=state.trucks.filter(t=>t.status==="montada").length,nf=state.trucks.filter(t=>t.status==="fechada").length,ncr=state.trucks.filter(t=>t.status==="contratada").length,nemb=state.trucks.filter(t=>t.status==="embarcada").length;
+  if(state.pedidos.length||state.trucks.length)
+    toast((NET.on?"Dados do servidor carregados: ":"Sessao anterior restaurada: ")+state.pedidos.length+" pedidos, "+Object.keys(state.freightTable).length+" rotas, cargas "+nc+" em montagem / "+nf+" aguardando / "+ncr+" programadas / "+nemb+" embarcadas.","ok",6500);
+  return true;
 }
 function resetState(){
   if(!isMaster()){toast("Apenas o perfil master pode limpar os dados.","err");return;}
@@ -7270,9 +7303,10 @@ function resetState(){
   refreshCarrierList();buildFilters();buildFreightFilters();
   _restoring=true;renderAll();_restoring=false;
   try{localStorage.removeItem(SKEY);}catch(e){}
+  pushApp({v:1,ts:Date.now(),fileName:"",freightFile:"",freightSource:"pedidos",hasFrete:false,maxMcRs:1,nextTruck:1,pedidos:[],trucks:[],carriers:[],freightTable:{},prioMap:{},prioFileName:"",prioUpdatedAt:""});
   updateSavedInfo(null);
   logAction("limpar","dados operacionais apagados");
-  toast("Dados apagados. O sistema esta limpo.","info");
+  toast("Dados apagados. O sistema esta limpo (servidor e navegador).","info");
 }
 /* ================= /PERSISTENCIA ================= */
 
@@ -7289,8 +7323,8 @@ let editProfileId=null;
 let editUserName=null;
 let _capCode="";
 
-function loadAuth(){try{const r=localStorage.getItem(AKEY);if(r)auth=JSON.parse(r);}catch(e){}auth.users=auth.users||[];auth.profiles=auth.profiles||[];}
-function saveAuth(){try{localStorage.setItem(AKEY,JSON.stringify(auth));}catch(e){}}
+function loadAuth(){if(!NET.on){try{const r=localStorage.getItem(AKEY);if(r)auth=JSON.parse(r);}catch(e){}}auth.users=auth.users||[];auth.profiles=auth.profiles||[];}
+function saveAuth(){try{localStorage.setItem(AKEY,JSON.stringify(auth));}catch(e){}pushAuth();}
 function hashPass(pw,salt){const s=salt+"|"+String(pw);let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}let h2=5381>>>0;for(let i=0;i<s.length;i++){h2=((Math.imul(h2,33))+s.charCodeAt(i))>>>0;}return (h>>>0).toString(16)+(h2>>>0).toString(16);}
 function genSalt(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);}
 function profileById(id){return auth.profiles.find(p=>p.id===id)||null;}
@@ -7304,8 +7338,8 @@ function allFiliais(){const s=new Set(["MATRIZ","SP"]);state.pedidos.forEach(p=>
 function allUFs(){const s=new Set();state.pedidos.forEach(p=>{if(p.uf)s.add(p.uf);});Object.values(state.freightTable).forEach(r=>{if(r.uf)s.add(r.uf);});if(!s.size)"AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ").forEach(u=>s.add(u));return [...s].sort();}
 
 /* auditoria */
-function loadAudit(){let a={sessions:[],logs:[]};try{const r=localStorage.getItem(AUDKEY);if(r)a=JSON.parse(r);}catch(e){}a.sessions=a.sessions||[];a.logs=a.logs||[];return a;}
-function saveAudit(a){try{localStorage.setItem(AUDKEY,JSON.stringify(a));}catch(e){}}
+function loadAudit(){AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];return AUD;}
+function saveAudit(a){AUD=a||AUD;try{localStorage.setItem(AUDKEY,JSON.stringify(AUD));}catch(e){}pushAudit();}
 function pruneAudit(a){const cut=Date.now()-90*86400000;a.sessions=a.sessions.filter(s=>(s.logoutAt||s.loginAt)>=cut);a.logs=a.logs.filter(l=>l.ts>=cut);return a;}
 function logAction(action,detail){if(!CUR.user)return;const a=loadAudit();a.logs.push({ts:Date.now(),user:CUR.user,nome:CUR.nome,action,detail:detail||""});pruneAudit(a);saveAudit(a);if(state.tab==="monitoria")renderMonitoria();}
 function startSession(){const a=loadAudit();session={id:"S"+Date.now()+Math.floor(Math.random()*9999),user:CUR.user};a.sessions.push({id:session.id,user:CUR.user,nome:CUR.nome,loginAt:Date.now(),logoutAt:Date.now(),durationSec:0});pruneAudit(a);saveAudit(a);}
@@ -7596,7 +7630,7 @@ $("#btnLogout").addEventListener("click",logout);
 window.addEventListener("beforeunload",touchSession);
 ["click","keydown","touchstart","scroll"].forEach(ev=>document.addEventListener(ev,()=>{const n=Date.now();if(n-_lastActTs>20000){_lastActTs=n;updateActivity();}},{passive:true}));
 setupBankDrop();
-bootAuth();
+netBoot();
 </script>
 </body>
 </html>
