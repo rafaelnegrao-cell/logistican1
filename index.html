@@ -6393,6 +6393,7 @@ function detectCols(headers){
     icms:find([n=>n==="icms",n=>n.includes("icms")&&!n.includes("custo")]),
     prio:find([n=>n.includes("priorizado"),n=>n.includes("prioridade"),n=>n.includes("priorit")]),
     fin:find([n=>n==="financeiro",n=>n.includes("financeiro")&&!n.includes("desc")]),
+    mix:find([n=>n.includes("mixprodutos"),n=>n.includes("mixproduto"),n=>n==="mix"]),
     tipoFrete:find([n=>n==="tipofrete",n=>n.includes("tipofrete")]),
     faixa:find([n=>n.includes("faixafrete"),n=>n==="faixa",n=>n.includes("faixa")]),
     rotaFil:find([n=>n==="rotafilial",n=>n.includes("rotafilial")]),
@@ -6404,6 +6405,7 @@ function detectCols(headers){
 function isBloqueado(v){const n=norm(v);if(!n)return false;return n.includes("bloque")||n.includes("pendente")||n.includes("analise")||n.includes("retido")||n.includes("inadim");}
 function isPrio(v){const n=norm(v);return n==="1"||n==="sim"||n==="s"||n==="x"||n==="true"||n.includes("priorit")||n.includes("urgente");}
 function isFOB(v){return norm(v).includes("destinat");}
+function isRevenda(v){return norm(v).includes("revenda");}
 
 /* limpeza de rotulos */
 function cleanFaixa(v){let s=String(v||"").trim();s=s.replace(/[^\x20-\x7E\u2265\u2264\u26A0<>=.\dt ]/g,"");s=s.replace(/\u26A0/g,"").trim();return s;}
@@ -6505,7 +6507,7 @@ function ingest(rows){
   const G={};
   rows.forEach((r,i)=>{
     const praw=r[cols.pedido]; let key=(praw==null||String(praw).trim()==="")?("__r"+i):String(praw).trim();
-    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
+    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,revenda:false,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
     const g=G[key];
     if(cols.produto&&r[cols.produto]!=null&&String(r[cols.produto]).trim()!==""){const p=String(r[cols.produto]).trim();if(g.produtos.indexOf(p)===-1)g.produtos.push(p);}
     const pw=cols.peso?parseNum(r[cols.peso]):0; g.pesos.push(pw);
@@ -6514,6 +6516,7 @@ function ingest(rows){
     g.mcRs+=cols.mcRs?parseNum(r[cols.mcRs]):0;
     const mcl=cols.mc?parseNum(r[cols.mc]):0; g.mcW+=mcl*pw; g.pesoMc+=pw;
     if(cols.prio&&isPrio(r[cols.prio]))g.prio=true;
+    if(cols.mix&&isRevenda(r[cols.mix]))g.revenda=true;
     if(cols.tipoFrete&&isFOB(r[cols.tipoFrete]))g.tipo="Destinatario";
     ["cliente","filial","cidade","rota","vendedor"].forEach(f=>{const ck=cols[f];if(ck&&!g[f]&&r[ck])g[f]=r[ck];});
     if(cols.uf&&!g.uf&&r[cols.uf])g.uf=r[cols.uf];
@@ -6522,7 +6525,10 @@ function ingest(rows){
   const cleanFil=s=>{s=String(s||"").trim();const i=s.indexOf(" - ");return i>-1?s.slice(0,i).trim():s;};
   const cleanVend=s=>{s=String(s||"").trim();const i=s.indexOf(" - ");return i>-1?s.slice(i+3).trim():s;};
   const peds=[];
+  const fileNums={};Object.values(G).forEach(g=>{fileNums[String(g.pedido)]=true;}); // todos os pedidos do arquivo (inclui revenda)
+  let nRevenda=0;
   Object.values(G).forEach(g=>{
+    if(g.revenda){nRevenda++;return;} // ignora pedidos de revenda: nao sao envasados em casa, nao formam carga
     const peso=g.pesos.reduce((a,b)=>a+b,0);
     const vl=g.valor-g.icms; // Venda Liquida = Valor - ICMS
     const mcPct=(cols.mcRs&&vl>0)?(g.mcRs/vl*100):(g.pesoMc>0?(g.mcW/g.pesoMc):0); // MC% institucional = MC$ / VL
@@ -6542,26 +6548,27 @@ function ingest(rows){
   const freshNums={};peds.forEach(p=>freshNums[String(p.pedido)]=true);
   const oldNums={};state.pedidos.forEach(p=>oldNums[String(p.pedido)]=true);
   let nNew=0,nUpd=0;peds.forEach(p=>{if(oldNums[String(p.pedido)])nUpd++;else nNew++;});
-  const nKept=state.pedidos.filter(p=>!freshNums[String(p.pedido)]).length;
-  state.pedidos=mergePedidos(state.pedidos,peds);
+  const nKept=state.pedidos.filter(p=>!fileNums[String(p.pedido)]).length;
+  state.pedidos=mergePedidos(state.pedidos,peds,fileNums);
   state.pedidos.forEach((p,i)=>p.id="P"+i);
   applyPrioToState();
   buildFreightTableFromPeds();
   buildFilters(); renderAll();
-  logAction("import_pedidos",peds.length+" no arquivo / "+nNew+" novos / "+nUpd+" atualizados / "+nKept+" mantidos");
+  logAction("import_pedidos",peds.length+" formam carga / "+nNew+" novos / "+nUpd+" atualizados / "+nKept+" mantidos / "+nRevenda+" revenda ignorados");
   const aptos=state.pedidos.filter(p=>p.apto),nf=peds.filter(p=>p.fob).length;
-  toast(peds.length+" pedidos no arquivo: "+nNew+" novos, "+nUpd+" atualizados"+(nKept?", "+nKept+" mantidos (nao constavam no arquivo)":"")+". Total "+state.pedidos.length+" ("+aptos.length+" aptos, "+nf+" FOB).","ok",8000);
+  toast(peds.length+" pedidos para carga: "+nNew+" novos, "+nUpd+" atualizados"+(nKept?", "+nKept+" mantidos":"")+(nRevenda?". "+nRevenda+" de REVENDA ignorados (nao formam carga)":"")+". Total "+state.pedidos.length+" ("+aptos.length+" aptos, "+nf+" FOB).","ok",8000);
 }
 
 /* merge preservando o trabalho ja feito (atribuicao a cargas, datas FOB, embarque) */
-function mergePedidos(old,fresh){
+function mergePedidos(old,fresh,fileNums){
   if(!old||!old.length)return fresh;
   const byNum={};old.forEach(p=>{byNum[String(p.pedido)]=p;});
   const seen={},result=[];
   fresh.forEach(np=>{const key=String(np.pedido);seen[key]=true;const ex=byNum[key];
     if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;}
     result.push(np);});
-  old.forEach(p=>{if(!seen[String(p.pedido)])result.push(p);}); // mantem os que nao vieram no arquivo
+  // mantem apenas os antigos que NAO constavam no arquivo (revenda, que esta no arquivo mas foi excluida, e purgada)
+  old.forEach(p=>{const k=String(p.pedido);if(!seen[k]&&!(fileNums&&fileNums[k]))result.push(p);});
   return result;
 }
 
