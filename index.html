@@ -5957,9 +5957,6 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   <div class="brand"><div class="logo">N1</div><div><h1>N1 Alimentos</h1><small>Logistica</small></div></div>
   <button class="btn-import" id="btnImport">&#128193; Importar Pedidos a Faturar</button>
   <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden">
-  <button class="btn-import2" id="btnImportPrio">&#11088; Atualizar Priorizados</button>
-  <input type="file" id="prioFileInput" accept=".csv,.xlsx,.xls" class="hidden">
-  <div class="prio-meta" id="prioMeta"></div>
   <div class="sb-sub">Areas</div>
   <div class="nav">
     <button class="navbtn active" data-tab="formador">&#128666; Formador de Cargas</button>
@@ -6391,9 +6388,10 @@ function detectCols(headers){
     vendedor:find([n=>n.includes("vendedor")]),
     peso:find([n=>n.includes("pesototal"),n=>n==="peso"]),
     valor:find([n=>n==="valor",n=>n.includes("valortotal")&&!n.includes("venda")]),
-    mcRs:find([n=>n==="mcr",n=>n.includes("mcr$"),n=>n.includes("mcrs")]),
-    mc:find([n=>n==="mc%",n=>n.includes("mc%")]),
-    prio:find([n=>n.includes("prioridade")]),
+    mcRs:find([n=>n.includes("contribuicaonominal"),n=>n.includes("nominalmc"),n=>n==="mcr",n=>n.includes("mcr$"),n=>n.includes("mcrs"),n=>n==="mc$",n=>n.includes("margemnominal")]),
+    mc:find([n=>n.includes("contribuicaopercentual"),n=>n.includes("percentualmc"),n=>n==="mc%",n=>n.includes("mc%")]),
+    icms:find([n=>n==="icms",n=>n.includes("icms")&&!n.includes("custo")]),
+    prio:find([n=>n.includes("priorizado"),n=>n.includes("prioridade"),n=>n.includes("priorit")]),
     fin:find([n=>n==="financeiro",n=>n.includes("financeiro")&&!n.includes("desc")]),
     tipoFrete:find([n=>n==="tipofrete",n=>n.includes("tipofrete")]),
     faixa:find([n=>n.includes("faixafrete"),n=>n==="faixa",n=>n.includes("faixa")]),
@@ -6507,11 +6505,12 @@ function ingest(rows){
   const G={};
   rows.forEach((r,i)=>{
     const praw=r[cols.pedido]; let key=(praw==null||String(praw).trim()==="")?("__r"+i):String(praw).trim();
-    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,produtos:[],pesos:[],valor:0,mcRs:0,mcW:0,pesoMc:0};}
+    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
     const g=G[key];
     if(cols.produto&&r[cols.produto]!=null&&String(r[cols.produto]).trim()!==""){const p=String(r[cols.produto]).trim();if(g.produtos.indexOf(p)===-1)g.produtos.push(p);}
     const pw=cols.peso?parseNum(r[cols.peso]):0; g.pesos.push(pw);
     g.valor+=cols.valor?parseNum(r[cols.valor]):0;
+    g.icms+=cols.icms?parseNum(r[cols.icms]):0;
     g.mcRs+=cols.mcRs?parseNum(r[cols.mcRs]):0;
     const mcl=cols.mc?parseNum(r[cols.mc]):0; g.mcW+=mcl*pw; g.pesoMc+=pw;
     if(cols.prio&&isPrio(r[cols.prio]))g.prio=true;
@@ -6525,11 +6524,12 @@ function ingest(rows){
   const peds=[];
   Object.values(G).forEach(g=>{
     const peso=g.pesos.reduce((a,b)=>a+b,0);
-    const mcPct=g.pesoMc>0?(g.mcW/g.pesoMc):0;
+    const vl=g.valor-g.icms; // Venda Liquida = Valor - ICMS
+    const mcPct=(cols.mcRs&&vl>0)?(g.mcRs/vl*100):(g.pesoMc>0?(g.mcW/g.pesoMc):0); // MC% institucional = MC$ / VL
     const fob=isFOB(g.tipo);
     const bloq=isBloqueado(g.finRaw);
     const prioFile=g.prio;
-    const prio=prioFile||!!(state.prioMap&&state.prioMap[String(g.pedido)]);
+    const prio=prioFile;
     const override=OVERRIDES.indexOf(g.pedido)>-1;
     // APTO (doc): CIF + MC>=0 + (liberado OU prio OU override). MC<0 nunca apto.
     const apto = !fob && mcPct>=0 && (!bloq || prio || override);
@@ -6567,9 +6567,10 @@ function mergePedidos(old,fresh){
 
 /* (re)aplica prioridade (coluna do arquivo + lista de priorizados salva) e recalcula apto/cor/score */
 function applyPrioToState(){
+  state.prioMap={};state.prioFileName="";state.prioUpdatedAt=""; // prioridade vem apenas da coluna do arquivo de pedidos
   state.pedidos.forEach(p=>{
     const override=OVERRIDES.indexOf(p.pedido)>-1;
-    p.prio=!!p.prioFile||!!(state.prioMap&&state.prioMap[String(p.pedido)]);
+    p.prio=!!p.prioFile;
     p.apto=!p.fob&&p.mcPct>=0&&(!p.bloqueado||p.prio||override);
     p.cor=p.prio?"verde":(p.mcPct<0?"vermelho":"azul");
   });
@@ -6578,30 +6579,8 @@ function applyPrioToState(){
   state.pedidos.forEach(p=>{p.score=(p.prio?1000:0)+(p.mcPct*0.4)+(p.mcRs>0?(p.mcRs/state.maxMcRs*60):0);});
 }
 
-/* importacao do arquivo de priorizados (lista salva e reaplicada) */
 function updatePrioMeta(){const e=$("#prioMeta");if(!e)return;const n=state.prioMap?Object.keys(state.prioMap).length:0;
   e.textContent=state.prioFileName?("Priorizados salvos: "+n+" pedido(s)"+(state.prioUpdatedAt?" - "+fmtDT(state.prioUpdatedAt):"")):"";}
-function readPrioFile(file){
-  if(!requirePerm("importPed"))return;
-  const reader=new FileReader();
-  reader.onload=e=>{try{
-    const wb=XLSX.read(e.target.result,{type:"array"});const ws=wb.Sheets[wb.SheetNames[0]];
-    const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true,blankrows:false});
-    if(!aoa.length){toast("Arquivo de priorizados vazio.","err");return;}
-    let pedCol=-1,startRow=0;
-    for(let i=0;i<Math.min(aoa.length,6);i++){const row=(aoa[i]||[]).map(c=>norm(String(c)));const idx=row.findIndex(c=>c==="pedido"||c.indexOf("pedido")>-1||c==="num pedido"||c.indexOf("nro")>-1);if(idx>-1){pedCol=idx;startRow=i+1;break;}}
-    const nums={};
-    if(pedCol>-1){for(let i=startRow;i<aoa.length;i++){const v=(aoa[i]||[])[pedCol];if(v!=null&&String(v).trim()!=="")nums[String(v).trim()]=true;}}
-    else{aoa.forEach(row=>{const v=(row||[])[0];if(v!=null&&String(v).trim()!==""){const sv=String(v).trim();if(norm(sv)!=="pedido")nums[sv]=true;}});}
-    const n=Object.keys(nums).length;
-    if(!n){toast("Nao encontrei numeros de pedido no arquivo de priorizados. Use uma coluna 'Pedido' ou a 1a coluna com os numeros.","err");return;}
-    state.prioMap=nums;state.prioFileName=file.name;state.prioUpdatedAt=Date.now();
-    applyPrioToState();buildFilters();renderAll();updatePrioMeta();
-    logAction("import_priorizados",file.name+" - "+n+" pedidos");
-    toast("Priorizados atualizados: "+n+" pedido(s). A lista fica salva e e reaplicada automaticamente nas proximas importacoes de pedidos.","ok",8000);
-  }catch(err){toast("Erro ao ler priorizados: "+err.message,"err");}};
-  reader.readAsArrayBuffer(file);
-}
 
 /* helpers de selecao */
 const bancoPeds=()=>state.pedidos.filter(p=>!p.fob&&inScope(p));              // banco = nao-FOB, dentro do escopo do perfil
@@ -7416,7 +7395,7 @@ let _sessTimer=null;
 function applyPermissions(){
   TABS_DEF.forEach(([t])=>{const show=canSee(t);document.querySelectorAll('[data-tab="'+t+'"]').forEach(b=>b.classList.toggle("hidden",!show));});
   const setBtn=(sel,a)=>{const e=$(sel);if(e)e.classList.toggle("hidden",!can(a));};
-  setBtn("#btnImport","importPed");setBtn("#btnImportPrio","importPed");setBtn("#btnNovaCarga","criarCarga");setBtn("#btnImportFrete","importFrete");
+  setBtn("#btnImport","importPed");setBtn("#btnNovaCarga","criarCarga");setBtn("#btnImportFrete","importFrete");
   ["#btnExport","#btnExportFech","#btnExportContr","#btnExportEmb"].forEach(s=>setBtn(s,"exportar"));
   const lbl=$("#curUser");if(lbl)lbl.textContent=CUR.user?(CUR.nome||CUR.user)+(CUR.profile?" - "+CUR.profile.nome:""):"";
   if(CUR.profile&&!canSee(state.tab)){const first=TABS_DEF.map(t=>t[0]).find(canSee);if(first)setTab(first,true);}
@@ -7587,8 +7566,6 @@ function renderMonitoria(){
 /* wire */
 $("#btnImport").addEventListener("click",()=>$("#fileInput").click());
 $("#fileInput").addEventListener("change",e=>{if(e.target.files[0])readFile(e.target.files[0]);e.target.value="";});
-$("#btnImportPrio").addEventListener("click",()=>$("#prioFileInput").click());
-$("#prioFileInput").addEventListener("change",e=>{if(e.target.files[0])readPrioFile(e.target.files[0]);e.target.value="";});
 $("#btnNovaCarga").addEventListener("click",()=>openModal(null));
 $("#modalClose").addEventListener("click",closeModal);$("#modalCancel").addEventListener("click",closeModal);$("#modalSave").addEventListener("click",saveTruck);
 $("#overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeModal();});
