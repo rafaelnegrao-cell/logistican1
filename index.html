@@ -6544,32 +6544,39 @@ function ingest(rows){
       rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),peso,valor:g.valor,mcRs:g.mcRs,mcPct,
       prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:g.frete,finRaw:g.finRaw,cor,produtos:g.produtos,assignedTo:null,score:0});
   });
-  // MERGE: atualiza os ja registrados (preservando atribuicao a cargas), adiciona novos e mantem os existentes
-  const freshNums={};peds.forEach(p=>freshNums[String(p.pedido)]=true);
+  // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
+  const embTruckIds=new Set(state.trucks.filter(t=>t.status==="embarcada").map(t=>t.id));
+  const isEmb=p=>p.embarcado===true||(p.assignedTo!=null&&embTruckIds.has(p.assignedTo));
   const oldNums={};state.pedidos.forEach(p=>oldNums[String(p.pedido)]=true);
+  const freshNums={};peds.forEach(p=>freshNums[String(p.pedido)]=true);
   let nNew=0,nUpd=0;peds.forEach(p=>{if(oldNums[String(p.pedido)])nUpd++;else nNew++;});
-  const nKept=state.pedidos.filter(p=>!fileNums[String(p.pedido)]).length;
-  state.pedidos=mergePedidos(state.pedidos,peds,fileNums);
+  const nEmb=state.pedidos.filter(isEmb).length;
+  const nDrop=state.pedidos.filter(p=>!isEmb(p)&&!freshNums[String(p.pedido)]).length;
+  state.pedidos=mergePedidos(state.pedidos,peds);
   state.pedidos.forEach((p,i)=>p.id="P"+i);
   applyPrioToState();
   buildFreightTableFromPeds();
   buildFilters(); renderAll();
-  logAction("import_pedidos",peds.length+" formam carga / "+nNew+" novos / "+nUpd+" atualizados / "+nKept+" mantidos / "+nRevenda+" revenda ignorados");
+  logAction("import_pedidos",peds.length+" p/ carga / "+nNew+" novos / "+nUpd+" atualizados / "+nEmb+" embarcados historico / "+nDrop+" removidos / "+nRevenda+" revenda ignorados");
   const aptos=state.pedidos.filter(p=>p.apto),nf=peds.filter(p=>p.fob).length;
-  toast(peds.length+" pedidos para carga: "+nNew+" novos, "+nUpd+" atualizados"+(nKept?", "+nKept+" mantidos":"")+(nRevenda?". "+nRevenda+" de REVENDA ignorados (nao formam carga)":"")+". Total "+state.pedidos.length+" ("+aptos.length+" aptos, "+nf+" FOB).","ok",8000);
+  toast(peds.length+" pedidos para carga: "+nNew+" novos, "+nUpd+" atualizados &middot; "+nEmb+" embarcados mantidos no historico"+(nDrop?" &middot; "+nDrop+" removidos (sairam do arquivo)":"")+(nRevenda?" &middot; "+nRevenda+" revenda ignorados":"")+".","ok",8500);
 }
 
-/* merge preservando o trabalho ja feito (atribuicao a cargas, datas FOB, embarque) */
-function mergePedidos(old,fresh,fileNums){
-  if(!old||!old.length)return fresh;
+/* merge: novo arquivo = pedidos a trabalhar; embarcados ficam salvos como historico (gestao) */
+function mergePedidos(old,fresh){
+  old=old||[];
+  const embTruck=new Set(state.trucks.filter(t=>t.status==="embarcada").map(t=>t.id));
+  const isEmb=p=>p.embarcado===true||(p.assignedTo!=null&&embTruck.has(p.assignedTo));
+  const hist=old.filter(isEmb);                                  // historico embarcado, preservado integralmente
+  const histNums=new Set(hist.map(p=>String(p.pedido)));
   const byNum={};old.forEach(p=>{byNum[String(p.pedido)]=p;});
-  const seen={},result=[];
-  fresh.forEach(np=>{const key=String(np.pedido);seen[key]=true;const ex=byNum[key];
-    if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;}
+  const result=hist.slice();
+  fresh.forEach(np=>{const key=String(np.pedido);
+    if(histNums.has(key))return;                                 // ja embarcado: nao sobrescreve o historico
+    const ex=byNum[key];
+    if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;} // preserva carga em andamento
     result.push(np);});
-  // mantem apenas os antigos que NAO constavam no arquivo (revenda, que esta no arquivo mas foi excluida, e purgada)
-  old.forEach(p=>{const k=String(p.pedido);if(!seen[k]&&!(fileNums&&fileNums[k]))result.push(p);});
-  return result;
+  return result;                                                 // descarta antigos NAO embarcados ausentes do novo arquivo
 }
 
 /* (re)aplica prioridade (coluna do arquivo + lista de priorizados salva) e recalcula apto/cor/score */
@@ -6590,7 +6597,13 @@ function updatePrioMeta(){const e=$("#prioMeta");if(!e)return;const n=state.prio
   e.textContent=state.prioFileName?("Priorizados salvos: "+n+" pedido(s)"+(state.prioUpdatedAt?" - "+fmtDT(state.prioUpdatedAt):"")):"";}
 
 /* helpers de selecao */
-const bancoPeds=()=>state.pedidos.filter(p=>!p.fob&&inScope(p));              // banco = nao-FOB, dentro do escopo do perfil
+function isEmbarked(p){ // pedido ja embarcado: historico de gestao, fora do planejamento atual
+  if(p.embarcado===true)return true;
+  if(p.assignedTo==null)return false;
+  const t=state.trucks.find(t=>t.id===p.assignedTo);
+  return !!(t&&t.status==="embarcada");
+}
+const bancoPeds=()=>state.pedidos.filter(p=>!p.fob&&inScope(p)&&!isEmbarked(p));              // banco = nao-FOB, no escopo, ainda nao embarcado
 const fobPeds=()=>state.pedidos.filter(p=>p.fob&&inScope(p));
 
 /* filters */
@@ -6999,7 +7012,7 @@ function renderKpis(){
   const fob=fobPeds().filter(pred).length;
   const pesoTot=bp.reduce((s,p)=>s+p.peso,0);
   const dispPeso=bp.filter(p=>p.assignedTo===null&&p.apto).reduce((s,p)=>s+p.peso,0);
-  const aloc=state.pedidos.filter(p=>p.assignedTo!==null&&inScope(p)&&pred(p)).reduce((s,p)=>s+p.peso,0);
+  const aloc=state.pedidos.filter(p=>p.assignedTo!==null&&inScope(p)&&pred(p)&&!isEmbarked(p)).reduce((s,p)=>s+p.peso,0);
   const truckInFilter=t=>state.pedidos.some(p=>p.assignedTo===t.id&&inScope(p)&&pred(p));
   if($("#kAptos"))$("#kAptos").textContent=aptos;
   if($("#kLib"))$("#kLib").textContent=lib;
