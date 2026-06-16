@@ -9,7 +9,9 @@ const path = require("path");
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
-const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
+// Persistencia: usa DATA_DIR se definido; senao usa o Volume do Railway (RAILWAY_VOLUME_MOUNT_PATH)
+// se houver um anexado; senao cai para ./data (efemero, so para teste local).
+const DATA_DIR = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(ROOT, "data");
 try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
 
 const STORES = { auth: "auth.json", app: "app.json", audit: "audit.json" };
