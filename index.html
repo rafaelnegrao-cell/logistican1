@@ -6008,6 +6008,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
               <select id="fRota"><option value="">Todas rotas</option></select>
               <select id="fProduto"><option value="">Todos produtos</option></select>
               <select id="fFin"><option value="">Status</option></select>
+              <input id="fPesoMin" type="number" min="0" step="100" inputmode="numeric" placeholder="kg de" autocomplete="off" title="Peso minimo (kg)" style="width:84px">
+              <input id="fPesoMax" type="number" min="0" step="100" inputmode="numeric" placeholder="kg ate" autocomplete="off" title="Peso maximo (kg)" style="width:84px">
               <input id="fBusca" type="search" placeholder="Buscar pedido ou cliente..." autocomplete="off">
               <button class="clear-f" id="clearF">Limpar filtros</button>
             </div>
@@ -6630,6 +6632,8 @@ function buildFilters(){
 }
 function filterPred(){
   const ff=$("#fFilial").value,fr=$("#fRota").value,fp=$("#fProduto").value,fin=$("#fFin").value,fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
+  const pminV=$("#fPesoMin")?parseFloat($("#fPesoMin").value):NaN, pmaxV=$("#fPesoMax")?parseFloat($("#fPesoMax").value):NaN;
+  const pmin=isNaN(pminV)?null:pminV, pmax=isNaN(pmaxV)?null:pmaxV;
   return p=>{
     if(ff&&p.filial!==ff)return false;
     if(fr&&p.rota!==fr)return false;
@@ -6637,6 +6641,8 @@ function filterPred(){
     if(fin==="Apto"&&!p.apto)return false;
     if(fin==="Bloqueado"&&!p.bloqueado)return false;
     if(fin==="MC negativa"&&!(p.mcPct<0))return false;
+    if(pmin!=null&&(p.peso||0)<pmin)return false;
+    if(pmax!=null&&(p.peso||0)>pmax)return false;
     if(fb){const hay=(String(p.pedido)+" "+(p.cliente||"")).toLowerCase();if(hay.indexOf(fb)===-1)return false;}
     return true;
   };
@@ -7650,7 +7656,8 @@ $("#ffFilial").addEventListener("change",renderFreteTab);
 $("#ffBusca").addEventListener("input",renderFreteTab);
 ["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).addEventListener("change",()=>{renderPedidos();renderKpis();}));
 $("#fBusca").addEventListener("input",()=>{renderPedidos();renderKpis();});
-$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");$("#fBusca").value="";renderPedidos();renderKpis();});
+["#fPesoMin","#fPesoMax"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
+$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");$("#fBusca").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
 document.querySelectorAll(".navbtn,.botnav button,#legHelp").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("#pickClose").addEventListener("click",()=>$("#pickOverlay").classList.remove("open"));
 $("#pickOverlay").addEventListener("click",e=>{if(e.target.id==="pickOverlay")$("#pickOverlay").classList.remove("open");});
