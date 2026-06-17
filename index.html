@@ -6394,6 +6394,7 @@ function detectCols(headers){
     prio:find([n=>n.includes("priorizado"),n=>n.includes("prioridade"),n=>n.includes("priorit")]),
     fin:find([n=>n==="financeiro",n=>n.includes("financeiro")&&!n.includes("desc")]),
     mix:find([n=>n.includes("mixprodutos"),n=>n.includes("mixproduto"),n=>n==="mix"]),
+    entrega:find([n=>n.includes("previsaoentrega"),n=>n.includes("previsao")&&n.includes("entrega"),n=>n.includes("dataentrega"),n=>n.includes("dtentrega"),n=>n==="entrega"]),
     tipoFrete:find([n=>n==="tipofrete",n=>n.includes("tipofrete")]),
     faixa:find([n=>n.includes("faixafrete"),n=>n==="faixa",n=>n.includes("faixa")]),
     rotaFil:find([n=>n==="rotafilial",n=>n.includes("rotafilial")]),
@@ -6507,7 +6508,7 @@ function ingest(rows){
   const G={};
   rows.forEach((r,i)=>{
     const praw=r[cols.pedido]; let key=(praw==null||String(praw).trim()==="")?("__r"+i):String(praw).trim();
-    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,revenda:false,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
+    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,revenda:false,entrega:null,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
     const g=G[key];
     if(cols.produto&&r[cols.produto]!=null&&String(r[cols.produto]).trim()!==""){const p=String(r[cols.produto]).trim();if(g.produtos.indexOf(p)===-1)g.produtos.push(p);}
     const pw=cols.peso?parseNum(r[cols.peso]):0; g.pesos.push(pw);
@@ -6517,6 +6518,7 @@ function ingest(rows){
     const mcl=cols.mc?parseNum(r[cols.mc]):0; g.mcW+=mcl*pw; g.pesoMc+=pw;
     if(cols.prio&&isPrio(r[cols.prio]))g.prio=true;
     if(cols.mix&&isRevenda(r[cols.mix]))g.revenda=true;
+    if(cols.entrega){const d=parseDateBr(r[cols.entrega]);if(d!=null)g.entrega=(g.entrega==null)?d:Math.min(g.entrega,d);}
     if(cols.tipoFrete&&isFOB(r[cols.tipoFrete]))g.tipo="Destinatario";
     ["cliente","filial","cidade","rota","vendedor"].forEach(f=>{const ck=cols[f];if(ck&&!g[f]&&r[ck])g[f]=r[ck];});
     if(cols.uf&&!g.uf&&r[cols.uf])g.uf=r[cols.uf];
@@ -6542,7 +6544,7 @@ function ingest(rows){
     const cor = prio?"verde":(mcPct<0?"vermelho":"azul");
     peds.push({id:"P"+peds.length,pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
       rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),peso,valor:g.valor,mcRs:g.mcRs,mcPct,
-      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:g.frete,finRaw:g.finRaw,cor,produtos:g.produtos,assignedTo:null,score:0});
+      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:g.frete,finRaw:g.finRaw,cor,produtos:g.produtos,entrega:g.entrega,assignedTo:null,score:0});
   });
   // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
   const embTruckIds=new Set(state.trucks.filter(t=>t.status==="embarcada").map(t=>t.id));
@@ -6633,13 +6635,47 @@ function filterPred(){
 function applyFilters(list){return list.filter(filterPred());}
 
 /* pedido card */
+/* ===== PREVISAO DE ENTREGA: data, ordenacao e exibicao ===== */
+function parseDateBr(v){
+  let ts=null;
+  if(v==null||v==="")return null;
+  if(v instanceof Date)ts=v.getTime();
+  else if(typeof v==="number"){ if(v>20000&&v<90000)ts=Math.round((v-25569)*86400000); }
+  else{
+    const s=String(v).trim();
+    let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);      // dd/mm/aaaa
+    if(m){let y=+m[3];if(y<100)y+=2000;ts=new Date(y,(+m[2])-1,+m[1]).getTime();}
+    else{ m=s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);      // aaaa-mm-dd
+      if(m)ts=new Date(+m[1],(+m[2])-1,+m[3]).getTime();
+      else{const t=Date.parse(s);if(!isNaN(t))ts=t;} }
+  }
+  if(ts==null||isNaN(ts))return null;
+  if(ts<new Date(2000,0,1).getTime()||ts>new Date(2100,0,1).getTime())return null; // placeholder/invalida = sem data
+  return ts;
+}
+function fmtDateBr(ts){if(ts==null||isNaN(ts))return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
+function entregaTs(p){return (p&&p.entrega!=null&&!isNaN(p.entrega))?p.entrega:Infinity;} // sem data = menor urgencia (vai p/ o fim)
+// ordenacao: PREVISAO DE ENTREGA primeiro (mais cedo na frente); prioridade/MC (score) so como desempate
+function cmpPedidos(a,b){const ea=entregaTs(a),eb=entregaTs(b);if(ea!==eb)return ea-eb;return b.score-a.score;}
+function entregaTag(p){
+  if(p.entrega==null||isNaN(p.entrega))return '<span class="tag" style="background:#eef0f2;color:#6c757d">&#128197; Entrega: sem data</span>';
+  const today=new Date();today.setHours(0,0,0,0);
+  const dd=new Date(p.entrega);dd.setHours(0,0,0,0);
+  const diff=Math.round((dd-today)/86400000);
+  let bg="#e8f5ef",fg="#0a5d44",sfx="";
+  if(diff<0){bg="#fdecec";fg="#c0392b";sfx=" (atrasado)";}
+  else if(diff===0){bg="#fff4e0";fg="#8a6d00";sfx=" (hoje)";}
+  else if(diff<=2){bg="#fff4e0";fg="#8a6d00";sfx=" ("+diff+"d)";}
+  return '<span class="tag" style="background:'+bg+';color:'+fg+';font-weight:700">&#128197; Entrega '+fmtDateBr(p.entrega)+sfx+'</span>';
+}
+
 function pedidoCard(p,inTruck){
   const c=el("div",(inTruck?"tcard ":"pcard ")+p.cor+(p.bloqueado?" bloqueado":"")+(!inTruck&&!p.apto?" naoapto":""));
   c.draggable=true;c.dataset.id=p.id;
   if(inTruck){
     const fr=c.dataset.frete||0;
     c.innerHTML='<button class="tc-rem" title="Remover">&times;</button>'+
-      '<div class="tc-top"><div><span class="tc-ped">#'+p.pedido+(p.bloqueado?' &#128274;':'')+'</span><div class="tc-cli">'+(p.cliente||"-")+'</div>'+(p.cidade?'<div class="tc-cid">&#128205; '+p.cidade+(p.uf?'/'+p.uf:'')+'</div>':'')+'</div><span class="tc-peso">'+fmtKg(p.peso)+'</span></div>'+
+      '<div class="tc-top"><div><span class="tc-ped">#'+p.pedido+(p.bloqueado?' &#128274;':'')+'</span><div class="tc-cli">'+(p.cliente||"-")+'</div>'+(p.cidade?'<div class="tc-cid">&#128205; '+p.cidade+(p.uf?'/'+p.uf:'')+'</div>':'')+(p.entrega!=null&&!isNaN(p.entrega)?'<div class="tc-cid">&#128197; Entrega '+fmtDateBr(p.entrega)+'</div>':'')+'</div><span class="tc-peso">'+fmtKg(p.peso)+'</span></div>'+
       '<div class="tc-frete" data-frete>Frete rateado: --</div>';
     c.querySelector(".tc-rem").addEventListener("click",e=>{e.stopPropagation();unassign(p);});
   } else {
@@ -6649,7 +6685,7 @@ function pedidoCard(p,inTruck){
     c.innerHTML=
       '<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+lockI+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
       '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div><button class="pc-add" title="Adicionar a uma carga">+ Carga</button></div></div>'+
-      '<div class="pc-tags">'+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
+      '<div class="pc-tags">'+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
       (p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
       '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>';
     c.querySelector(".pc-add").addEventListener("click",e=>{e.stopPropagation();quickAssign(p);});
@@ -6665,7 +6701,7 @@ function renderPedidos(){
   $("#pedCount").textContent=avail.length;
   if(!state.pedidos.length){list.innerHTML='<div class="empty"><div class="ic">&#128230;</div>Importe uma planilha de pedidos para comecar.</div>';return;}
   if(!avail.length){list.innerHTML='<div class="empty">Nenhum pedido disponivel com os filtros atuais.</div>';return;}
-  avail.sort((a,b)=>b.score-a.score);
+  avail.sort(cmpPedidos);
   avail.forEach(p=>list.appendChild(pedidoCard(p,false)));
 }
 
@@ -6728,7 +6764,7 @@ function truckCard(t){
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="body-'+t.id+'">'+(assigned.length?'':'Arraste pedidos aqui ou use o Auto-Preencher')+'</div>'+
     '<div class="truck-foot"><div class="tf-line"><span>Preco frete (tabela do pedido)</span><b>'+fmtMoney(fr.total)+'</b></div><div class="tf-line"><span>R$/ton efetivo (proporcional)</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+(t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo (preco - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'')+'</div>';
   const body=card.querySelector("#body-"+t.id);
-  if(assigned.length){assigned.sort((a,b)=>b.score-a.score);assigned.forEach(p=>{const tc=pedidoCard(p,true);tc.querySelector("[data-frete]").textContent="Frete rateado: "+fmtMoney(fr.alloc[p.id]||0);body.appendChild(tc);});}
+  if(assigned.length){assigned.sort(cmpPedidos);assigned.forEach(p=>{const tc=pedidoCard(p,true);tc.querySelector("[data-frete]").textContent="Frete rateado: "+fmtMoney(fr.alloc[p.id]||0);body.appendChild(tc);});}
   card.querySelector(".edit").addEventListener("click",()=>openModal(t));
   card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
   card.querySelector(".del").addEventListener("click",()=>{if(confirm("Excluir esta carga? Os pedidos voltam para o banco.")){state.pedidos.forEach(p=>{if(p.assignedTo===t.id)p.assignedTo=null;});state.trucks=state.trucks.filter(x=>x.id!==t.id);renderAll();}});
@@ -6759,7 +6795,7 @@ function bestRouteForVehicle(cap){
   avail.forEach(p=>{const k=normRota(p.rota)||"-";(byRoute[k]=byRoute[k]||{name:p.rota||"",items:[]}).items.push(p);});
   let best=null,bestMetric=-1;
   Object.values(byRoute).forEach(r=>{
-    const sorted=r.items.slice().sort((a,b)=>b.score-a.score);
+    const sorted=r.items.slice().sort(cmpPedidos);
     let load=0,scoreSum=0,prio=0,count=0;
     for(const p of sorted){
       if(count>=lim)break;
@@ -6781,7 +6817,7 @@ function autoFill(t){
   const tr=normRota(t.rota);const lim=PED_LIMIT[String(t.cap)]||1;
   let avail=state.pedidos.filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&inScope(p)&&normRota(p.rota)===tr);
   if(!avail.length){toast("Nenhum pedido APTO disponivel para a rota \""+t.rota+"\".","info");return;}
-  avail.sort((a,b)=>b.score-a.score);
+  avail.sort(cmpPedidos);
   let load=truckLoad(t),added=0,greens=0;
   let count=state.pedidos.filter(p=>p.assignedTo===t.id).length; // pedidos ja na carga
   for(const p of avail){
@@ -6825,7 +6861,7 @@ function renderParcial(){
   if(!cs.length){body.innerHTML='<div class="empty">Nenhuma carga em fechamento parcial. No Formador, comece uma carga e use "Fechar Parcial" quando ainda faltar volume para atingir '+MIN_CLOSE_PCT+'% da capacidade.</div>';return;}
   body.innerHTML="";
   cs.forEach(t=>{
-    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort((a,b)=>b.score-a.score);
+    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
     const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;
     const min=t.cap*MIN_CLOSE_PCT/100,faltam=Math.max(0,min-load),atinge=load>=min-0.001;
     const card=el("div","clcard");
@@ -6881,7 +6917,7 @@ function renderFechadas(){
   if(!fechadas.length){body.innerHTML='<div class="empty">Nenhuma carga fechada ainda. Monte uma carga e clique em "Fechar Carga".</div>';return;}
   body.innerHTML="";
   fechadas.forEach(t=>{
-    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort((a,b)=>b.score-a.score);
+    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
     const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;const ok=transporteCompleto(t);
     const card=el("div","clcard");
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
@@ -6921,7 +6957,7 @@ function renderContratadas(){
   if(!cs.length){body.innerHTML='<div class="empty">Nenhum caminhao contratado ainda.</div>';return;}
   body.innerHTML="";
   cs.forEach(t=>{
-    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort((a,b)=>b.score-a.score);
+    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
     const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;
     const card=el("div","clcard");
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
@@ -6949,7 +6985,7 @@ function renderEmbarcadas(){
   if(!cs.length&&!fobEmb.length){body.innerHTML='<div class="empty">Nenhuma carga ou pedido embarcado ainda.</div>';return;}
   body.innerHTML="";
   cs.forEach(t=>{
-    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort((a,b)=>b.score-a.score);
+    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
     const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;
     const card=el("div","clcard");
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
