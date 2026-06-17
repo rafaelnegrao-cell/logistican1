@@ -6504,6 +6504,15 @@ function ingest(rows){
   if(!rows.length){toast("Planilha vazia.","err");return;}
   const cols=detectCols(Object.keys(rows[0]));
   if(!cols.pedido){toast("Coluna 'Pedido' nao encontrada.","err");return;}
+  // fallback: se a coluna de entrega nao foi achada pelo nome, procura a coluna cujos valores sao datas
+  if(!cols.entrega){
+    const keys=Object.keys(rows[0]); const sample=rows.slice(0,Math.min(rows.length,60));
+    let best=null,bestHits=0;
+    keys.forEach(k=>{ if(k===cols.pedido||k===cols.valor||k===cols.icms||k===cols.mcRs||k===cols.peso)return;
+      let hits=0; sample.forEach(r=>{ if(parseDateBr(r[k])!=null)hits++; });
+      if(hits>bestHits){bestHits=hits;best=k;} });
+    if(best&&bestHits>=Math.max(3,Math.floor(sample.length*0.5))){cols.entrega=best;}
+  }
   state.hasFrete=!!cols.frete;
   const G={};
   rows.forEach((r,i)=>{
@@ -6654,9 +6663,15 @@ function parseDateBr(v){
   return ts;
 }
 function fmtDateBr(ts){if(ts==null||isNaN(ts))return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
-function entregaTs(p){return (p&&p.entrega!=null&&!isNaN(p.entrega))?p.entrega:Infinity;} // sem data = menor urgencia (vai p/ o fim)
-// ordenacao: PREVISAO DE ENTREGA primeiro (mais cedo na frente); prioridade/MC (score) so como desempate
-function cmpPedidos(a,b){const ea=entregaTs(a),eb=entregaTs(b);if(ea!==eb)return ea-eb;return b.score-a.score;}
+function entregaTs(p){return (p&&p.entrega!=null&&!isNaN(p.entrega))?p.entrega:Infinity;} // sem data = por ultimo no desempate
+// ordenacao: 1) Pedido Priorizado  2) MARGEM (MC%)  3) VOLUME (maior = carga fechada antes das fracionadas)  4) DATA DE ENTREGA
+function cmpPedidos(a,b){
+  if(!!a.prio!==!!b.prio)return a.prio?-1:1;                       // pedido priorizado no topo
+  const ma=Math.round(a.mcPct||0),mb=Math.round(b.mcPct||0);
+  if(ma!==mb)return mb-ma;                                          // maior margem primeiro (faixas de 1%)
+  if((a.peso||0)!==(b.peso||0))return (b.peso||0)-(a.peso||0);      // maior volume primeiro
+  return entregaTs(a)-entregaTs(b);                                 // entrega mais cedo por ultimo desempate
+}
 function entregaTag(p){
   if(p.entrega==null||isNaN(p.entrega))return '<span class="tag" style="background:#eef0f2;color:#6c757d">&#128197; Entrega: sem data</span>';
   const today=new Date();today.setHours(0,0,0,0);
