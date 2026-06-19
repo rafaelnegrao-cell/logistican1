@@ -6297,6 +6297,15 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   </div>
 </div>
 
+<!-- MODAL DETALHE DO PEDIDO -->
+<div class="overlay" id="pedOverlay">
+  <div class="modal" style="width:560px;max-width:96vw">
+    <div class="modal-head"><h3 id="pedTitle">Resumo do Pedido</h3><button class="x" id="pedClose">&times;</button></div>
+    <div class="modal-body" id="pedDetail" style="padding:16px 18px"></div>
+    <div class="modal-foot"><button class="btn primary" id="pedCloseBtn">Fechar</button></div>
+  </div>
+</div>
+
 <!-- NAV INFERIOR (mobile) -->
 <nav class="botnav">
   <button data-tab="formador" class="active"><span class="bi">&#128666;</span>Formador</button>
@@ -6407,7 +6416,7 @@ function detectCols(headers){
 }
 function isBloqueado(v){const n=norm(v);if(!n)return false;return n.includes("bloque")||n.includes("pendente")||n.includes("analise")||n.includes("retido")||n.includes("inadim");}
 function isPrio(v){const n=norm(v);return n==="1"||n==="sim"||n==="s"||n==="x"||n==="true"||n.includes("priorit")||n.includes("urgente");}
-function isFOB(v){return norm(v).includes("destinat");}
+function isFOB(v){const n=norm(v);return n.includes("destinat")||n.includes("fob");} // FOB / Destinatario = cliente paga frete; CIF / Emitente = N1 paga
 function isRevenda(v){return norm(v).includes("revenda");}
 
 /* limpeza de rotulos */
@@ -6570,7 +6579,7 @@ function ingest(rows){
   applyPrioToState();
   buildFreightTableFromPeds();
   buildFilters(); renderAll();
-  logAction("import_pedidos",peds.length+" p/ carga / "+nNew+" novos / "+nUpd+" atualizados / "+nEmb+" embarcados historico / "+nDrop+" removidos / "+nRevenda+" revenda ignorados");
+  logAction("import_pedidos",peds.length+" p/ carga / "+nNew+" novos / "+nUpd+" atualizados / "+nEmb+" embarcados historico / "+nDrop+" removidos / "+nRevenda+" revenda ignorados / arquivo: "+(state.fileName||"-"));
   const aptos=state.pedidos.filter(p=>p.apto),nf=peds.filter(p=>p.fob).length;
   toast(peds.length+" pedidos para carga: "+nNew+" novos, "+nUpd+" atualizados &middot; "+nEmb+" embarcados mantidos no historico"+(nDrop?" &middot; "+nDrop+" removidos (sairam do arquivo)":"")+(nRevenda?" &middot; "+nRevenda+" revenda ignorados":"")+".","ok",8500);
 }
@@ -6713,6 +6722,7 @@ function pedidoCard(p,inTruck){
   }
   c.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",p.id);c.classList.add("dragging");});
   c.addEventListener("dragend",()=>c.classList.remove("dragging"));
+  c.addEventListener("click",e=>{if(e.target.closest("button")||e.target.closest("input")||e.target.closest("select"))return;openPedDetail(p);});
   return c;
 }
 
@@ -7095,6 +7105,41 @@ function renderAll(){renderPedidos();renderTrucks();renderFreteTab();buildFreigh
 /* modal */
 function openModal(t){state.editingTruck=t;refreshCarrierList();$("#mTranspAdd").classList.add("hidden");["mTNome","mTCnpj","mTTel","mTContato"].forEach(id=>{const e=$("#"+id);if(e)e.value="";});$("#modalTitle").textContent=t?"Editar Carga":"Criar Nova Carga";$("#mTipo").value=t?String(t.cap):"33000";$("#mRota").value=t?(t.rota||""):"";$("#mTransp").value=t?(t.transp||""):"";$("#mPlaca").value=t?(t.placa||""):"";$("#mMot").value=t?(t.mot||""):"";const fr=t?loadFreight(t):null;$("#mFrete").value=fr&&fr.total?(fmtMoney(fr.rate)+"/ton  ("+fmtMoney(fr.total)+" total)"):"calculado dos pedidos";$("#mFretePago").value=t&&t.fretePago?t.fretePago:"";$("#mEta").value=t&&t.eta?t.eta:"";$("#overlay").classList.add("open");}
 function closeModal(){$("#overlay").classList.remove("open");state.editingTruck=null;}
+
+/* ===== RESUMO COMPLETO DO PEDIDO (clique no card) ===== */
+function pdRow(lbl,val){return '<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--grade)"><span style="color:var(--cinza);font-size:12.5px">'+lbl+'</span><span style="font-weight:600;font-size:12.5px;text-align:right">'+(val==null||val===""?"&mdash;":val)+'</span></div>';}
+function pedStatusTxt(p){
+  if(p.embarcado===true)return "Embarcado / Retirado"+(p.embarcadoAt?" em "+fmtDateBr(p.embarcadoAt):"");
+  if(p.assignedTo!=null){const t=state.trucks.find(x=>x.id===p.assignedTo);if(t){const st={montada:"em montagem",parcial:"fechado parcial",fechada:"aguardando contratacao",contratada:"programada",embarcada:"embarcada"}[t.status]||t.status;return "Em carga "+(t.placa||t.transp||t.id)+" ("+st+")";}}
+  return "Disponivel no banco";
+}
+function openPedDetail(p){
+  const fobTxt=p.fob?'<b style="color:#9a5b00">FOB</b> &middot; cliente retira (frete do cliente)':'<b style="color:var(--verde)">CIF</b> &middot; frete pago pela N1';
+  const mcCls=p.mcPct<0?"var(--risco)":"var(--ok)";
+  let h='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza)">Pedido</div>'+
+    '<div style="font-size:20px;font-weight:800;color:var(--verde);line-height:1.1">#'+p.pedido+'</div>'+
+    '<div style="font-size:14px;font-weight:600;margin-bottom:12px">'+(p.cliente||"-")+'</div>';
+  h+=pdRow("Tipo de frete",fobTxt);
+  h+=pdRow("Vendedor",p.vendedor||"&mdash;");
+  h+=pdRow("Filial",p.filial||"&mdash;");
+  h+=pdRow("Cidade / UF",(p.cidade||"-")+(p.uf?" / "+p.uf:""));
+  h+=pdRow("Rota",(p.rota||"&mdash;")+(p.rotaCod?' <small style="color:var(--cinza)">('+p.rotaCod+')</small>':""));
+  h+=pdRow("Previsao de entrega",(p.entrega!=null&&!isNaN(p.entrega))?fmtDateBr(p.entrega):"sem data");
+  h+=pdRow("Peso",fmtKg(p.peso));
+  h+=pdRow("Valor",fmtMoney0(p.valor));
+  h+=pdRow("MC R$",fmtMoney0(p.mcRs));
+  h+=pdRow("MC %",'<span style="color:'+mcCls+'">'+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</span>');
+  if(!p.fob&&p.frete)h+=pdRow("Frete (tabela)",fmtMoney(p.frete)+"/ton");
+  h+=pdRow("Financeiro",p.bloqueado?'<span style="color:var(--risco)">Bloqueado</span>':"Liberado");
+  h+=pdRow("Prioridade",p.prio?'<b style="color:#9a5b00">SIM</b>':"Nao");
+  h+=pdRow("Apto p/ carga",p.apto?"Sim":"Nao");
+  h+=pdRow("Status atual",pedStatusTxt(p));
+  if(p.produtos&&p.produtos.length)h+='<div style="margin-top:12px"><div style="color:var(--cinza);font-size:12.5px;margin-bottom:4px">Mix de produtos ('+p.produtos.length+')</div><div style="font-size:12.5px;line-height:1.55">'+p.produtos.join("<br>")+'</div></div>';
+  $("#pedDetail").innerHTML=h;
+  $("#pedTitle").textContent="Resumo do Pedido #"+p.pedido;
+  $("#pedOverlay").classList.add("open");
+}
+function closePedDetail(){$("#pedOverlay").classList.remove("open");}
 function saveTruck(){if(!requirePerm("criarCarga"))return;const transp=$("#mTransp").value.trim();if(transp&&!isRegisteredCarrier(transp)){toast("Transportadora nao cadastrada. Use '+ Cadastrar nova' ou escolha uma da lista.","err");return;}const d={cap:parseInt($("#mTipo").value,10),rota:$("#mRota").value.trim(),transp,placa:$("#mPlaca").value.trim(),mot:$("#mMot").value.trim(),fretePago:parseNum($("#mFretePago").value),eta:$("#mEta").value||""};if(state.editingTruck){Object.assign(state.editingTruck,d);}else{d.id="T"+(state.nextTruck++);d.status="montada";state.trucks.push(d);}closeModal();renderAll();logAction("criar_carga",(d.rota||"")+" "+VEHICLES[String(d.cap)]);}
 
 /* export */
@@ -7396,7 +7441,10 @@ function allUFs(){const s=new Set();state.pedidos.forEach(p=>{if(p.uf)s.add(p.uf
 /* auditoria */
 function loadAudit(){AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];return AUD;}
 function saveAudit(a){AUD=a||AUD;try{localStorage.setItem(AUDKEY,JSON.stringify(AUD));}catch(e){}pushAudit();}
-function pruneAudit(a){const cut=Date.now()-90*86400000;a.sessions=a.sessions.filter(s=>(s.logoutAt||s.loginAt)>=cut);a.logs=a.logs.filter(l=>l.ts>=cut);return a;}
+function pruneAudit(a){a.sessions=a.sessions||[];a.logs=a.logs||[];const MAXL=20000,MAXS=5000; // registro permanente: nada e apagado por tempo; so trava de seguranca de tamanho
+  if(a.logs.length>MAXL)a.logs=a.logs.slice(a.logs.length-MAXL);
+  if(a.sessions.length>MAXS)a.sessions=a.sessions.slice(a.sessions.length-MAXS);
+  return a;}
 function logAction(action,detail){if(!CUR.user)return;const a=loadAudit();a.logs.push({ts:Date.now(),user:CUR.user,nome:CUR.nome,action,detail:detail||""});pruneAudit(a);saveAudit(a);if(state.tab==="monitoria")renderMonitoria();}
 function startSession(){const a=loadAudit();session={id:"S"+Date.now()+Math.floor(Math.random()*9999),user:CUR.user};a.sessions.push({id:session.id,user:CUR.user,nome:CUR.nome,loginAt:Date.now(),logoutAt:Date.now(),durationSec:0});pruneAudit(a);saveAudit(a);}
 function touchSession(){if(!session)return;const a=loadAudit();const s=a.sessions.find(x=>x.id===session.id);if(s){const now=Date.now();s.logoutAt=now;s.durationSec=Math.round((now-(typeof s.loginAt==="number"?s.loginAt:now))/1000);saveAudit(a);}}
@@ -7615,7 +7663,19 @@ function importAuthConfig(file){
 /* ===== MONITORIA ===== */
 function fmtDur(sec){sec=Math.max(0,Math.round(sec||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h?h+"h ":"")+(m||h?m+"min ":"")+s+"s";}
 function fmtDT(ts){const d=new Date(ts);const p=n=>n<10?"0"+n:n;return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());}
-function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",export_auditoria:"Exportou registro de auditoria",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function csvEsc(s){s=String(s==null?"":s);return /[";\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function exportAudit(){
+  const a=loadAudit();
+  const rows=[["Data/Hora","Usuario","Login","Acao","Detalhe"]];
+  (a.logs||[]).slice().sort((x,y)=>x.ts-y.ts).forEach(l=>rows.push([fmtDT(l.ts),(l.nome||l.user||""),l.user||"",actionLabel(l.action),l.detail||""]));
+  const csv="\ufeff"+rows.map(r=>r.map(csvEsc).join(";")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);
+  const d=new Date(),fn="N1_Registro_Auditoria_"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+".csv";
+  const link=document.createElement("a");link.href=url;link.download=fn;document.body.appendChild(link);link.click();document.body.removeChild(link);setTimeout(()=>URL.revokeObjectURL(url),60000);
+  toast("Registro exportado: "+((a.logs||[]).length)+" acoes.","ok");
+  logActionSafe("export_auditoria",(a.logs||[]).length+" acoes");
+}
 function renderMonitoria(){
   const body=$("#monBody");if(!body)return;
   if(!canSee("monitoria")){body.innerHTML='<div class="empty">Acesso restrito.</div>';return;}
@@ -7626,7 +7686,7 @@ function renderMonitoria(){
   const userSel='<select id="monUser"><option value="">Todos usuarios</option>'+users.map(u=>'<option'+(u===uf?' selected':'')+'>'+u+'</option>').join("")+'</select>';
   const sess=a.sessions.filter(s=>!uf||s.user===uf).sort((x,y)=>y.loginAt-x.loginAt);
   const logs=a.logs.filter(l=>!uf||l.user===uf).sort((x,y)=>y.ts-x.ts);
-  let html='<div class="ftools" style="margin-bottom:12px">'+userSel+'<span class="meta" style="color:var(--cinza)">Ultimos 90 dias &middot; '+sess.length+' acessos &middot; '+logs.length+' acoes</span></div>';
+  let html='<div class="ftools" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+userSel+'<button class="btn ghost" id="btnExpAud" style="padding:4px 12px;font-size:12px">&#11015; Exportar registro (CSV)</button><span class="meta" style="color:var(--cinza)">Registro permanente &middot; '+sess.length+' acessos &middot; '+logs.length+' acoes</span></div>';
   html+='<div class="cadcard"><h4>Acessos e tempo de navegacao</h4><table class="dtable"><thead><tr><th>Usuario</th><th>Acesso (data/hora)</th><th>Tempo de navegacao</th><th>Ultima atividade</th></tr></thead><tbody>';
   if(!sess.length)html+='<tr><td colspan="4" style="color:var(--cinza)">Sem registros.</td></tr>';
   sess.slice(0,300).forEach(s=>{const ativo=session&&s.id===session.id;html+='<tr><td class="b">'+(s.nome||s.user)+'</td><td>'+fmtDT(s.loginAt)+'</td><td>'+fmtDur(s.durationSec)+(ativo?' <span class="tag lib">em andamento</span>':'')+'</td><td>'+fmtDT(s.logoutAt||s.loginAt)+'</td></tr>';});
@@ -7637,6 +7697,7 @@ function renderMonitoria(){
   html+='</tbody></table></div>';
   body.innerHTML=html;labelTables();
   const ms=$("#monUser");if(ms)ms.addEventListener("change",renderMonitoria);
+  const eb=$("#btnExpAud");if(eb)eb.addEventListener("click",exportAudit);
 }
 /* ================= /AUTH ================= */
 
@@ -7645,6 +7706,7 @@ $("#btnImport").addEventListener("click",()=>$("#fileInput").click());
 $("#fileInput").addEventListener("change",e=>{if(e.target.files[0])readFile(e.target.files[0]);e.target.value="";});
 $("#btnNovaCarga").addEventListener("click",()=>openModal(null));
 $("#modalClose").addEventListener("click",closeModal);$("#modalCancel").addEventListener("click",closeModal);$("#modalSave").addEventListener("click",saveTruck);
+$("#pedClose").addEventListener("click",closePedDetail);$("#pedCloseBtn").addEventListener("click",closePedDetail);$("#pedOverlay").addEventListener("click",e=>{if(e.target.id==="pedOverlay")closePedDetail();});
 $("#overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeModal();});
 $("#btnExport").addEventListener("click",()=>exportRomaneio("all"));
 $("#btnExportFech").addEventListener("click",()=>exportRomaneio("fechada"));
