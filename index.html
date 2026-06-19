@@ -6008,6 +6008,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
               <select id="fRota"><option value="">Todas rotas</option></select>
               <select id="fProduto"><option value="">Todos produtos</option></select>
               <select id="fFin"><option value="">Status</option></select>
+              <select id="fCanal" style="display:none"><option value="">Todos os canais</option></select>
               <input id="fPesoMin" type="number" min="0" step="100" inputmode="numeric" placeholder="kg de" autocomplete="off" title="Peso minimo (kg)" style="width:84px">
               <input id="fPesoMax" type="number" min="0" step="100" inputmode="numeric" placeholder="kg ate" autocomplete="off" title="Peso maximo (kg)" style="width:84px">
               <input id="fBusca" type="search" placeholder="Buscar pedido ou cliente..." autocomplete="off">
@@ -6412,7 +6413,8 @@ function detectCols(headers){
     km:find([n=>n==="distkm",n=>n.includes("distkm"),n=>n.includes("km")]),
     produto:find([n=>n==="nomecurto",n=>n.includes("nomecurto"),n=>n==="produto",n=>n.includes("produto")&&!n.includes("mix")&&!n.includes("tipo")]),
     frete:find([n=>n.includes("frete")&&n.includes("ton")&&!n.includes("custo")&&!n.includes("tipo")&&!n.includes("pago"),n=>n.includes("frete")&&n.includes("rt")&&!n.includes("custo")&&!n.includes("tipo")&&!n.includes("pago"),n=>n.includes("faixafrete")&&!n.includes("custo")&&!n.includes("pago"),n=>n.includes("valorfrete")&&!n.includes("custo")&&!n.includes("pago")]),
-    custoFrete:find([n=>n.includes("custo")&&n.includes("frete")&&!n.includes("ton")&&!n.includes("rt")&&!n.includes("pago")])
+    custoFrete:find([n=>n.includes("custo")&&n.includes("frete")&&!n.includes("ton")&&!n.includes("rt")&&!n.includes("pago")]),
+    canal:find([n=>n==="canal",n=>n.includes("canaldevenda"),n=>n.includes("canalvenda"),n=>n.includes("canal"),n=>n.includes("segmento"),n=>(n.includes("mercado")&&!n.includes("intelig")),n=>n.includes("tipocliente"),n=>n.includes("ramo")])
   };
 }
 function isBloqueado(v){const n=norm(v);if(!n)return false;return n.includes("bloque")||n.includes("pendente")||n.includes("analise")||n.includes("retido")||n.includes("inadim");}
@@ -6525,11 +6527,18 @@ function ingest(rows){
       if(hits>bestHits){bestHits=hits;best=k;} });
     if(best&&bestHits>=Math.max(3,Math.floor(sample.length*0.5))){cols.entrega=best;}
   }
+  if(!cols.canal){
+    const keys=Object.keys(rows[0]); const sample=rows.slice(0,Math.min(rows.length,80));
+    const isCanalVal=v=>{const n=norm(v);return !!n&&(n.includes("industri")||n.includes("varejo")||n.includes("exporta")||n.includes("foodservice")||n==="food"||n.includes("licitac")||n.includes("atacad")||n.includes("distribuid")||n.includes("mercadointerno")||n.includes("mercadoexterno"));};
+    let bestC=null,bestH=0;
+    keys.forEach(k=>{ if(k===cols.pedido||k===cols.cliente||k===cols.produto||k===cols.mix||k===cols.tipoFrete||k===cols.filial)return; let hits=0; sample.forEach(r=>{ if(isCanalVal(r[k]))hits++; }); if(hits>bestH){bestH=hits;bestC=k;} });
+    if(bestC&&bestH>=Math.max(3,Math.floor(sample.length*0.4))){cols.canal=bestC;}
+  }
   state.hasFrete=!!cols.frete;
   const G={};
   rows.forEach((r,i)=>{
     const praw=r[cols.pedido]; let key=(praw==null||String(praw).trim()==="")?("__r"+i):String(praw).trim();
-    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,revenda:false,entrega:null,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,custoFreteTot:0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
+    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",canal:"",prio:false,revenda:false,entrega:null,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,custoFreteTot:0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
     const g=G[key];
     if(cols.produto&&r[cols.produto]!=null&&String(r[cols.produto]).trim()!==""){const p=String(r[cols.produto]).trim();if(g.produtos.indexOf(p)===-1)g.produtos.push(p);}
     const pw=cols.peso?parseNum(r[cols.peso]):0; g.pesos.push(pw);
@@ -6542,7 +6551,7 @@ function ingest(rows){
     if(cols.entrega){const d=parseDateBr(r[cols.entrega]);if(d!=null)g.entrega=(g.entrega==null)?d:Math.min(g.entrega,d);}
     if(cols.custoFrete)g.custoFreteTot+=(parseNum(r[cols.custoFrete])||0);
     if(cols.tipoFrete&&isFOB(r[cols.tipoFrete]))g.tipo="Destinatario";
-    ["cliente","filial","cidade","rota","vendedor"].forEach(f=>{const ck=cols[f];if(ck&&!g[f]&&r[ck])g[f]=r[ck];});
+    ["cliente","filial","cidade","rota","vendedor","canal"].forEach(f=>{const ck=cols[f];if(ck&&!g[f]&&r[ck])g[f]=r[ck];});
     if(cols.uf&&!g.uf&&r[cols.uf])g.uf=r[cols.uf];
     if(cols.fin&&!g.finRaw&&r[cols.fin])g.finRaw=r[cols.fin];
   });
@@ -6566,7 +6575,7 @@ function ingest(rows){
     const cor = prio?"verde":(mcPct<0?"vermelho":"azul");
     const freteRate=(g.frete&&g.frete>0)?g.frete:((g.custoFreteTot>0&&peso>0)?(g.custoFreteTot/(peso/1000)):0); // tarifa do arquivo OU custo total / toneladas
     peds.push({id:"P"+peds.length,pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
-      rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),peso,valor:g.valor,mcRs:g.mcRs,mcPct,
+      rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),canal:String(g.canal||"").trim(),peso,valor:g.valor,mcRs:g.mcRs,mcPct,
       prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,entrega:g.entrega,assignedTo:null,score:0});
   });
   // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
@@ -6640,16 +6649,20 @@ function buildFilters(){
   const prods=[];bp.forEach(p=>p.produtos.forEach(x=>prods.push(x)));
   fill("#fProduto",prods,"Todos produtos");
   $("#fFin").innerHTML='<option value="">Status</option><option>Apto</option><option>Bloqueado</option><option>MC negativa</option>';
+  const canais=[...new Set(bp.map(p=>p.canal).filter(v=>v!=null&&String(v).trim()!==""))];
+  const selC=$("#fCanal");if(selC){if(canais.length){selC.style.display="";fill("#fCanal",canais,"Todos os canais");}else{selC.style.display="none";selC.value="";}}
   $("#rotaList").innerHTML=[...new Set(bp.map(p=>p.rota).filter(Boolean))].map(r=>'<option value="'+r+'">').join("");
 }
 function filterPred(){
   const ff=$("#fFilial").value,fr=$("#fRota").value,fp=$("#fProduto").value,fin=$("#fFin").value,fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
+  const fc=$("#fCanal")?$("#fCanal").value:"";
   const pminV=$("#fPesoMin")?parseFloat($("#fPesoMin").value):NaN, pmaxV=$("#fPesoMax")?parseFloat($("#fPesoMax").value):NaN;
   const pmin=isNaN(pminV)?null:pminV, pmax=isNaN(pmaxV)?null:pmaxV;
   return p=>{
     if(ff&&p.filial!==ff)return false;
     if(fr&&p.rota!==fr)return false;
     if(fp&&p.produtos.indexOf(fp)===-1)return false;
+    if(fc&&p.canal!==fc)return false;
     if(fin==="Apto"&&!p.apto)return false;
     if(fin==="Bloqueado"&&!p.bloqueado)return false;
     if(fin==="MC negativa"&&!(p.mcPct<0))return false;
@@ -7720,9 +7733,10 @@ $("#freteFileInput").addEventListener("change",e=>{if(e.target.files[0])importFr
 $("#ffFilial").addEventListener("change",renderFreteTab);
 $("#ffBusca").addEventListener("input",renderFreteTab);
 ["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).addEventListener("change",()=>{renderPedidos();renderKpis();}));
+const _fc=$("#fCanal");if(_fc)_fc.addEventListener("change",()=>{renderPedidos();renderKpis();});
 $("#fBusca").addEventListener("input",()=>{renderPedidos();renderKpis();});
 ["#fPesoMin","#fPesoMax"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
-$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");$("#fBusca").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
+$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");$("#fBusca").value="";if($("#fCanal"))$("#fCanal").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
 document.querySelectorAll(".navbtn,.botnav button,#legHelp").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("#pickClose").addEventListener("click",()=>$("#pickOverlay").classList.remove("open"));
 $("#pickOverlay").addEventListener("click",e=>{if(e.target.id==="pickOverlay")$("#pickOverlay").classList.remove("open");});
