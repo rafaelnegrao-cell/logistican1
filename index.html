@@ -6411,7 +6411,8 @@ function detectCols(headers){
     rotaFil:find([n=>n==="rotafilial",n=>n.includes("rotafilial")]),
     km:find([n=>n==="distkm",n=>n.includes("distkm"),n=>n.includes("km")]),
     produto:find([n=>n==="nomecurto",n=>n.includes("nomecurto"),n=>n==="produto",n=>n.includes("produto")&&!n.includes("mix")&&!n.includes("tipo")]),
-    frete:find([n=>n.includes("frete")&&n.includes("ton")&&!n.includes("pago"),n=>n.includes("frete")&&n.includes("r")&&!n.includes("custo")&&!n.includes("tipo")&&!n.includes("faixa")&&!n.includes("pago"),n=>n.includes("valorfrete")])
+    frete:find([n=>n.includes("frete")&&n.includes("ton")&&!n.includes("custo")&&!n.includes("tipo")&&!n.includes("pago"),n=>n.includes("frete")&&n.includes("rt")&&!n.includes("custo")&&!n.includes("tipo")&&!n.includes("pago"),n=>n.includes("faixafrete")&&!n.includes("custo")&&!n.includes("pago"),n=>n.includes("valorfrete")&&!n.includes("custo")&&!n.includes("pago")]),
+    custoFrete:find([n=>n.includes("custo")&&n.includes("frete")&&!n.includes("ton")&&!n.includes("rt")&&!n.includes("pago")])
   };
 }
 function isBloqueado(v){const n=norm(v);if(!n)return false;return n.includes("bloque")||n.includes("pendente")||n.includes("analise")||n.includes("retido")||n.includes("inadim");}
@@ -6528,7 +6529,7 @@ function ingest(rows){
   const G={};
   rows.forEach((r,i)=>{
     const praw=r[cols.pedido]; let key=(praw==null||String(praw).trim()==="")?("__r"+i):String(praw).trim();
-    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,revenda:false,entrega:null,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
+    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",prio:false,revenda:false,entrega:null,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,custoFreteTot:0,produtos:[],pesos:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
     const g=G[key];
     if(cols.produto&&r[cols.produto]!=null&&String(r[cols.produto]).trim()!==""){const p=String(r[cols.produto]).trim();if(g.produtos.indexOf(p)===-1)g.produtos.push(p);}
     const pw=cols.peso?parseNum(r[cols.peso]):0; g.pesos.push(pw);
@@ -6539,6 +6540,7 @@ function ingest(rows){
     if(cols.prio&&isPrio(r[cols.prio]))g.prio=true;
     if(cols.mix&&isRevenda(r[cols.mix]))g.revenda=true;
     if(cols.entrega){const d=parseDateBr(r[cols.entrega]);if(d!=null)g.entrega=(g.entrega==null)?d:Math.min(g.entrega,d);}
+    if(cols.custoFrete)g.custoFreteTot+=(parseNum(r[cols.custoFrete])||0);
     if(cols.tipoFrete&&isFOB(r[cols.tipoFrete]))g.tipo="Destinatario";
     ["cliente","filial","cidade","rota","vendedor"].forEach(f=>{const ck=cols[f];if(ck&&!g[f]&&r[ck])g[f]=r[ck];});
     if(cols.uf&&!g.uf&&r[cols.uf])g.uf=r[cols.uf];
@@ -6562,9 +6564,10 @@ function ingest(rows){
     // APTO (doc): CIF + MC>=0 + (liberado OU prio OU override). MC<0 nunca apto.
     const apto = !fob && mcPct>=0 && (!bloq || prio || override);
     const cor = prio?"verde":(mcPct<0?"vermelho":"azul");
+    const freteRate=(g.frete&&g.frete>0)?g.frete:((g.custoFreteTot>0&&peso>0)?(g.custoFreteTot/(peso/1000)):0); // tarifa do arquivo OU custo total / toneladas
     peds.push({id:"P"+peds.length,pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
       rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),peso,valor:g.valor,mcRs:g.mcRs,mcPct,
-      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:g.frete,finRaw:g.finRaw,cor,produtos:g.produtos,entrega:g.entrega,assignedTo:null,score:0});
+      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,entrega:g.entrega,assignedTo:null,score:0});
   });
   // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
   const embTruckIds=new Set(state.trucks.filter(t=>t.status==="embarcada").map(t=>t.id));
