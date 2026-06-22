@@ -5850,7 +5850,13 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .toast .tic{font-size:18px}
   @keyframes slidein{from{transform:translateY(-16px);opacity:0}to{transform:translateY(0);opacity:1}}
   .ftools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-  .ftools select,.ftools input{padding:8px 10px;border:1px solid var(--grade);border-radius:8px;font-size:12px;font-family:var(--font);color:var(--texto)}
+  .ftools select,.ftools input{padding:8px 10px;border:1px solid var(--grade);border-radius:8px;font-size:12px;font-family:var(--font);color:var(--texto);box-sizing:border-box;height:36px}
+  .ftools select{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='none' stroke='%237a8a99' stroke-width='1.6' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+  #fFilial,#fRota,#fProduto,#fVendedor,#fCanal{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='none' stroke='%237a8a99' stroke-width='1.6' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+  #fFilial,#fRota,#fProduto,#fVendedor,#fCanal,#fFin{flex:1 1 150px;min-width:140px}
+  #fPesoMin,#fPesoMax{flex:1 1 110px;min-width:90px;width:auto}
+  #fBusca{flex:1 1 100%}
+  .ftools input::-webkit-calendar-picker-indicator{opacity:0;width:0}
   .ftier{font-variant-numeric:tabular-nums}
   .saldo-pos{color:var(--ok)} .saldo-neg{color:var(--risco)}
   .ro-fld{background:#f1f3f5;color:var(--cinza);cursor:not-allowed}
