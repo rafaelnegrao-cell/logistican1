@@ -6004,11 +6004,12 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
           <div class="col-head">
             <div class="ch-title"><h3>Banco de Pedidos</h3><div style="display:flex;align-items:center;gap:8px"><button class="btn ghost" data-tab="legenda" id="legHelp" style="padding:2px 9px;font-size:11px">? Legenda</button><span class="count" id="pedCount">0</span></div></div>
             <div class="filters">
-              <select id="fFilial"><option value="">Todas filiais</option></select>
-              <select id="fRota"><option value="">Todas rotas</option></select>
-              <select id="fProduto"><option value="">Todos produtos</option></select>
+              <input id="fFilial" list="dlFilial" placeholder="Filial (busca)" autocomplete="off"><datalist id="dlFilial"></datalist>
+              <input id="fRota" list="rotaList" placeholder="Rota (busca)" autocomplete="off">
+              <input id="fProduto" list="dlProduto" placeholder="Produto (busca)" autocomplete="off"><datalist id="dlProduto"></datalist>
+              <input id="fVendedor" list="dlVendedor" placeholder="Vendedor (busca)" autocomplete="off"><datalist id="dlVendedor"></datalist>
               <select id="fFin"><option value="">Status</option></select>
-              <select id="fCanal" style="display:none"><option value="">Todos os canais</option></select>
+              <input id="fCanal" list="dlCanal" placeholder="Canal (busca)" autocomplete="off" style="display:none"><datalist id="dlCanal"></datalist>
               <input id="fPesoMin" type="number" min="0" step="100" inputmode="numeric" placeholder="kg de" autocomplete="off" title="Peso minimo (kg)" style="width:84px">
               <input id="fPesoMax" type="number" min="0" step="100" inputmode="numeric" placeholder="kg ate" autocomplete="off" title="Peso maximo (kg)" style="width:84px">
               <input id="fBusca" type="search" placeholder="Buscar pedido ou cliente..." autocomplete="off">
@@ -6414,7 +6415,7 @@ function detectCols(headers){
     produto:find([n=>n==="nomecurto",n=>n.includes("nomecurto"),n=>n==="produto",n=>n.includes("produto")&&!n.includes("mix")&&!n.includes("tipo")]),
     frete:find([n=>n.includes("frete")&&n.includes("ton")&&!n.includes("custo")&&!n.includes("tipo")&&!n.includes("pago"),n=>n.includes("frete")&&n.includes("rt")&&!n.includes("custo")&&!n.includes("tipo")&&!n.includes("pago"),n=>n.includes("faixafrete")&&!n.includes("custo")&&!n.includes("pago"),n=>n.includes("valorfrete")&&!n.includes("custo")&&!n.includes("pago")]),
     custoFrete:find([n=>n.includes("custo")&&n.includes("frete")&&!n.includes("ton")&&!n.includes("rt")&&!n.includes("pago")]),
-    canal:find([n=>n==="canal",n=>n.includes("canaldevenda"),n=>n.includes("canalvenda"),n=>n.includes("canal"),n=>n.includes("segmento"),n=>(n.includes("mercado")&&!n.includes("intelig")),n=>n.includes("tipocliente"),n=>n.includes("ramo")])
+    canal:find([n=>n==="linha",n=>n==="canal",n=>n.includes("canaldevenda"),n=>n.includes("canalvenda"),n=>n.includes("canal"),n=>n.includes("segmento"),n=>(n.includes("mercado")&&!n.includes("intelig")),n=>n.includes("tipocliente"),n=>n.includes("ramo")])
   };
 }
 function isBloqueado(v){const n=norm(v);if(!n)return false;return n.includes("bloque")||n.includes("pendente")||n.includes("analise")||n.includes("retido")||n.includes("inadim");}
@@ -6642,27 +6643,31 @@ const fobPeds=()=>state.pedidos.filter(p=>p.fob&&inScope(p));
 
 /* filters */
 function buildFilters(){
-  const fill=(sel,vals,label)=>{const cur=$(sel).value;$(sel).innerHTML='<option value="">'+label+'</option>'+[...new Set(vals.filter(v=>v!=null&&String(v).trim()!==""))].sort().map(v=>'<option>'+v+'</option>').join("");if([...$(sel).options].some(o=>o.value===cur))$(sel).value=cur;};
+  const esc=s=>String(s).replace(/"/g,"&quot;");
+  const fillDL=(dlId,vals)=>{const dl=$("#"+dlId);if(!dl)return;dl.innerHTML=[...new Set(vals.filter(v=>v!=null&&String(v).trim()!==""))].sort().map(v=>'<option value="'+esc(v)+'"></option>').join("");};
   const bp=bancoPeds();
-  fill("#fFilial",bp.map(p=>p.filial),"Todas filiais");
-  fill("#fRota",bp.map(p=>p.rota),"Todas rotas");
+  fillDL("dlFilial",bp.map(p=>p.filial));
   const prods=[];bp.forEach(p=>p.produtos.forEach(x=>prods.push(x)));
-  fill("#fProduto",prods,"Todos produtos");
+  fillDL("dlProduto",prods);
+  fillDL("dlVendedor",bp.map(p=>p.vendedor));
   $("#fFin").innerHTML='<option value="">Status</option><option>Apto</option><option>Bloqueado</option><option>MC negativa</option>';
   const canais=[...new Set(bp.map(p=>p.canal).filter(v=>v!=null&&String(v).trim()!==""))];
-  const selC=$("#fCanal");if(selC){if(canais.length){selC.style.display="";fill("#fCanal",canais,"Todos os canais");}else{selC.style.display="none";selC.value="";}}
-  $("#rotaList").innerHTML=[...new Set(bp.map(p=>p.rota).filter(Boolean))].map(r=>'<option value="'+r+'">').join("");
+  const selC=$("#fCanal");if(selC){if(canais.length){selC.style.display="";fillDL("dlCanal",canais);}else{selC.style.display="none";selC.value="";}}
+  $("#rotaList").innerHTML=[...new Set(bp.map(p=>p.rota).filter(Boolean))].sort().map(r=>'<option value="'+esc(r)+'"></option>').join("");
 }
 function filterPred(){
-  const ff=$("#fFilial").value,fr=$("#fRota").value,fp=$("#fProduto").value,fin=$("#fFin").value,fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
-  const fc=$("#fCanal")?$("#fCanal").value:"";
+  const ff=$("#fFilial").value.trim().toLowerCase(),fr=$("#fRota").value.trim().toLowerCase(),fp=$("#fProduto").value.trim().toLowerCase(),fin=$("#fFin").value,fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
+  const fv=$("#fVendedor")?$("#fVendedor").value.trim().toLowerCase():"";
+  const fc=$("#fCanal")?$("#fCanal").value.trim().toLowerCase():"";
   const pminV=$("#fPesoMin")?parseFloat($("#fPesoMin").value):NaN, pmaxV=$("#fPesoMax")?parseFloat($("#fPesoMax").value):NaN;
   const pmin=isNaN(pminV)?null:pminV, pmax=isNaN(pmaxV)?null:pmaxV;
+  const inc=(v,q)=>String(v==null?"":v).toLowerCase().includes(q);
   return p=>{
-    if(ff&&p.filial!==ff)return false;
-    if(fr&&p.rota!==fr)return false;
-    if(fp&&p.produtos.indexOf(fp)===-1)return false;
-    if(fc&&p.canal!==fc)return false;
+    if(ff&&!inc(p.filial,ff))return false;
+    if(fr&&!inc(p.rota,fr))return false;
+    if(fp&&!p.produtos.some(x=>inc(x,fp)))return false;
+    if(fv&&!inc(p.vendedor,fv))return false;
+    if(fc&&!inc(p.canal,fc))return false;
     if(fin==="Apto"&&!p.apto)return false;
     if(fin==="Bloqueado"&&!p.bloqueado)return false;
     if(fin==="MC negativa"&&!(p.mcPct<0))return false;
@@ -6768,7 +6773,13 @@ function loadFreight(t){
 }
 
 function truckLoad(t){return state.pedidos.filter(p=>p.assignedTo===t.id).reduce((s,p)=>s+p.peso,0);}
-function assign(p,t){if(!inScope(p)){toast("Pedido fora do seu escopo de filial/estado.","err");return;}p.assignedTo=t.id;if(p.bloqueado)toast("Atencao: Pedido #"+p.pedido+" encontra-se Bloqueado. O faturamento dependera de liberacao financeira.","info");}
+function routeMismatch(t){if(!t||!t.rota||!t.rota.trim())return false;const tr=normRota(t.rota);return state.pedidos.some(p=>p.assignedTo===t.id&&p.rota&&normRota(p.rota)!==tr);}
+function assign(p,t){if(!inScope(p)){toast("Pedido fora do seu escopo de filial/estado.","err");return;}
+  if((!t.rota||!t.rota.trim())&&p.rota)t.rota=p.rota; // herda a rota do primeiro pedido da carga
+  const diff = t.rota&&p.rota&&normRota(p.rota)!==normRota(t.rota);
+  p.assignedTo=t.id;
+  if(diff)toast("Atencao: Pedido #"+p.pedido+" e da rota \""+p.rota+"\", diferente da rota da carga (\""+t.rota+"\"). Defina a rota da carga manualmente.","err",7000);
+  if(p.bloqueado)toast("Atencao: Pedido #"+p.pedido+" encontra-se Bloqueado. O faturamento dependera de liberacao financeira.","info");}
 function unassign(p){p.assignedTo=null;renderAll();}
 
 /* adicionar por toque (alternativa ao arrastar) */
@@ -6806,6 +6817,7 @@ function truckCard(t){
   card.innerHTML=
     '<div class="truck-head"><div class="th-top"><div><div class="th-rota">'+(t.rota||"Rota nao informada")+'</div><div class="th-tipo">'+VEHICLES[String(cap)]+' &middot; '+fmtKg(cap)+'</div></div><div class="th-actions"><button class="icobtn mapb" title="Mapa dos destinos">&#128506;</button><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div>'+
     '<div class="th-info"><span>Transp: <b>'+(t.transp||"Nao informado")+'</b></span><span>Placa: <b>'+(t.placa||"Nao informado")+'</b></span><span>Motorista: <b>'+(t.mot||"Nao informado")+'</b></span></div></div>'+
+    (routeMismatch(t)?'<div class="route-warn" style="background:#FFF3CD;color:#8a6d3b;border:1px solid #FFE08A;border-radius:8px;padding:7px 10px;margin:8px 0 0;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px"><span>&#9888; Pedidos de rotas diferentes nesta carga. Defina a rota manualmente.</span><button class="rw-edit btn ghost" style="padding:3px 9px;font-size:11px;white-space:nowrap">Definir rota</button></div>':'')+
     '<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+fillCls+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+bateCls+'">'+bate+'</div></div>'+
     '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button><button class="btn-parcial" '+(assigned.length?'':'disabled')+' title="Fechar parcial: aguarda mais pedidos da regiao ate atingir 90%">&#9201; Fechar Parcial</button><button class="btn-close" '+(assigned.length?'':'disabled')+' title="Fechar carga (minimo 90% da capacidade)">&#9989; Fechar Carga</button></div>'+
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="body-'+t.id+'">'+(assigned.length?'':'Arraste pedidos aqui ou use o Auto-Preencher')+'</div>'+
@@ -6813,6 +6825,7 @@ function truckCard(t){
   const body=card.querySelector("#body-"+t.id);
   if(assigned.length){assigned.sort(cmpPedidos);assigned.forEach(p=>{const tc=pedidoCard(p,true);tc.querySelector("[data-frete]").textContent="Frete rateado: "+fmtMoney(fr.alloc[p.id]||0);body.appendChild(tc);});}
   card.querySelector(".edit").addEventListener("click",()=>openModal(t));
+  const rw=card.querySelector(".rw-edit");if(rw)rw.addEventListener("click",()=>openModal(t));
   card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
   card.querySelector(".del").addEventListener("click",()=>{if(confirm("Excluir esta carga? Os pedidos voltam para o banco.")){state.pedidos.forEach(p=>{if(p.assignedTo===t.id)p.assignedTo=null;});state.trucks=state.trucks.filter(x=>x.id!==t.id);renderAll();}});
   card.querySelector(".btn-auto").addEventListener("click",()=>autoFill(t));
@@ -6945,10 +6958,11 @@ function renderFob(){
   fobs.forEach(p=>{const semd=!p.etaFob;
     html+='<tr'+(semd?' style="background:#fff7f7"':'')+'><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td>'+(p.cidade||"-")+(p.uf?"/"+p.uf:"")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num" style="color:'+(p.mcPct<0?"var(--risco)":"var(--ok)")+'">'+p.mcPct.toFixed(1)+'%</td><td>'+(p.bloqueado?"Bloqueado":"Liberado")+'</td>'+
       '<td><input type="date" class="fobeta" data-pid="'+p.id+'" value="'+(p.etaFob||"")+'" style="font-size:11px;padding:3px 6px;border:1px solid '+(semd?"#e0a0a0":"var(--grade)")+';border-radius:6px">'+(semd?' <span title="Sem previsao" style="color:var(--risco);font-weight:700">&#9888;</span>':'')+'</td>'+
-      '<td class="num"><button class="btn primary fobemb" data-pid="'+p.id+'" style="padding:3px 10px;font-size:11px">&#128666; Embarcado</button></td></tr>';});
+      '<td class="num" style="white-space:nowrap"><button class="btn ghost fobinfo" data-pid="'+p.id+'" style="padding:3px 10px;font-size:11px;margin-right:5px">&#8505; Info</button><button class="btn primary fobemb" data-pid="'+p.id+'" style="padding:3px 10px;font-size:11px">&#128666; Embarcado</button></td></tr>';});
   html+='</tbody><tfoot><tr><td colspan="3">TOTAL FOB pendente ('+tot.qtd+')</td><td class="num">'+fmtT(tot.peso)+'</td><td class="num">'+fmtMoney0(tot.valor)+'</td><td colspan="4"></td></tr></tfoot></table>';
   body.innerHTML=html;labelTables();
   body.querySelectorAll(".fobeta").forEach(inp=>inp.addEventListener("change",()=>{const p=state.pedidos.find(x=>x.id===inp.dataset.pid);if(p){p.etaFob=inp.value||"";saveState();renderFob();}}));
+  body.querySelectorAll(".fobinfo").forEach(b=>b.addEventListener("click",()=>{const p=state.pedidos.find(x=>x.id===b.dataset.pid);if(p)openPedDetail(p);}));
   body.querySelectorAll(".fobemb").forEach(b=>b.addEventListener("click",()=>{if(!requirePerm("embarcar"))return;const p=state.pedidos.find(x=>x.id===b.dataset.pid);if(!p)return;p.embarcado=true;p.embarcadoAt=Date.now();renderAll();setTab("embarcadas");toast("Pedido FOB #"+p.pedido+" marcado como embarcado/retirado.","ok");logAction("embarcar_fob","#"+p.pedido);}));
 }
 
@@ -7732,11 +7746,11 @@ $("#btnImportFrete").addEventListener("click",()=>$("#freteFileInput").click());
 $("#freteFileInput").addEventListener("change",e=>{if(e.target.files[0])importFreightTable(e.target.files[0]);e.target.value="";});
 $("#ffFilial").addEventListener("change",renderFreteTab);
 $("#ffBusca").addEventListener("input",renderFreteTab);
-["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).addEventListener("change",()=>{renderPedidos();renderKpis();}));
-const _fc=$("#fCanal");if(_fc)_fc.addEventListener("change",()=>{renderPedidos();renderKpis();});
+["#fFilial","#fRota","#fProduto","#fVendedor","#fCanal"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
+$("#fFin").addEventListener("change",()=>{renderPedidos();renderKpis();});
 $("#fBusca").addEventListener("input",()=>{renderPedidos();renderKpis();});
 ["#fPesoMin","#fPesoMax"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
-$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fFin"].forEach(s=>$(s).value="");$("#fBusca").value="";if($("#fCanal"))$("#fCanal").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
+$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fVendedor","#fFin"].forEach(s=>{if($(s))$(s).value="";});$("#fBusca").value="";if($("#fCanal"))$("#fCanal").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
 document.querySelectorAll(".navbtn,.botnav button,#legHelp").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("#pickClose").addEventListener("click",()=>$("#pickOverlay").classList.remove("open"));
 $("#pickOverlay").addEventListener("click",e=>{if(e.target.id==="pickOverlay")$("#pickOverlay").classList.remove("open");});
