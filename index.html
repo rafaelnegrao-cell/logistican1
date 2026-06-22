@@ -5685,11 +5685,14 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .col-head .ch-title{display:flex;align-items:center;justify-content:space-between}
   .col-head h3{font-size:13.5px;font-weight:700}
   .col-head .count{background:var(--verde);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
-  .filters{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}
-  .filters select{width:100%;padding:7px 9px;border:1px solid var(--grade);border-radius:7px;font-size:11.5px;background:#fff;color:var(--texto);font-family:var(--font)}
-  .filters select:focus{outline:none;border-color:var(--verde-2)}
-  .filters input[type=search]{grid-column:1/-1;width:100%;padding:7px 9px;border:1px solid var(--grade);border-radius:7px;font-size:11.5px;background:#fff;color:var(--texto);font-family:var(--font)}
-  .filters input[type=search]:focus{outline:none;border-color:var(--verde-2)}
+  .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+  .filters input,.filters select{width:100%;padding:9px 11px;border:1px solid var(--grade);border-radius:9px;font-size:12px;background:#fff;color:var(--texto);font-family:var(--font);box-sizing:border-box;height:37px;transition:border-color .15s,box-shadow .15s}
+  .filters input::placeholder{color:#9aa4ad}
+  .filters input:hover,.filters select:hover{border-color:#cdd5db}
+  .filters input:focus,.filters select:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0 3px rgba(0,141,103,.12)}
+  .filters select,.filters input[list]{appearance:none;-webkit-appearance:none;padding-right:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='none' stroke='%236C757D' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center}
+  .filters input[list]::-webkit-calendar-picker-indicator{opacity:0;width:0}
+  .filters input[type=search]{grid-column:1/-1}
   .clear-f{grid-column:1/-1;font-size:11px;color:var(--cinza);background:none;border:none;cursor:pointer;text-align:left;padding:2px;text-decoration:underline}
   .pedidos-list{flex:1;overflow-y:auto;padding:11px 13px;display:flex;flex-direction:column;gap:9px}
 
@@ -5850,16 +5853,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .toast .tic{font-size:18px}
   @keyframes slidein{from{transform:translateY(-16px);opacity:0}to{transform:translateY(0);opacity:1}}
   .ftools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-  .ftools{gap:9px 10px}
-  .ftools select,.ftools input{padding:9px 12px;border:1px solid var(--grade);border-radius:9px;font-size:12.5px;font-family:var(--font);color:var(--texto);background:var(--card);box-sizing:border-box;height:38px;transition:border-color .15s,box-shadow .15s}
-  .ftools select::placeholder,.ftools input::placeholder{color:#9aa4ad}
-  .ftools select:hover,.ftools input:hover{border-color:#cdd5db}
-  .ftools select:focus,.ftools input:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0 3px rgba(0,141,103,.12)}
-  .ftools select,#fFilial,#fRota,#fProduto,#fVendedor,#fCanal{appearance:none;-webkit-appearance:none;padding-right:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='none' stroke='%236C757D' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center}
-  #fFilial,#fRota,#fProduto,#fVendedor,#fCanal,#fFin{flex:1 1 150px;min-width:140px}
-  #fPesoMin,#fPesoMax{flex:1 1 110px;min-width:90px;width:auto}
-  #fBusca{flex:1 1 100%}
-  .ftools input::-webkit-calendar-picker-indicator{opacity:0;width:0}
+  .ftools select,.ftools input{padding:8px 10px;border:1px solid var(--grade);border-radius:8px;font-size:12px;font-family:var(--font);color:var(--texto)}
   .ftier{font-variant-numeric:tabular-nums}
   .saldo-pos{color:var(--ok)} .saldo-neg{color:var(--risco)}
   .ro-fld{background:#f1f3f5;color:var(--cinza);cursor:not-allowed}
