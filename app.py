@@ -121,12 +121,18 @@ def migrate_from_volume():
             print("[migracao] falha em '%s': %s" % (name, e))
 
 
-# Inicializacao no carregamento do modulo (idempotente).
-try:
+_INIT_DONE = False
+
+
+def ensure_init():
+    """Garante a tabela criada e a migracao feita. Roda uma unica vez (ou tenta de novo
+    se o banco ainda nao estava pronto). NAO roda no import, para nunca derrubar o worker."""
+    global _INIT_DONE
+    if _INIT_DONE:
+        return
     init_db()
     migrate_from_volume()
-except Exception as e:  # noqa
-    print("[init] aviso: %s (verifique DATABASE_URL)" % e)
+    _INIT_DONE = True
 
 
 # ---------------------------- API ----------------------------
@@ -137,11 +143,13 @@ def api_ping():
 
 @app.route("/api/all")
 def api_all():
+    ensure_init()
     return jsonify({"auth": read_store("auth"), "app": read_store("app"), "audit": read_store("audit")})
 
 
 @app.route("/api/rev")
 def api_rev():
+    ensure_init()
     return jsonify({
         "auth": read_store("auth")["rev"],
         "app": read_store("app")["rev"],
@@ -153,6 +161,7 @@ def api_rev():
 def api_store(name):
     if name not in STORES:
         abort(404)
+    ensure_init()
     if request.method == "GET":
         return jsonify(read_store(name))
     parsed = request.get_json(force=True, silent=True)
