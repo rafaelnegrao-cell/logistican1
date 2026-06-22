@@ -5850,9 +5850,12 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .toast .tic{font-size:18px}
   @keyframes slidein{from{transform:translateY(-16px);opacity:0}to{transform:translateY(0);opacity:1}}
   .ftools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-  .ftools select,.ftools input{padding:8px 10px;border:1px solid var(--grade);border-radius:8px;font-size:12px;font-family:var(--font);color:var(--texto);box-sizing:border-box;height:36px}
-  .ftools select{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='none' stroke='%237a8a99' stroke-width='1.6' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
-  #fFilial,#fRota,#fProduto,#fVendedor,#fCanal{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='none' stroke='%237a8a99' stroke-width='1.6' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+  .ftools{gap:9px 10px}
+  .ftools select,.ftools input{padding:9px 12px;border:1px solid var(--grade);border-radius:9px;font-size:12.5px;font-family:var(--font);color:var(--texto);background:var(--card);box-sizing:border-box;height:38px;transition:border-color .15s,box-shadow .15s}
+  .ftools select::placeholder,.ftools input::placeholder{color:#9aa4ad}
+  .ftools select:hover,.ftools input:hover{border-color:#cdd5db}
+  .ftools select:focus,.ftools input:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0 3px rgba(0,141,103,.12)}
+  .ftools select,#fFilial,#fRota,#fProduto,#fVendedor,#fCanal{appearance:none;-webkit-appearance:none;padding-right:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='none' stroke='%236C757D' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center}
   #fFilial,#fRota,#fProduto,#fVendedor,#fCanal,#fFin{flex:1 1 150px;min-width:140px}
   #fPesoMin,#fPesoMax{flex:1 1 110px;min-width:90px;width:auto}
   #fBusca{flex:1 1 100%}
