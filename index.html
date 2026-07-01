@@ -5829,6 +5829,42 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .clh .clinfo b{color:#fff}
   .clh .clactions{display:flex;gap:6px}
   body.norevert .clbtn.reab{display:none !important}
+  .nbadge:empty{display:none}
+  .comm-new{background:var(--card);border:1px solid var(--grade);border-radius:12px;padding:14px 16px;margin-bottom:16px;box-shadow:var(--sombra)}
+  .comm-new h3{font-size:14px;color:var(--verde);margin:0 0 10px}
+  .comm-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .comm-grid .full{grid-column:1/-1}
+  .comm-grid input,.comm-grid select,.comm-grid textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--grade);border-radius:9px;font-size:12.5px;font-family:var(--font);color:var(--texto);background:#fff}
+  .comm-grid textarea{min-height:64px;resize:vertical}
+  .comm-actions{margin-top:10px;display:flex;justify-content:flex-end}
+  .comm-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .comm-filters select,.comm-filters input{padding:8px 10px;border:1px solid var(--grade);border-radius:9px;font-size:12px;font-family:var(--font);background:#fff;color:var(--texto);height:36px;box-sizing:border-box}
+  .comm-filters .search{flex:1;min-width:160px}
+  .comm-mine{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--cinza)}
+  .comm-list{display:flex;flex-direction:column;gap:12px}
+  .comm-empty{color:var(--cinza);font-size:13px;padding:24px;text-align:center;border:1px dashed var(--grade);border-radius:12px}
+  .comm-card{border:1px solid var(--grade);border-radius:12px;background:var(--card);box-shadow:var(--sombra);overflow:hidden}
+  .comm-card.res{opacity:.72}
+  .comm-card-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px 14px;background:var(--cinza-bg);border-bottom:1px solid var(--grade)}
+  .comm-ped{font-weight:700;color:var(--verde)}
+  .comm-cli{color:var(--texto);font-size:12.5px}
+  .comm-pill{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px}
+  .comm-pill.ab{background:#FFF3CD;color:#8a6d3b}
+  .comm-pill.res{background:var(--verde-bg);color:var(--verde)}
+  .comm-urg{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px;color:#fff}
+  .comm-meta{margin-left:auto;font-size:11px;color:var(--cinza)}
+  .comm-ass{padding:10px 14px 2px;font-weight:600;color:var(--texto);font-size:13px}
+  .comm-msgs{padding:6px 14px 12px;display:flex;flex-direction:column;gap:8px}
+  .comm-msg{background:#F7FAF9;border:1px solid var(--grade);border-radius:9px;padding:8px 11px}
+  .comm-msg-h{display:flex;gap:8px;align-items:baseline;margin-bottom:2px}
+  .comm-role{font-weight:700;color:var(--verde);font-size:12px}
+  .comm-ts{font-size:10.5px;color:var(--cinza);margin-left:auto}
+  .comm-msg-b{font-size:12.5px;color:var(--texto);white-space:pre-wrap}
+  .comm-sys{align-self:center;font-size:11px;color:var(--cinza);font-style:italic;padding:2px}
+  .comm-reply{padding:10px 14px 14px;border-top:1px dashed var(--grade);display:flex;flex-direction:column;gap:8px}
+  .comm-reply textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid var(--grade);border-radius:9px;font-size:12.5px;font-family:var(--font);min-height:48px;resize:vertical}
+  .comm-reply-act{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  @media(max-width:640px){.comm-grid{grid-template-columns:1fr}}
   .clbtn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 11px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600}
   .clbtn:hover{background:rgba(255,255,255,.28)}
   .clbody{padding:6px 14px 12px}
@@ -5972,7 +6008,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     <button class="navbtn" data-tab="frete">&#128202; Tabela de Frete</button>
     <button class="navbtn" data-tab="cadastros">&#128221; Cadastros</button>
     <button class="navbtn" data-tab="legenda">&#128214; Legenda &amp; Criterios</button>
-    <button class="navbtn" data-tab="monitoria">&#128202; Monitoria</button>
+    <button class="navbtn" data-tab="monitoria">&#128202; Monitoria</button><button class="navbtn" data-tab="comunicacao">&#128172; Comunicacao <span class="nbadge" data-badge="comm"></span></button>
     <button class="navbtn" data-tab="config">&#9881; Configuracoes</button>
   </div>
   <div class="userbar"><span>&#128100;</span><span id="curUser"></span><button class="logoutb" id="btnLogout">Sair</button></div>
@@ -6242,6 +6278,10 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     </section>
 
     <!-- PANEL CONFIG -->
+    <section class="panel" data-panel="comunicacao">
+      <div class="panel-head"><h2>Comunicacao &mdash; Central de Solicitacoes</h2><span class="meta">Solicitacoes formais entre setores, vinculadas ao pedido</span></div>
+      <div class="panel-body"><div id="commBody"></div></div>
+    </section>
     <section class="panel" data-panel="config">
       <div class="panel-head"><h2>Configuracoes</h2><span class="meta">Perfis de acesso e usuarios (somente master)</span></div>
       <div class="panel-body" id="cfgBody"><div class="empty">Acesso restrito.</div></div>
@@ -6323,7 +6363,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   <button data-tab="frete"><span class="bi">&#128202;</span>Frete</button>
   <button data-tab="cadastros"><span class="bi">&#128221;</span>Cadastros</button>
   <button data-tab="legenda"><span class="bi">&#128214;</span>Legenda</button>
-  <button data-tab="monitoria"><span class="bi">&#128202;</span>Monitoria</button>
+  <button data-tab="monitoria"><span class="bi">&#128202;</span>Monitoria</button><button data-tab="comunicacao"><span class="bi">&#128172;</span>Comunic.<span class="nbadge" data-badge="comm"></span></button>
   <button data-tab="config"><span class="bi">&#9881;</span>Config</button>
 </nav>
 
@@ -6351,6 +6391,7 @@ const state={pedidos:[],trucks:[],carriers:[],nextTruck:1,editingTruck:null,file
 const NET={on:false,appRev:0,authRev:0,audRev:0,appData:null};
 let AUD={sessions:[],logs:[]};
 async function apiGet(p){const r=await fetch("/api"+p,{cache:"no-store"});if(!r.ok)throw new Error("http "+r.status);return r.json();}
+async function apiPost(p,body){const r=await fetch("/api"+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});if(!r.ok)throw new Error("http "+r.status);return r.json();}
 async function apiPut(p,data){const r=await fetch("/api"+p,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({data})});if(!r.ok)throw new Error("http "+r.status);return r.json();}
 let _appT=null,_appPend=null,_authT=null,_audT=null;
 function pushApp(data){if(!NET.on)return;_appPend=data;if(_appT)return;_appT=setTimeout(()=>{_appT=null;const d=_appPend;_appPend=null;apiPut("/app",d).then(r=>{NET.appRev=r.rev;}).catch(()=>{});},700);}
@@ -7209,7 +7250,7 @@ function readFile(file){state.fileName=file.name;$("#fileMeta").textContent=file
 function setupBankDrop(){const bank=$("#pedidosList");bank.addEventListener("dragover",e=>e.preventDefault());bank.addEventListener("drop",e=>{e.preventDefault();const id=e.dataTransfer.getData("text/plain");const p=state.pedidos.find(x=>x.id===id);if(p&&p.assignedTo!==null){p.assignedTo=null;renderAll();}});}
 
 /* tabs */
-function setTab(tab,force){if(!force&&typeof CUR!=="undefined"&&CUR.profile&&!canSee(tab))return;state.tab=tab;document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.panel===tab));if(tab==="config")renderConfig();if(tab==="monitoria"){refreshAudit().then(renderMonitoria);}labelTables();window.scrollTo(0,0);}
+function setTab(tab,force){if(!force&&typeof CUR!=="undefined"&&CUR.profile&&!canSee(tab))return;state.tab=tab;document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.panel===tab));if(tab==="config")renderConfig();if(tab==="monitoria"){refreshAudit().then(renderMonitoria);}if(tab==="comunicacao"&&window.renderComm){window.renderComm();}labelTables();window.scrollTo(0,0);}
 
 /* ================= MAPA DOS DESTINOS (offline) ================= */
 let _muniMap=null;
@@ -7455,7 +7496,7 @@ const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
 const INACT_MS=24*60*60*1000;
 let _lastActTs=0;
 const TABS_DEF=[["formador","Formador de Cargas"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["frete","Tabela de Frete"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
-const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["gerenciar","Gerenciar usuarios e perfis"]];
+const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["comResolver","Responder / resolver solicitacoes"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
 let session=null;
 const CUR={user:null,nome:"",profile:null};
@@ -7470,7 +7511,7 @@ function genSalt(){return Math.random().toString(36).slice(2,10)+Date.now().toSt
 function profileById(id){return auth.profiles.find(p=>p.id===id)||null;}
 function isMaster(){return !!(CUR.profile&&CUR.profile.master);}
 function can(a){if(!CUR.profile)return false;if(CUR.profile.master)return true;return (CUR.profile.actions||[]).indexOf(a)>-1;}
-function canSee(tab){if(!CUR.profile)return false;if(CUR.profile.master)return true;if(tab==="config")return can("gerenciar");if(tab==="monitoria")return (CUR.profile.tabs||[]).indexOf("monitoria")>-1;return (CUR.profile.tabs||[]).indexOf(tab)>-1;}
+function canSee(tab){if(!CUR.profile)return false;if(CUR.profile.master)return true;if(tab==="comunicacao")return true;if(tab==="config")return can("gerenciar");if(tab==="monitoria")return (CUR.profile.tabs||[]).indexOf("monitoria")>-1;return (CUR.profile.tabs||[]).indexOf(tab)>-1;}
 function requirePerm(a){if(can(a))return true;toast("Voce nao tem permissao para esta acao.","err");return false;}
 function inScope(p){if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];const okF=!fl.length||fl.indexOf(p.filial)>-1;const okU=!uf.length||uf.indexOf(String(p.uf||"").toUpperCase())>-1;return okF&&okU;}
 function truckInScope(t){if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];if(!fl.length&&!uf.length)return true;const ps=state.pedidos.filter(p=>p.assignedTo===t.id);if(!ps.length)return true;return ps.some(inScope);}
@@ -7790,5 +7831,121 @@ window.addEventListener("beforeunload",touchSession);
 setupBankDrop();
 netBoot();
 </script>
+<script>
+(function(){
+  "use strict";
+  var SETORES=["Comercial","Logistica","PCP","Producao","Financeiro","Qualidade","Outro"];
+  var TIPOS=["Prioridade","Urgencia","Prazo","Duvida","Correcao","Outro"];
+  var URGS=["Baixa","Media","Alta"];
+  var URGCOR={Baixa:"#28A745",Media:"#FFC107",Alta:"#DC3545"};
+  var cache={threads:[]};
+  function g(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+  function author(){return {user:CUR.user,nome:CUR.nome||CUR.user,role:(CUR.profile&&CUR.profile.nome)||""};}
+  function fmtDT(ts){try{var d=new Date(ts);return d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});}catch(e){return "";}}
+  function pedOpts(){var seen={},out=[];(state.pedidos||[]).forEach(function(p){var n=String(p.pedido||"").trim();if(n&&!seen[n]){seen[n]=1;out.push(n);}});return out;}
+  function cliDoPed(n){var f=(state.pedidos||[]).filter(function(p){return String(p.pedido)===String(n);})[0];return f?(f.cliente||""):"";}
+  function opts(arr,sel){return arr.map(function(v){return '<option'+(v===sel?' selected':'')+'>'+esc(v)+'</option>';}).join("");}
+
+  window.renderComm=function(){
+    var host=g("commBody"); if(!host) return;
+    if(!CUR.user){host.innerHTML='<div class="comm-empty">Faca login para ver e abrir solicitacoes.</div>';return;}
+    var peds=pedOpts();
+    host.innerHTML=
+      '<div class="comm-new"><h3>&#10133; Nova solicitacao</h3>'+
+      '<div class="comm-grid">'+
+        '<input id="cNPed" list="cNPedList" placeholder="Pedido (opcional)" autocomplete="off"><datalist id="cNPedList">'+peds.map(function(n){return '<option value="'+esc(n)+'">';}).join("")+'</datalist>'+
+        '<input id="cNCli" placeholder="Cliente" autocomplete="off">'+
+        '<select id="cNSetor">'+opts(SETORES,"Logistica")+'</select>'+
+        '<select id="cNTipo">'+opts(TIPOS,"Prazo")+'</select>'+
+        '<select id="cNUrg">'+opts(URGS,"Media")+'</select>'+
+        '<span></span>'+
+        '<input id="cNAss" class="full" placeholder="Assunto" autocomplete="off">'+
+        '<textarea id="cNMsg" class="full" placeholder="Descreva a solicitacao..."></textarea>'+
+      '</div>'+
+      '<div class="comm-actions"><button class="btn primary" id="cNBtn">Abrir solicitacao</button></div></div>'+
+      '<div class="comm-filters">'+
+        '<select id="cFStatus"><option value="aberto">Abertas</option><option value="resolvido">Resolvidas</option><option value="">Todas</option></select>'+
+        '<select id="cFUrg"><option value="">Toda urgencia</option>'+opts(URGS)+'</select>'+
+        '<label class="comm-mine"><input type="checkbox" id="cFMine"> Somente minhas</label>'+
+        '<input id="cFBusca" class="search" type="search" placeholder="Buscar pedido, cliente, assunto...">'+
+      '</div>'+
+      '<div class="comm-list" id="commList"></div>';
+    var pedInp=g("cNPed"); if(pedInp) pedInp.addEventListener("input",function(){var c=cliDoPed(this.value);if(c)g("cNCli").value=c;});
+    g("cNBtn").addEventListener("click",abrir);
+    ["cFStatus","cFUrg","cFMine","cFBusca"].forEach(function(id){var e=g(id);if(e)e.addEventListener(id==="cFBusca"?"input":"change",renderList);});
+    load();
+  };
+
+  function abrir(){
+    var ped=g("cNPed").value.trim(), cli=g("cNCli").value.trim(), ass=g("cNAss").value.trim(), msg=g("cNMsg").value.trim();
+    if(!ass){toast("Informe o assunto.","err");return;}
+    if(!msg){toast("Descreva a solicitacao.","err");return;}
+    apiPost("/comms",{action:"open",pedido:ped,cliente:cli,setor:g("cNSetor").value,tipo:g("cNTipo").value,urgencia:g("cNUrg").value,assunto:ass,mensagem:msg,by:author()})
+      .then(function(){toast("Solicitacao aberta.","ok");g("cNPed").value="";g("cNCli").value="";g("cNAss").value="";g("cNMsg").value="";load();})
+      .catch(function(){toast("Nao foi possivel abrir (verifique a conexao).","err");});
+  }
+  function load(){
+    apiGet("/comms").then(function(d){cache=(d&&d.threads)?d:{threads:[]};renderList();updateBadge();})
+      .catch(function(){var l=g("commList");if(l)l.innerHTML='<div class="comm-empty">Nao foi possivel carregar as solicitacoes.</div>';});
+  }
+  function passa(t){
+    var st=g("cFStatus")?g("cFStatus").value:"", ur=g("cFUrg")?g("cFUrg").value:"", mine=g("cFMine")&&g("cFMine").checked, q=(g("cFBusca")?g("cFBusca").value:"").trim().toLowerCase();
+    if(st&&t.status!==st)return false;
+    if(ur&&t.urgencia!==ur)return false;
+    if(mine&&!(t.by&&t.by.user===CUR.user))return false;
+    if(q){var hay=((t.pedido||"")+" "+(t.cliente||"")+" "+(t.assunto||"")+" "+(t.setor||"")).toLowerCase();if(hay.indexOf(q)===-1)return false;}
+    return true;
+  }
+  function renderList(){
+    var host=g("commList"); if(!host) return;
+    var arr=(cache.threads||[]).filter(passa);
+    if(!arr.length){host.innerHTML='<div class="comm-empty">Nenhuma solicitacao encontrada com esses filtros.</div>';return;}
+    var podeResolver=(typeof can==="function"&&can("comResolver"));
+    host.innerHTML=arr.map(function(t){
+      var msgs=(t.msgs||[]).map(function(m){
+        if(m.sys)return '<div class="comm-sys">'+esc(m.text)+' &middot; '+fmtDT(m.ts)+'</div>';
+        return '<div class="comm-msg"><div class="comm-msg-h"><span class="comm-role">'+esc(m.nome||m.user)+'</span>'+(m.role?'<span style="font-size:11px;color:var(--cinza)"> &middot; '+esc(m.role)+'</span>':'')+'<span class="comm-ts">'+fmtDT(m.ts)+'</span></div><div class="comm-msg-b">'+esc(m.text)+'</div></div>';
+      }).join("");
+      var resolved=t.status==="resolvido";
+      var acts='<button class="btn ghost cReply" data-id="'+esc(t.id)+'">Responder</button>';
+      if(podeResolver){acts+= resolved
+        ? '<button class="btn ghost cReopen" data-id="'+esc(t.id)+'">Reabrir</button>'
+        : '<button class="btn primary cResolve" data-id="'+esc(t.id)+'">Marcar resolvida</button>';}
+      return '<div class="comm-card'+(resolved?' res':'')+'">'+
+        '<div class="comm-card-h">'+
+          (t.pedido?'<span class="comm-ped">#'+esc(t.pedido)+'</span>':'')+
+          (t.cliente?'<span class="comm-cli">'+esc(t.cliente)+'</span>':'')+
+          '<span class="comm-pill '+(resolved?'res':'ab')+'">'+(resolved?'Resolvida':'Aberta')+'</span>'+
+          '<span class="comm-urg" style="background:'+(URGCOR[t.urgencia]||"#6C757D")+'">'+esc(t.urgencia||"")+'</span>'+
+          '<span class="comm-meta">'+esc(t.setor||"")+(t.tipo?' &middot; '+esc(t.tipo):'')+' &middot; '+fmtDT(t.ts)+'</span>'+
+        '</div>'+
+        '<div class="comm-ass">'+esc(t.assunto||"")+'</div>'+
+        '<div class="comm-msgs">'+msgs+'</div>'+
+        '<div class="comm-reply"><textarea id="cRT-'+esc(t.id)+'" placeholder="Escreva uma resposta..."></textarea><div class="comm-reply-act">'+acts+'</div></div>'+
+      '</div>';
+    }).join("");
+    host.querySelectorAll(".cReply").forEach(function(bt){bt.addEventListener("click",function(){doReply(bt.getAttribute("data-id"),false);});});
+    host.querySelectorAll(".cReopen").forEach(function(bt){bt.addEventListener("click",function(){doReply(bt.getAttribute("data-id"),true);});});
+    host.querySelectorAll(".cResolve").forEach(function(bt){bt.addEventListener("click",function(){doStatus(bt.getAttribute("data-id"),"resolvido");});});
+  }
+  function doReply(id,reopen){
+    var ta=g("cRT-"+id), msg=ta?ta.value.trim():"";
+    if(!msg){toast(reopen?"Escreva o motivo da reabertura.":"Escreva uma resposta.","err");return;}
+    apiPost("/comms",{action:"reply",id:id,mensagem:msg,reopen:!!reopen,by:author()})
+      .then(function(){toast(reopen?"Solicitacao reaberta.":"Resposta enviada.","ok");load();})
+      .catch(function(){toast("Nao foi possivel enviar.","err");});
+  }
+  function doStatus(id,status){
+    apiPost("/comms",{action:"status",id:id,status:status,by:author()})
+      .then(function(){toast(status==="resolvido"?"Solicitacao resolvida.":"Solicitacao reaberta.","ok");load();})
+      .catch(function(){toast("Nao foi possivel atualizar.","err");});
+  }
+  function updateBadge(){var n=(cache.threads||[]).filter(function(t){return t.status==="aberto";}).length;if(typeof setBadge==="function")setBadge("comm",n||"");}
+  function pollComm(){if(typeof CUR==="undefined"||!CUR.user)return;apiGet("/comms/count").then(function(c){if(typeof setBadge==="function")setBadge("comm",(c&&c.open)?c.open:"");}).catch(function(){});}
+  setInterval(pollComm,20000); setTimeout(pollComm,3000);
+})();
+</script>
+
 </body>
 </html>

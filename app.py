@@ -132,7 +132,53 @@ def ensure_init():
         return
     init_db()
     migrate_from_volume()
+    seed_store_if_absent("comms", {"threads": []})
     _INIT_DONE = True
+
+
+# ---------- Comunicacao (Central de Solicitacoes) ----------
+def comms_read():
+    r = read_store("comms")
+    d = r.get("data") or {"threads": []}
+    if not isinstance(d, dict) or "threads" not in d:
+        d = {"threads": []}
+    return d
+
+
+def comms_mutate(fn):
+    """Le-modifica-grava a store 'comms' de forma atomica (SELECT ... FOR UPDATE),
+    para nao perder mensagens quando dois usuarios escrevem ao mesmo tempo."""
+    now = int(time.time() * 1000)
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT data FROM kv_store WHERE name='comms' FOR UPDATE")
+            row = cur.fetchone()
+            data = (row[0] if row and row[0] else None) or {"threads": []}
+            if "threads" not in data:
+                data["threads"] = []
+            result = fn(data)
+            cur.execute(
+                "INSERT INTO kv_store (name, rev, updated_at, data) VALUES ('comms', 1, %s, %s) "
+                "ON CONFLICT (name) DO UPDATE SET rev = kv_store.rev + 1, "
+                "updated_at = EXCLUDED.updated_at, data = EXCLUDED.data",
+                (now, Json(data)),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    return result
+
+
+def _author(body):
+    by = body.get("by") or {}
+    user = by.get("user") or "?"
+    return {"user": user, "nome": by.get("nome") or user, "role": by.get("role") or ""}
+
+
+def _msg(author, text, sys=False):
+    return {"ts": int(time.time() * 1000), "sys": bool(sys),
+            "user": author["user"], "nome": author["nome"], "role": author["role"], "text": text}
 
 
 # ---------------------------- API ----------------------------
@@ -171,6 +217,79 @@ def api_store(name):
 
 
 # ------------------------ arquivos estaticos ------------------------
+@app.route("/api/comms", methods=["GET", "POST"])
+def api_comms():
+    ensure_init()
+    if request.method == "GET":
+        return jsonify(comms_read())
+    body = request.get_json(force=True, silent=True) or {}
+    action = body.get("action")
+    author = _author(body)
+
+    if action == "open":
+        assunto = (body.get("assunto") or "").strip()
+        mensagem = (body.get("mensagem") or "").strip()
+        if not assunto or not mensagem:
+            return jsonify({"error": "assunto e mensagem sao obrigatorios"}), 400
+
+        def op(d):
+            th = {
+                "id": "C" + str(int(time.time() * 1000)) + "-" + str(len(d["threads"])),
+                "ts": int(time.time() * 1000), "status": "aberto",
+                "pedido": body.get("pedido", ""), "cliente": body.get("cliente", ""),
+                "setor": body.get("setor", ""), "tipo": body.get("tipo", ""),
+                "urgencia": body.get("urgencia", "") or "Media",
+                "assunto": assunto, "by": author,
+                "msgs": [_msg(author, mensagem)]
+            }
+            d["threads"].insert(0, th)
+            return th
+        return jsonify(comms_mutate(op))
+
+    if action == "reply":
+        tid = body.get("id")
+        mensagem = (body.get("mensagem") or "").strip()
+        if not mensagem:
+            return jsonify({"error": "mensagem vazia"}), 400
+
+        def op(d):
+            for th in d["threads"]:
+                if th["id"] == tid:
+                    th["msgs"].append(_msg(author, mensagem))
+                    if body.get("reopen") and th["status"] != "aberto":
+                        th["status"] = "aberto"
+                        th["msgs"].append(_msg(author, "Solicitacao reaberta.", sys=True))
+                    return th
+            return None
+        r = comms_mutate(op)
+        return (jsonify(r), 200) if r else (jsonify({"error": "nao encontrado"}), 404)
+
+    if action == "status":
+        tid = body.get("id")
+        novo = body.get("status")
+        if novo not in ("aberto", "resolvido"):
+            return jsonify({"error": "status invalido"}), 400
+
+        def op(d):
+            for th in d["threads"]:
+                if th["id"] == tid:
+                    th["status"] = novo
+                    th["msgs"].append(_msg(author, "Marcada como resolvida." if novo == "resolvido" else "Solicitacao reaberta.", sys=True))
+                    return th
+            return None
+        r = comms_mutate(op)
+        return (jsonify(r), 200) if r else (jsonify({"error": "nao encontrado"}), 404)
+
+    return jsonify({"error": "acao invalida"}), 400
+
+
+@app.route("/api/comms/count")
+def api_comms_count():
+    ensure_init()
+    ths = comms_read().get("threads", [])
+    return jsonify({"open": sum(1 for t in ths if t.get("status") == "aberto"), "total": len(ths)})
+
+
 @app.route("/")
 def index():
     return send_from_directory(ROOT, "index.html")
