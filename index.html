@@ -6018,6 +6018,11 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .nov-tag{flex:none;font-size:9.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:10px;margin-top:1px}
   .tag-add{background:var(--verde-bg);color:var(--verde)} .tag-imp{background:#FFF3CD;color:#8a6d00} .tag-fix{background:#E7F0FF;color:#1F6FEB}
   .nov-s{font-size:13px;color:var(--texto);line-height:1.45}
+  .rgrp-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .rgrp-act{display:flex;align-items:center;gap:6px}
+  .rgrp-veic{font-size:11px;padding:3px 6px;border:1px solid var(--verde-2);border-radius:6px;background:#fff;color:var(--texto)}
+  .rgrp-criar{font-size:11px;font-weight:700;padding:4px 11px;border:none;border-radius:6px;background:var(--verde);color:#fff;cursor:pointer;white-space:nowrap}
+  .rgrp-criar:hover{background:var(--verde-2)}
 </style>
 </head>
 <body>
@@ -7334,6 +7339,7 @@ function openPedDetail(p){
 }
 function closePedDetail(){$("#pedOverlay").classList.remove("open");}
 function saveTruck(){if(!requirePerm("criarCarga"))return;const transp=$("#mTransp").value.trim();if(transp&&!isRegisteredCarrier(transp)){toast("Transportadora nao cadastrada. Use '+ Cadastrar nova' ou escolha uma da lista.","err");return;}const d={cap:parseInt($("#mTipo").value,10),rota:$("#mRota").value.trim(),transp,placa:$("#mPlaca").value.trim(),mot:$("#mMot").value.trim(),fretePago:parseNum($("#mFretePago").value),eta:$("#mEta").value||""};if(state.editingTruck){Object.assign(state.editingTruck,d);}else{d.id="T"+(state.nextTruck++);d.status="montada";state.trucks.push(d);}closeModal();renderAll();logAction("criar_carga",(d.rota||"")+" "+VEHICLES[String(d.cap)]);}
+function criarCargaDaRota(rota,cap){if(!requirePerm("criarCarga"))return null;cap=parseInt(cap,10);if(!cap){toast("Selecione o tipo de veiculo.","err");return null;}var d={cap:cap,rota:(rota||"").trim(),transp:"",placa:"",mot:"",fretePago:0,eta:"",id:"T"+(state.nextTruck++),status:"montada"};state.trucks.push(d);logAction("criar_carga",(d.rota||"")+" "+VEHICLES[String(d.cap)]);autoFill(d);renderAll();setTab("formador",true);toast("Carga criada para \""+(d.rota||"")+"\" ("+VEHICLES[String(d.cap)]+"). Ajuste a sequencia como preferir.","ok");return d;}
 
 /* export */
 function exportRomaneio(filter){
@@ -8147,6 +8153,8 @@ netBoot();
   function dfmt(v){if(v==null||v==="")return "-";var t=(typeof v==="number")?v:(typeof parseDateBr==="function"?parseDateBr(v):null);if(t==null)return String(v);var d=new Date(t);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
   function finLabel(p){if(p.fob)return "FOB";if(p.bloqueado&&!(p.prio||p.override))return "BLOQUEADO";if(p.mcPct<0)return "MC NEG";return "LIBERADO";}
   function finCls(p){var l=finLabel(p);return l==="LIBERADO"?"lib":(l==="BLOQUEADO"?"blo":(l==="MC NEG"?"neg":"fob"));}
+  function attr(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;");}
+  function veicOpts(){return Object.keys(VEHICLES).sort(function(a,b){return (+b)-(+a);}).map(function(c){return '<option value="'+c+'"'+(c==="33000"?" selected":"")+'>'+VEHICLES[c]+' - '+fmtKg(+c)+'</option>';}).join("");}
   window.renderResumo=function(){
     var host=g("resumoBody"); if(!host) return;
     var arr=(typeof applyFilters==="function"&&typeof bancoPeds==="function")?applyFilters(bancoPeds()):[];
@@ -8159,13 +8167,14 @@ netBoot();
       var ps=groups[r].slice();
       ps.sort(function(a,b){if(sortOld){var ta=(typeof a.entrega==="number")?a.entrega:Infinity,tb=(typeof b.entrega==="number")?b.entrega:Infinity;return ta-tb;}return (typeof cmpPedidos==="function")?cmpPedidos(a,b):0;});
       var sub=ps.reduce(function(s,p){return s+(p.peso||0);},0);totPeso+=sub;totPed+=ps.length;
-      html+='<tr class="rgrp"><td colspan="10">'+esc(r)+' &middot; '+ps.length+' pedido(s) &middot; '+fmtKg(sub)+'</td></tr>';
+      html+='<tr class="rgrp"><td colspan="10"><div class="rgrp-row"><span class="rgrp-lbl">'+esc(r)+' &middot; '+ps.length+' pedido(s) &middot; '+fmtKg(sub)+'</span><span class="rgrp-act"><select class="rgrp-veic">'+veicOpts()+'</select><button class="rgrp-criar" data-rota="'+attr(r)+'">+ Criar carga</button></span></div></td></tr>';
       ps.forEach(function(p){
         html+='<tr><td>'+esc(r)+'</td><td>'+dfmt(p.emissao)+'</td><td class="b">#'+esc(p.pedido)+'</td><td>'+esc(p.contaFrete||(p.fob?"Destinatario":"Emitente"))+'</td><td>'+esc(p.cliente||"")+'</td><td>'+esc(p.cidade||"")+'</td><td>'+esc(p.uf||"")+'</td><td class="num">'+fmtKg(p.peso||0)+'</td><td>'+esc(p.vendedor||"")+'</td><td class="fin '+finCls(p)+'">'+finLabel(p)+'</td></tr>';
       });
     });
     if(!order.length)html='<tr><td colspan="10" style="text-align:center;color:var(--cinza);padding:20px">Nenhum pedido no banco com os filtros atuais.</td></tr>';
     host.innerHTML=html;
+    Array.prototype.forEach.call(host.querySelectorAll(".rgrp-criar"),function(btn){btn.addEventListener("click",function(){var rota=btn.getAttribute("data-rota");var sel=btn.parentNode.querySelector(".rgrp-veic");var cap=sel?sel.value:"33000";if(typeof criarCargaDaRota==="function"){var o=g("resumoOverlay");if(o)o.classList.remove("open");criarCargaDaRota(rota,cap);}});});
     if(g("resumoTot"))g("resumoTot").textContent=totPed+" pedido(s) \u00b7 "+fmtKg(totPeso);
   };
   function openR(){var o=g("resumoOverlay");if(o){o.classList.add("open");window.renderResumo&&window.renderResumo();}}
