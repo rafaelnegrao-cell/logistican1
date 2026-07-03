@@ -5982,6 +5982,42 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .pz-ped{font-weight:700;color:var(--texto)}
   .pz-sit{font-size:10.5px;color:var(--cinza)}
   .pz-empty{padding:16px;color:var(--cinza);font-size:12px;text-align:center}
+  .cargaseq{background:var(--verde);color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:12px;margin-right:5px;vertical-align:middle}
+  .clhist{margin:8px 16px 12px;padding:8px 12px;background:#f6f9ff;border:1px solid var(--grade);border-radius:8px}
+  .clhist-t{font-weight:700;font-size:11.5px;color:var(--verde);margin-bottom:4px}
+  .clhist-i{font-size:11.5px;color:var(--texto);padding:2px 0}
+  .fsort{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--cinza);white-space:nowrap}
+  .modal-x{background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--cinza)}
+  .resumo-tools{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .resumo-tot{font-size:12.5px;color:var(--cinza);font-weight:700}
+  .resumo-tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .resumo-tbl th{background:var(--verde);color:#fff;padding:7px 8px;text-align:left;font-weight:700;position:sticky;top:0;z-index:1}
+  .resumo-tbl th.num,.resumo-tbl td.num{text-align:right}
+  .resumo-tbl td{padding:6px 8px;border-bottom:1px solid var(--grade)}
+  .resumo-tbl td.b{font-weight:700}
+  .resumo-tbl tr.rgrp td{background:var(--verde-bg);font-weight:800;color:var(--verde);border-top:2px solid var(--verde-2)}
+  .resumo-tbl td.fin{font-weight:700;font-size:10.5px}
+  .resumo-tbl td.fin.lib{color:var(--ok)} .resumo-tbl td.fin.blo{color:var(--risco)} .resumo-tbl td.fin.neg{color:var(--risco)} .resumo-tbl td.fin.fob{color:#9a5b00}
+  .div-grid{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}
+  .div-form label{display:block;font-size:12px;font-weight:700;color:var(--cinza);margin:10px 0 4px}
+  .div-form input,.div-form textarea{width:100%;padding:9px 11px;border:1px solid var(--grade);border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box}
+  .div-info{margin:14px 0;padding:10px 12px;background:var(--verde-bg);border-radius:8px;font-size:12px;color:var(--texto);line-height:1.5}
+  .div-hint{font-size:11px;color:var(--cinza);margin-top:8px}
+  .div-preview canvas{width:100%;height:auto;border:1px solid var(--grade);border-radius:10px;box-shadow:var(--sombra)}
+  @media(max-width:760px){.div-grid{grid-template-columns:1fr}}
+  .brand{position:relative}
+  .novbell{position:absolute;right:0;top:2px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:4px 8px;font-size:15px;cursor:pointer;line-height:1}
+  .novbell:hover{background:rgba(255,255,255,.22)}
+  .novdot{position:absolute;top:-2px;right:-2px;width:11px;height:11px;background:var(--risco);border:2px solid var(--sidebar,#012E20);border-radius:50%;display:none}
+  .nov-rel{padding:12px 2px;border-bottom:1px solid var(--grade)}
+  .nov-rel:last-child{border-bottom:none}
+  .nov-rel-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .nov-v{background:var(--verde);color:#fff;font-weight:800;font-size:12px;padding:2px 10px;border-radius:12px}
+  .nov-d{font-size:12px;color:var(--cinza)}
+  .nov-i{display:flex;gap:9px;align-items:flex-start;padding:5px 0}
+  .nov-tag{flex:none;font-size:9.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:10px;margin-top:1px}
+  .tag-add{background:var(--verde-bg);color:var(--verde)} .tag-imp{background:#FFF3CD;color:#8a6d00} .tag-fix{background:#E7F0FF;color:#1F6FEB}
+  .nov-s{font-size:13px;color:var(--texto);line-height:1.45}
 </style>
 </head>
 <body>
@@ -6014,7 +6050,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 </div>
 
 <aside class="sidebar">
-  <div class="brand"><div class="logo">N1</div><div><h1>N1 Alimentos</h1><small>Logistica</small></div></div>
+  <div class="brand"><div class="logo">N1</div><div><h1>N1 Alimentos</h1><small>Logistica</small></div><button class="novbell" id="novBell" title="Novidades do sistema">&#128276;<span class="novdot" id="novDot"></span></button></div>
   <button class="btn-import" id="btnImport">&#128193; Importar Pedidos a Faturar</button>
   <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden">
   <div class="sb-sub">Areas</div>
@@ -6055,7 +6091,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <span class="meta" id="savedInfo" title="O sistema salva automaticamente no proprio navegador (pedidos, tabela de frete e cargas)."></span>
         <span class="spacer"></span>
         <div class="top-actions">
-          <button class="btn" id="btnExport" disabled>&#11015; Exportar Romaneio</button>
+          <button class="btn" id="btnResumo">&#128203; Resumo por rota</button><button class="btn" id="btnExport" disabled>&#11015; Exportar Romaneio</button>
           <button class="btn primary" id="btnNovaCarga">+ Criar Nova Carga</button>
         </div>
       </div>
@@ -6068,11 +6104,14 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
               <input id="fRota" list="rotaList" placeholder="Rota (busca)" autocomplete="off">
               <input id="fProduto" list="dlProduto" placeholder="Produto (busca)" autocomplete="off"><datalist id="dlProduto"></datalist>
               <input id="fVendedor" list="dlVendedor" placeholder="Vendedor (busca)" autocomplete="off"><datalist id="dlVendedor"></datalist>
+              <input id="fCidade" list="dlCidade" placeholder="Cidade (busca)" autocomplete="off"><datalist id="dlCidade"></datalist>
+              <input id="fUf" list="dlUf" placeholder="UF" autocomplete="off" style="width:64px"><datalist id="dlUf"></datalist>
               <select id="fFin"><option value="">Status</option></select>
               <input id="fCanal" list="dlCanal" placeholder="Canal (busca)" autocomplete="off" style="display:none"><datalist id="dlCanal"></datalist>
               <input id="fPesoMin" type="number" min="0" step="100" inputmode="numeric" placeholder="kg de" autocomplete="off" title="Peso minimo (kg)" style="width:84px">
               <input id="fPesoMax" type="number" min="0" step="100" inputmode="numeric" placeholder="kg ate" autocomplete="off" title="Peso maximo (kg)" style="width:84px">
               <input id="fBusca" type="search" placeholder="Buscar pedido ou cliente..." autocomplete="off">
+              <label class="fsort"><input type="checkbox" id="fSortEntrega"> Entrega +antiga</label>
               <button class="clear-f" id="clearF">Limpar filtros</button>
             </div>
           </div>
@@ -6368,6 +6407,40 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 </div>
 
 <!-- MODAL DETALHE DO PEDIDO -->
+<div class="overlay" id="novOverlay">
+  <div class="modal" style="width:640px;max-width:96vw">
+    <div class="modal-head"><h3>&#128276; Novidades do sistema</h3><button class="modal-x" id="novClose">&times;</button></div>
+    <div class="modal-body" style="max-height:78vh;overflow:auto"><div id="novBody"></div></div>
+  </div>
+</div>
+<div class="overlay" id="divOverlay">
+  <div class="modal" style="width:960px;max-width:97vw">
+    <div class="modal-head"><h3>Divulgacao da carga</h3><button class="modal-x" id="divClose">&times;</button></div>
+    <div class="modal-body" style="max-height:82vh;overflow:auto">
+      <div class="div-grid">
+        <div class="div-form">
+          <label>Valor do frete (para divulgacao)</label>
+          <input id="divFrete" type="text" placeholder="Ex.: 3.200,00" autocomplete="off">
+          <label>Observacao de descarga</label>
+          <textarea id="divObs" rows="3" placeholder="Ex.: Descarga paletizada. Agendar ate 8h. Levar EPI."></textarea>
+          <div class="div-info" id="divInfo"></div>
+          <button class="btn primary" id="divDownload">&#11015; Baixar imagem (PNG)</button>
+          <div class="div-hint">A imagem sai no padrao N1 para enviar no grupo das transportadoras.</div>
+        </div>
+        <div class="div-preview"><canvas id="divCanvas" width="1000" height="1300"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="resumoOverlay">
+  <div class="modal" style="width:1080px;max-width:97vw">
+    <div class="modal-head"><h3>Resumo dos pedidos por rota</h3><button class="modal-x" id="resumoClose">&times;</button></div>
+    <div class="modal-body" style="max-height:74vh;overflow:auto">
+      <div class="resumo-tools"><label class="fsort"><input type="checkbox" id="fSortEntrega2"> Entrega mais antiga</label><span class="resumo-tot" id="resumoTot"></span></div>
+      <table class="resumo-tbl"><thead><tr><th>ROTA</th><th>DATA EMISSAO</th><th>PEDIDO</th><th>CONTA FRETE</th><th>CLIENTE</th><th>CIDADE</th><th>UF</th><th class="num">PESO</th><th>VENDEDOR</th><th>STATUS FIN.</th></tr></thead><tbody id="resumoBody"></tbody></table>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="pedOverlay">
   <div class="modal" style="width:560px;max-width:96vw">
     <div class="modal-head"><h3 id="pedTitle">Resumo do Pedido</h3><button class="x" id="pedClose">&times;</button></div>
@@ -6478,6 +6551,8 @@ function detectCols(headers){
     mix:find([n=>n.includes("mixprodutos"),n=>n.includes("mixproduto"),n=>n==="mix"]),
     entrega:find([n=>n.includes("previsaoentrega"),n=>n.includes("previsao")&&n.includes("entrega"),n=>n.includes("dataentrega"),n=>n.includes("dtentrega"),n=>n==="entrega"]),
     tipoFrete:find([n=>n==="tipofrete",n=>n.includes("tipofrete")]),
+    contaFrete:find([n=>n.includes("contafrete"),n=>n==="conta"]),
+    emissao:find([n=>n.includes("dataemissao"),n=>n.includes("dtemissao"),n=>n==="emissao",n=>(n.includes("emissao")&&!n.includes("nota"))]),
     faixa:find([n=>n.includes("faixafrete"),n=>n==="faixa",n=>n.includes("faixa")]),
     rotaFil:find([n=>n==="rotafilial",n=>n.includes("rotafilial")]),
     km:find([n=>n==="distkm",n=>n.includes("distkm"),n=>n.includes("km")]),
@@ -6619,6 +6694,8 @@ function ingest(rows){
     if(cols.prio&&isPrio(r[cols.prio]))g.prio=true;
     if(cols.mix&&isRevenda(r[cols.mix]))g.revenda=true;
     if(cols.entrega){const d=parseDateBr(r[cols.entrega]);if(d!=null)g.entrega=(g.entrega==null)?d:Math.min(g.entrega,d);}
+    if(cols.emissao){const de=parseDateBr(r[cols.emissao]);if(de!=null)g.emissao=(g.emissao==null)?de:Math.min(g.emissao,de);}
+    if(cols.contaFrete&&(g.contaFrete==null)&&r[cols.contaFrete]!=null&&String(r[cols.contaFrete]).trim()!=="")g.contaFrete=String(r[cols.contaFrete]).trim();
     if(cols.custoFrete)g.custoFreteTot+=(parseNum(r[cols.custoFrete])||0);
     if(cols.tipoFrete&&isFOB(r[cols.tipoFrete]))g.tipo="Destinatario";
     ["cliente","filial","cidade","rota","vendedor","canal"].forEach(f=>{const ck=cols[f];if(ck&&!g[f]&&r[ck])g[f]=r[ck];});
@@ -6646,7 +6723,7 @@ function ingest(rows){
     const freteRate=(g.frete&&g.frete>0)?g.frete:((g.custoFreteTot>0&&peso>0)?(g.custoFreteTot/(peso/1000)):0); // tarifa do arquivo OU custo total / toneladas
     peds.push({id:"P"+peds.length,pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
       rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),canal:String(g.canal||"").trim(),peso,valor:g.valor,mcRs:g.mcRs,mcPct,vl:g.pesoMc,
-      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,entrega:g.entrega,assignedTo:null,score:0});
+      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,entrega:g.entrega,emissao:(g.emissao!=null?g.emissao:null),contaFrete:(g.contaFrete||(isFOB(g.tipo)?"Destinatario":"Emitente")),assignedTo:null,score:0});
   });
   // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
   const embTruckIds=new Set(state.trucks.filter(t=>t.status==="embarcada").map(t=>t.id));
@@ -6719,6 +6796,8 @@ function buildFilters(){
   const prods=[];bp.forEach(p=>p.produtos.forEach(x=>prods.push(x)));
   fillDL("dlProduto",prods);
   fillDL("dlVendedor",bp.map(p=>p.vendedor));
+  fillDL("dlCidade",bp.map(p=>p.cidade));
+  fillDL("dlUf",bp.map(p=>p.uf));
   $("#fFin").innerHTML='<option value="">Status</option><option>Apto</option><option>Bloqueado</option><option>MC negativa</option>';
   const canais=[...new Set(bp.map(p=>p.canal).filter(v=>v!=null&&String(v).trim()!==""))];
   const selC=$("#fCanal");if(selC){if(canais.length){selC.style.display="";fillDL("dlCanal",canais);}else{selC.style.display="none";selC.value="";}}
@@ -6728,10 +6807,14 @@ function filterPred(){
   const ff=$("#fFilial").value.trim().toLowerCase(),fr=$("#fRota").value.trim().toLowerCase(),fp=$("#fProduto").value.trim().toLowerCase(),fin=$("#fFin").value,fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
   const fv=$("#fVendedor")?$("#fVendedor").value.trim().toLowerCase():"";
   const fc=$("#fCanal")?$("#fCanal").value.trim().toLowerCase():"";
+  const fcd=$("#fCidade")?$("#fCidade").value.trim().toLowerCase():"";
+  const fuf=$("#fUf")?$("#fUf").value.trim().toLowerCase():"";
   const pminV=$("#fPesoMin")?parseFloat($("#fPesoMin").value):NaN, pmaxV=$("#fPesoMax")?parseFloat($("#fPesoMax").value):NaN;
   const pmin=isNaN(pminV)?null:pminV, pmax=isNaN(pmaxV)?null:pmaxV;
   const inc=(v,q)=>String(v==null?"":v).toLowerCase().includes(q);
   return p=>{
+    if(fcd&&!inc(p.cidade,fcd))return false;
+    if(fuf&&!inc(p.uf,fuf))return false;
     if(ff&&!inc(p.filial,ff))return false;
     if(fr&&!inc(p.rota,fr))return false;
     if(fp&&!p.produtos.some(x=>inc(x,fp)))return false;
@@ -6822,7 +6905,7 @@ function renderPedidos(){
   $("#pedCount").textContent=avail.length;
   if(!state.pedidos.length){list.innerHTML='<div class="empty"><div class="ic">&#128230;</div>Importe uma planilha de pedidos para comecar.</div>';return;}
   if(!avail.length){list.innerHTML='<div class="empty">Nenhum pedido disponivel com os filtros atuais.</div>';return;}
-  avail.sort(cmpPedidos);
+  if($("#fSortEntrega")&&$("#fSortEntrega").checked){avail.sort((a,b)=>{const ta=(typeof a.entrega==="number")?a.entrega:Infinity,tb=(typeof b.entrega==="number")?b.entrega:Infinity;return ta-tb;});}else{avail.sort(cmpPedidos);}
   avail.forEach(p=>list.appendChild(pedidoCard(p,false)));
 }
 
@@ -6841,7 +6924,11 @@ function loadFreight(t){
   return {total,kg,alloc,rate,sumV,pagoTon,pagoTotal,saldo};
 }
 
-function truckLoad(t){return state.pedidos.filter(p=>p.assignedTo===t.id).reduce((s,p)=>s+p.peso,0);}function cargaMargem(t){var ps=state.pedidos.filter(function(p){return p.assignedTo===t.id;});var mc=0,vl=0,tons=0,ftab=0;ps.forEach(function(p){mc+=(p.mcRs||0);vl+=(p.vl||0);tons+=(p.peso||0)/1000;ftab+=((p.peso||0)/1000)*(p.frete||0);});var mcPct=vl>0?mc/vl*100:0;var fpago=(t.fretePago>0)?t.fretePago*tons:null;var mcLiq=mc,mcPctLiq=mcPct,acima=false,delta=0;if(fpago!=null){delta=fpago-ftab;mcLiq=mc-delta;mcPctLiq=vl>0?mcLiq/vl*100:0;acima=delta>0.5;}return{mc:mc,vl:vl,mcPct:mcPct,mcLiq:mcLiq,mcPctLiq:mcPctLiq,freteTab:ftab,fretePago:fpago,acima:acima,delta:delta,tons:tons};}function _mcCor(c){return c<0?"var(--risco)":(c<8?"var(--alerta)":"var(--ok)");}function margemLine(t){var m=cargaMargem(t);if(m.vl<=0)return "";var s='<div class="cargamc">MC carga: <b style="color:'+_mcCor(m.mcPct)+'">'+m.mcPct.toFixed(1)+'%</b>';if(m.fretePago!=null){s+=' &middot; apos frete pago: <b style="color:'+_mcCor(m.mcPctLiq)+'">'+m.mcPctLiq.toFixed(1)+'%</b>';if(m.acima)s+=' <span class="mc-warn">&#9888; frete acima da tabela +'+fmtMoney(m.delta)+'</span>';}s+='</div>';return s;}
+function truckLoad(t){return state.pedidos.filter(p=>p.assignedTo===t.id).reduce((s,p)=>s+p.peso,0);}function cargaMargem(t){var ps=state.pedidos.filter(function(p){return p.assignedTo===t.id;});var mc=0,vl=0,tons=0,ftab=0;ps.forEach(function(p){mc+=(p.mcRs||0);vl+=(p.vl||0);tons+=(p.peso||0)/1000;ftab+=((p.peso||0)/1000)*(p.frete||0);});var mcPct=vl>0?mc/vl*100:0;var fpago=(t.fretePago>0)?t.fretePago*tons:null;var mcLiq=mc,mcPctLiq=mcPct,acima=false,delta=0;if(fpago!=null){delta=fpago-ftab;mcLiq=mc-delta;mcPctLiq=vl>0?mcLiq/vl*100:0;acima=delta>0.5;}return{mc:mc,vl:vl,mcPct:mcPct,mcLiq:mcLiq,mcPctLiq:mcPctLiq,freteTab:ftab,fretePago:fpago,acima:acima,delta:delta,tons:tons};}function _mcCor(c){return c<0?"var(--risco)":(c<8?"var(--alerta)":"var(--ok)");}function margemLine(t){var m=cargaMargem(t);if(m.vl<=0)return "";var s='<div class="cargamc">MC carga: <b style="color:'+_mcCor(m.mcPct)+'">'+m.mcPct.toFixed(1)+'%</b>';if(m.fretePago!=null){s+=' &middot; apos frete pago: <b style="color:'+_mcCor(m.mcPctLiq)+'">'+m.mcPctLiq.toFixed(1)+'%</b>';if(m.acima)s+=' <span class="mc-warn">&#9888; frete acima da tabela +'+fmtMoney(m.delta)+'</span>';}s+='</div>';return s;}function weekKeyN(d){d=new Date(d.getFullYear(),d.getMonth(),d.getDate());var day=(d.getDay()+6)%7;d.setDate(d.getDate()-day+3);var firstThu=new Date(d.getFullYear(),0,4);var wk=1+Math.round(((d-firstThu)/86400000-3+((firstThu.getDay()+6)%7))/7);return d.getFullYear()+"-W"+(wk<10?"0"+wk:wk);}
+function cargaTag(t){return t.numeroCarga?'<span class="cargaseq">Carga '+t.numeroCarga+'</span> ':'';}
+function _hesc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function histHtml(t){if(!t.history||!t.history.length)return "";return '<div class="clhist"><div class="clhist-t">Historico de embarque</div>'+t.history.map(function(hh){return '<div class="clhist-i">Para <b>'+_hesc(hh.para)+'</b> (era '+_hesc(hh.de)+') &middot; '+new Date(hh.ts).toLocaleDateString("pt-BR")+' &middot; '+_hesc(hh.user)+' &mdash; '+_hesc(hh.motivo)+'</div>';}).join("")+'</div>';}
+function editarEmbarque(t){var atual=t.eta?fmtEta(t.eta):"(nao definida)";var nova=(prompt("Nova data de embarque (dd/mm/aaaa):\nAtual: "+atual)||"").trim();if(!nova)return;var d=parseDateBr(nova);if(d==null){toast("Data invalida. Use dd/mm/aaaa.","err");return;}var motivo=(prompt("Motivo da alteracao da data de embarque:")||"").trim();if(!motivo){toast("Informe o motivo da alteracao.","err");return;}var dt=new Date(d),iso=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");var de=t.eta?fmtEta(t.eta):"-";t.eta=iso;t.history=t.history||[];t.history.push({ts:Date.now(),user:(typeof CUR!=="undefined"&&(CUR.nome||CUR.user))||"",de:de,para:fmtEta(iso),motivo:motivo});renderAll();toast("Data de embarque atualizada.","ok");logAction("editar_embarque",(t.rota||"")+": "+de+" -> "+fmtEta(iso)+" | Motivo: "+motivo);}
 function routeMismatch(t){if(!t||!t.rota||!t.rota.trim())return false;const tr=normRota(t.rota);return state.pedidos.some(p=>p.assignedTo===t.id&&p.rota&&normRota(p.rota)!==tr);}
 function assign(p,t){if(!inScope(p)){toast("Pedido fora do seu escopo de filial/estado.","err");return;}
   if((!t.rota||!t.rota.trim())&&p.rota)t.rota=p.rota; // herda a rota do primeiro pedido da carga
@@ -6973,7 +7060,7 @@ function fecharCarga(t){
     if(!motivo){toast("Motivo obrigatorio para fechar abaixo do minimo.","err");return;}
     abaixo=true;t.belowMinReason=motivo;
   }
-  t.status="fechada";t.closedAt=new Date();t.belowMin=abaixo;
+  t.status="fechada";t.closedAt=new Date();t.belowMin=abaixo;if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date());state.cargaSeq[_wk]=(state.cargaSeq[_wk]||0)+1;t.numeroCarga=state.cargaSeq[_wk];t.semana=_wk;}
   renderAll();
   toast("Carga da rota \""+(t.rota||"-")+"\" fechada e movida para Aguardando Contratacao."+(abaixo?" (abaixo do minimo)":""),"ok");logAction("fechar_carga",(t.rota||"")+" "+pct.toFixed(0)+"%"+(abaixo?" - ABAIXO DO MINIMO | Motivo: "+(t.belowMinReason||""):""));
 }
@@ -7003,10 +7090,10 @@ function renderParcial(){
     const card=el("div","clcard");
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td>'+(p.cidade||"-")+(p.uf?"/"+p.uf:"")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
     card.innerHTML=
-      '<div class="clh"><div><div class="clrota">'+(t.rota||"Rota nao informada")+'</div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%</div>'+margemLine(t)+'</div>'+
+      '<div class="clh"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+'</div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%</div>'+margemLine(t)+'</div>'+
       '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn reab">Reabrir no Formador</button><button class="clbtn fech" '+(atinge?'':'disabled style="opacity:.45;cursor:not-allowed"')+'>&#9989; Fechar Carga</button></div></div>'+
       '<div class="progress-wrap" style="padding:11px 16px"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(t.cap)+' &middot; minimo '+MIN_CLOSE_PCT+'% = '+fmtKg(min)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(atinge?"otim":"")+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+(atinge?"ok":"norm")+'">'+(atinge?"&#128994; Volume minimo atingido — pronto para fechar":"Faltam "+fmtKg(faltam)+" para atingir "+MIN_CLOSE_PCT+"% (adicione pedidos da regiao com Auto-Preencher ou reabra no Formador)")+'</div></div>'+
-      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Cidade</th><th class="num">Peso</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Cidade</th><th class="num">Peso</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table>'+histHtml(t)+'</div>';
     card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
     card.querySelector(".auto").addEventListener("click",()=>autoFill(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
@@ -7059,16 +7146,16 @@ function renderFechadas(){
     const card=el("div","clcard");
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
     card.innerHTML=
-      '<div class="clh"><div><div class="clrota">'+(t.rota||"Rota nao informada")+(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'')+'</div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%</div>'+margemLine(t)+'</div>'+
-      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">Editar transporte</button><button class="clbtn contr" '+(ok?'':'disabled style="opacity:.45;cursor:not-allowed"')+'>&#128667; Contratar veiculo</button><button class="clbtn reab">Reabrir</button></div></div>'+
-      '<div class="clinfo" style="padding:8px 16px;background:#f6f9ff;display:flex;gap:18px;font-size:11.5px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete: <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b> ('+fmtMoney(fr.rate)+'/ton)</span><span>Frete pago: <b>'+(t.fretePago?fmtMoney(fr.pagoTotal)+" ("+fmtMoney(fr.pagoTon)+"/ton)":"a definir")+'</b></span><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span></div>'+
+      '<div class="clh"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'')+'</div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%</div>'+margemLine(t)+'</div>'+
+      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">Editar transporte</button><button class="clbtn contr" '+(ok?'':'disabled style="opacity:.45;cursor:not-allowed"')+'>&#128667; Contratar veiculo</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button><button class="clbtn reab">Reabrir</button></div></div>'+
+      '<div class="clinfo" style="padding:8px 16px;background:#f6f9ff;display:flex;gap:18px;font-size:11.5px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete: <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b> ('+fmtMoney(fr.rate)+'/ton)</span><span>Frete pago: <b>'+(t.fretePago?fmtMoney(fr.pagoTotal)+" ("+fmtMoney(fr.pagoTon)+"/ton)":"a definir")+'</b></span><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes de embarque: <b>'+t.history.length+'</b></span>':'')+'</div>'+
       (ok?'':'<div style="padding:0 16px 8px;font-size:11px;color:var(--alerta);font-weight:600">Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque para habilitar a contratacao.</div>')+
-      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table>'+histHtml(t)+'</div>';
     card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
     card.querySelector(".edt").addEventListener("click",()=>openModal(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
-    const cb=card.querySelector(".contr"); if(ok) cb.addEventListener("click",()=>veiculoContratado(t)); else cb.addEventListener("click",()=>toast("Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque (em Editar transporte) para contratar.","info"));
+    var _eb=card.querySelector(".embd");if(_eb)_eb.addEventListener("click",function(){editarEmbarque(t);});var _db=card.querySelector(".divb");if(_db)_db.addEventListener("click",function(){window.openDivulg&&window.openDivulg(t);});const cb=card.querySelector(".contr"); if(ok) cb.addEventListener("click",()=>veiculoContratado(t)); else cb.addEventListener("click",()=>toast("Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque (em Editar transporte) para contratar.","info"));
     body.appendChild(card);
   });
 }
@@ -7099,10 +7186,10 @@ function renderContratadas(){
     const card=el("div","clcard");
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
     card.innerHTML=
-      '<div class="clh" style="background:linear-gradient(135deg,#0a5d44,#008D67)"><div><div class="clrota">'+(t.rota||"Rota nao informada")+' <span class="pill contr">PROGRAMADA</span></div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'% &middot; '+(t.transp||"-")+' &middot; '+(t.placa||"-")+'</div>'+margemLine(t)+'</div>'+
+      '<div class="clh" style="background:linear-gradient(135deg,#0a5d44,#008D67)"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+' <span class="pill contr">PROGRAMADA</span></div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'% &middot; '+(t.transp||"-")+' &middot; '+(t.placa||"-")+'</div>'+margemLine(t)+'</div>'+
       '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn emb">&#128666; Embarcado</button><button class="clbtn reab">Voltar p/ Aguardando</button></div></div>'+
       '<div class="clinfo" style="padding:10px 16px;background:#f1faf6;display:flex;gap:22px;font-size:12px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete (tabela): <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b></span><span>Frete pago: <b>'+fmtMoney(fr.pagoTotal)+'</b></span><span>Saldo: <b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'" style="font-size:14px">'+fmtMoney(fr.saldo)+'</b></span><span>R$/ton tabela <b>'+fmtMoney(fr.rate)+'</b> vs pago <b>'+fmtMoney(fr.pagoTon)+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>'+
-      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table>'+histHtml(t)+'</div>';
     card.querySelector(".reab").addEventListener("click",()=>{if(!requirePerm("reverterStatus"))return;t.status="fechada";renderAll();setTab("fechadas");toast("Carga retornada para Aguardando Contratacao.","info");logAction("reverter_status",(t.rota||"")+": contratada -> fechada");});
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     card.querySelector(".emb").addEventListener("click",()=>embarcarCarga(t));
@@ -7127,10 +7214,10 @@ function renderEmbarcadas(){
     const card=el("div","clcard");
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
     card.innerHTML=
-      '<div class="clh" style="background:linear-gradient(135deg,#0b3d6e,#1454b3)"><div><div class="clrota">'+(t.rota||"Rota nao informada")+' <span class="pill" style="background:rgba(255,255,255,.22);color:#fff">EMBARCADA</span></div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'% &middot; '+(t.transp||"-")+' &middot; '+(t.placa||"-")+'</div>'+margemLine(t)+'</div>'+
+      '<div class="clh" style="background:linear-gradient(135deg,#0b3d6e,#1454b3)"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+' <span class="pill" style="background:rgba(255,255,255,.22);color:#fff">EMBARCADA</span></div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'% &middot; '+(t.transp||"-")+' &middot; '+(t.placa||"-")+'</div>'+margemLine(t)+'</div>'+
       '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn reab">Voltar p/ Programadas</button></div></div>'+
       '<div class="clinfo" style="padding:10px 16px;background:#eef4fb;display:flex;gap:22px;font-size:12px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete (tabela): <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b></span><span>Frete pago: <b>'+fmtMoney(fr.pagoTotal)+'</b></span><span>Saldo: <b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'" style="font-size:14px">'+fmtMoney(fr.saldo)+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>'+
-      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table>'+histHtml(t)+'</div>';
     card.querySelector(".reab").addEventListener("click",()=>{if(!requirePerm("reverterStatus"))return;t.status="contratada";renderAll();setTab("contratadas");toast("Carga retornada para Cargas Programadas.","info");logAction("reverter_status",(t.rota||"")+": embarcada -> contratada");});
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
@@ -7823,11 +7910,12 @@ $("#btnImportFrete").addEventListener("click",()=>$("#freteFileInput").click());
 $("#freteFileInput").addEventListener("change",e=>{if(e.target.files[0])importFreightTable(e.target.files[0]);e.target.value="";});
 $("#ffFilial").addEventListener("change",renderFreteTab);
 $("#ffBusca").addEventListener("input",renderFreteTab);
-["#fFilial","#fRota","#fProduto","#fVendedor","#fCanal"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
+["#fFilial","#fRota","#fProduto","#fVendedor","#fCanal","#fCidade","#fUf"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
+$("#fSortEntrega")&&$("#fSortEntrega").addEventListener("change",()=>{renderPedidos();});
 $("#fFin").addEventListener("change",()=>{renderPedidos();renderKpis();});
 $("#fBusca").addEventListener("input",()=>{renderPedidos();renderKpis();});
 ["#fPesoMin","#fPesoMax"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
-$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fVendedor","#fFin"].forEach(s=>{if($(s))$(s).value="";});$("#fBusca").value="";if($("#fCanal"))$("#fCanal").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
+$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fVendedor","#fFin","#fCidade","#fUf"].forEach(s=>{if($(s))$(s).value="";});if($("#fSortEntrega"))$("#fSortEntrega").checked=false;$("#fBusca").value="";if($("#fCanal"))$("#fCanal").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
 document.querySelectorAll(".navbtn,.botnav button,#legHelp").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("#pickClose").addEventListener("click",()=>$("#pickOverlay").classList.remove("open"));
 $("#pickOverlay").addEventListener("click",e=>{if(e.target.id==="pickOverlay")$("#pickOverlay").classList.remove("open");});
@@ -7979,22 +8067,26 @@ netBoot();
   "use strict";
   function g(id){return document.getElementById(id);}
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function toTs(v){ if(v==null||v==="")return null; if(v instanceof Date)return isNaN(v)?null:v.getTime(); if(typeof v==="number"){ if(v>1e11)return v; if(v>20000&&v<90000)return Math.round((v-25569)*86400000); return null; } return (typeof parseDateBr==="function")?parseDateBr(String(v)):null; }
   function prazoData(){
     var trucks=state.trucks||[],peds=state.pedidos||[];
     var embIds={};trucks.forEach(function(t){if(t.status==="embarcada")embIds[t.id]=1;});
     var hoje=new Date();hoje.setHours(0,0,0,0);
     function sit(p){if(p.assignedTo===null)return "No banco";var t=trucks.filter(function(x){return x.id===p.assignedTo;})[0];if(!t)return "Em carga";return ({montada:"Em montagem",parcial:"Parcial",fechada:"Fechada",contratada:"Programada"})[t.status]||"Em carga";}
-    var atr=[],hj=[],ris=[];
+    var atr=[],hj=[],ris=[],comData=0,semData=0,futuros=0,considerados=0;
     peds.forEach(function(p){
       if(p.embarcado)return; if(p.assignedTo&&embIds[p.assignedTo])return;
-      var d=(typeof parseDateBr==="function")?parseDateBr(p.entrega):null; if(!d)return;
+      considerados++;
+      var d=toTs(p.entrega);
+      if(d==null){semData++;return;}
+      comData++;
       var dd=new Date(d);dd.setHours(0,0,0,0);
       var days=Math.round((dd-hoje)/86400000);
       var rec={pedido:p.pedido,cliente:p.cliente||"",rota:p.rota||"",days:days,sit:sit(p)};
-      if(days<0)atr.push(rec); else if(days===0)hj.push(rec); else if(days<=2)ris.push(rec);
+      if(days<0)atr.push(rec); else if(days===0)hj.push(rec); else if(days<=2)ris.push(rec); else futuros++;
     });
     atr.sort(function(a,b){return a.days-b.days;}); ris.sort(function(a,b){return a.days-b.days;});
-    return {atr:atr,hj:hj,ris:ris};
+    return {atr:atr,hj:hj,ris:ris,comData:comData,semData:semData,futuros:futuros,considerados:considerados};
   }
   function updateRiskBadge(){try{var d=prazoData();var n=d.atr.length+d.hj.length+d.ris.length;if(typeof setBadge!=="undefined")setBadge("risco",n||"");}catch(e){}}
   function bucket(cls,titulo,arr){
@@ -8010,8 +8102,11 @@ netBoot();
     var andamento=trucks.filter(function(t){return ["montada","parcial","fechada","contratada"].indexOf(t.status)>-1;});
     var comPed=andamento.filter(function(t){return peds.some(function(p){return p.assignedTo===t.id;});});
     var ocup=comPed.length?comPed.reduce(function(s,t){return s+Math.min(100,truckLoad(t)/t.cap*100);},0)/comPed.length:0;
+    var ocupTxt=comPed.length?ocup.toFixed(0)+"%":"\u2014";
+    var embSet={};trucks.forEach(function(t){if(t.status==="embarcada")embSet[t.id]=1;});
+    var cart=peds.filter(function(p){return !p.fob&&!p.embarcado&&!(p.assignedTo&&embSet[p.assignedTo]);});
     var mc=0,vl=0,ftab=0,tons=0;
-    andamento.forEach(function(t){var m=cargaMargem(t);mc+=m.mc;vl+=m.vl;ftab+=m.freteTab;tons+=m.tons;});
+    cart.forEach(function(p){mc+=(p.mcRs||0);vl+=(p.vl||0);var tt=(p.peso||0)/1000;tons+=tt;ftab+=tt*(p.frete||0);});
     var mcMed=vl>0?mc/vl*100:0, rton=tons>0?ftab/tons:0;
     var abaixo=trucks.filter(function(t){return t.belowMin&&["fechada","contratada","embarcada"].indexOf(t.status)>-1;}).length;
     var banco=peds.filter(function(p){return p.assignedTo===null&&!p.fob&&p.apto;});
@@ -8022,8 +8117,8 @@ netBoot();
     function kpi(v,l,warn){return '<div class="kpi'+(warn?' warn':'')+'"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';}
     var html='<div class="painel-title">Indicadores da operacao</div><div class="kpi-grid">'
       +kpi(andamento.length,"Cargas em andamento")
-      +kpi(ocup.toFixed(0)+"%","Ocupacao media")
-      +kpi(mcMed.toFixed(1)+"%","MC% medio (em carga)")
+      +kpi(ocupTxt,"Ocupacao media (cargas)")
+      +kpi(mcMed.toFixed(1)+"%","MC% medio (carteira)")
       +kpi(money(rton)+"/t","Frete medio (tabela)")
       +kpi(abaixo,"Abaixo do minimo",abaixo>0)
       +kpi(kg(kgB),"Kg no banco (apto)")
@@ -8034,11 +8129,200 @@ netBoot();
     html+='<div class="painel-title">Prazos &amp; risco de atraso</div><div class="pz-buckets">'
       +bucket("atr","Atrasados",d.atr)+bucket("hoje","Vencem hoje",d.hj)+bucket("risco","Vencem em ate 2 dias",d.ris)
       +'</div>';
+    html+='<div style="margin-top:10px;font-size:11.5px;color:var(--cinza)">'+d.comData+' pedido(s) com prazo mapeado'+(d.futuros?' &middot; '+d.futuros+' com entrega futura (>2 dias)':'')+(d.semData?' &middot; <b style="color:var(--risco)">'+d.semData+' sem data de entrega</b>':'')+'</div>';
     host.innerHTML=html;
     updateRiskBadge();
   };
   setInterval(function(){if(typeof CUR!=="undefined"&&CUR.user)updateRiskBadge();},30000);
   setTimeout(function(){if(typeof CUR!=="undefined"&&CUR.user)updateRiskBadge();},2500);
+})();
+</script>
+
+<script>
+/* ===== Resumo dos pedidos por rota ===== */
+(function(){
+  "use strict";
+  function g(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function dfmt(v){if(v==null||v==="")return "-";var t=(typeof v==="number")?v:(typeof parseDateBr==="function"?parseDateBr(v):null);if(t==null)return String(v);var d=new Date(t);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
+  function finLabel(p){if(p.fob)return "FOB";if(p.bloqueado&&!(p.prio||p.override))return "BLOQUEADO";if(p.mcPct<0)return "MC NEG";return "LIBERADO";}
+  function finCls(p){var l=finLabel(p);return l==="LIBERADO"?"lib":(l==="BLOQUEADO"?"blo":(l==="MC NEG"?"neg":"fob"));}
+  window.renderResumo=function(){
+    var host=g("resumoBody"); if(!host) return;
+    var arr=(typeof applyFilters==="function"&&typeof bancoPeds==="function")?applyFilters(bancoPeds()):[];
+    var sortOld=g("fSortEntrega2")&&g("fSortEntrega2").checked;
+    var groups={},order=[];
+    arr.forEach(function(p){var r=(p.rota||"Sem rota");if(!groups[r]){groups[r]=[];order.push(r);}groups[r].push(p);});
+    order.sort();
+    var totPeso=0,totPed=0,html="";
+    order.forEach(function(r){
+      var ps=groups[r].slice();
+      ps.sort(function(a,b){if(sortOld){var ta=(typeof a.entrega==="number")?a.entrega:Infinity,tb=(typeof b.entrega==="number")?b.entrega:Infinity;return ta-tb;}return (typeof cmpPedidos==="function")?cmpPedidos(a,b):0;});
+      var sub=ps.reduce(function(s,p){return s+(p.peso||0);},0);totPeso+=sub;totPed+=ps.length;
+      html+='<tr class="rgrp"><td colspan="10">'+esc(r)+' &middot; '+ps.length+' pedido(s) &middot; '+fmtKg(sub)+'</td></tr>';
+      ps.forEach(function(p){
+        html+='<tr><td>'+esc(r)+'</td><td>'+dfmt(p.emissao)+'</td><td class="b">#'+esc(p.pedido)+'</td><td>'+esc(p.contaFrete||(p.fob?"Destinatario":"Emitente"))+'</td><td>'+esc(p.cliente||"")+'</td><td>'+esc(p.cidade||"")+'</td><td>'+esc(p.uf||"")+'</td><td class="num">'+fmtKg(p.peso||0)+'</td><td>'+esc(p.vendedor||"")+'</td><td class="fin '+finCls(p)+'">'+finLabel(p)+'</td></tr>';
+      });
+    });
+    if(!order.length)html='<tr><td colspan="10" style="text-align:center;color:var(--cinza);padding:20px">Nenhum pedido no banco com os filtros atuais.</td></tr>';
+    host.innerHTML=html;
+    if(g("resumoTot"))g("resumoTot").textContent=totPed+" pedido(s) \u00b7 "+fmtKg(totPeso);
+  };
+  function openR(){var o=g("resumoOverlay");if(o){o.classList.add("open");window.renderResumo&&window.renderResumo();}}
+  function closeR(){var o=g("resumoOverlay");if(o)o.classList.remove("open");}
+  var b=g("btnResumo"); if(b)b.addEventListener("click",openR);
+  var c=g("resumoClose"); if(c)c.addEventListener("click",closeR);
+  var ov=g("resumoOverlay"); if(ov)ov.addEventListener("click",function(e){if(e.target===ov)closeR();});
+  var s=g("fSortEntrega2"); if(s)s.addEventListener("change",function(){window.renderResumo&&window.renderResumo();});
+})();
+</script>
+
+<script>
+/* ===== Divulgacao da carga (imagem para WhatsApp) ===== */
+(function(){
+  "use strict";
+  function g(id){return document.getElementById(id);}
+  var curT=null;
+  function origemDe(t){
+    var ps=(state.pedidos||[]).filter(function(p){return p.assignedTo===t.id;});
+    var fil=(ps[0]&&ps[0].filial)||"";
+    var f=String(fil).toLowerCase();
+    if(f.indexOf("itaju")>-1||f.indexOf("filial")>-1)return "Itaju/SP";
+    if(f.indexOf("sertan")>-1||f.indexOf("matriz")>-1)return "Sertanopolis/PR";
+    return fil||"-";
+  }
+  function dados(t){
+    var ps=(state.pedidos||[]).filter(function(p){return p.assignedTo===t.id;});
+    var ent=ps.map(function(p){return {cid:(p.cidade||"")+(p.uf?"/"+p.uf:""),cli:p.cliente||"",peso:p.peso||0};});
+    return {carga:t.numeroCarga?("CARGA "+t.numeroCarga):"CARGA",rota:t.rota||"Rota nao informada",origem:origemDe(t),
+      peso:truckLoad(t),veiculo:VEHICLES[String(t.cap)]||"",embarque:t.eta?fmtEta(t.eta):"a definir",
+      frete:(g("divFrete")?g("divFrete").value.trim():"")||(t.freteDivulg||""),
+      obs:(g("divObs")?g("divObs").value:"")||(t.obsDescarga||""),ent:ent,tipo:(t.tipo==="Destinatario"?"FOB":"CIF")};
+  }
+  function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  var FF="Calibri, Carlito, 'Segoe UI', sans-serif";
+  var DGREEN="#0A3D2E",GREEN="#008D67",GREEN2="#41C097",WHITE="#fff",TEXT="#333",GRAY="#6C757D",GRID="#E9ECEF",TINT="#E6F6EF";
+  function draw(D){
+    var c=g("divCanvas"); if(!c)return; var ctx=c.getContext("2d"); var W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H); ctx.fillStyle=WHITE; ctx.fillRect(0,0,W,H);
+    ctx.textBaseline="alphabetic";
+    // header
+    ctx.fillStyle=DGREEN; ctx.fillRect(0,0,W,196);
+    ctx.fillStyle=GREEN2; ctx.beginPath(); ctx.arc(93,99,47,0,7); ctx.fill();
+    ctx.fillStyle=WHITE; ctx.textAlign="center"; ctx.font="bold 46px "+FF; ctx.fillText("N1",93,115);
+    ctx.textAlign="left"; ctx.font="bold 48px "+FF; ctx.fillText("N1 ALIMENTOS",168,106);
+    ctx.fillStyle=GREEN2; ctx.font="27px "+FF; ctx.fillText("CARGA DISPONIVEL PARA COLETA",170,150);
+    ctx.fillStyle=GREEN2; ctx.fillRect(0,196,W,8);
+    // carga pill + rota
+    ctx.fillStyle=GREEN; rr(ctx,55,240,180,60,30); ctx.fill();
+    ctx.fillStyle=WHITE; ctx.textAlign="center"; ctx.font="bold 30px "+FF; ctx.fillText(D.carga,145,280);
+    ctx.textAlign="left"; ctx.fillStyle=GRAY; ctx.font="20px "+FF; ctx.fillText("ROTA",255,264);
+    ctx.fillStyle=TEXT; ctx.font="bold 34px "+FF; ctx.fillText(D.rota,255,296);
+    ctx.strokeStyle=GRID; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(55,330); ctx.lineTo(945,330); ctx.stroke();
+    // info grid
+    function kv(x,y,l,v,vc){ctx.fillStyle=GRAY;ctx.font="19px "+FF;ctx.fillText(l,x,y);ctx.fillStyle=vc||TEXT;ctx.font="bold 30px "+FF;ctx.fillText(v,x,y+34);}
+    kv(60,372,"ORIGEM",D.origem); kv(530,372,"PESO TOTAL",fmtKg(D.peso),GREEN);
+    kv(60,452,"EMBARQUE PREVISTO",D.embarque); kv(530,452,"VEICULO SUGERIDO",D.veiculo);
+    // frete highlight
+    ctx.fillStyle=TINT; rr(ctx,55,528,890,120,18); ctx.fill();
+    ctx.fillStyle=GRAY; ctx.font="22px "+FF; ctx.fillText("VALOR DO FRETE",80,574);
+    ctx.fillStyle=GREEN; ctx.font="bold 52px "+FF; ctx.fillText(D.frete?("R$ "+D.frete):"a combinar",80,622);
+    ctx.textAlign="right"; ctx.fillStyle=GRAY; ctx.font="22px "+FF;
+    ctx.fillText(D.tipo+" - por conta N1",925,574); ctx.fillText(D.ent.length+" entrega(s)",925,608); ctx.textAlign="left";
+    // entregas
+    ctx.fillStyle=GREEN; ctx.font="bold 24px "+FF; ctx.fillText("ENTREGAS",60,700);
+    ctx.strokeStyle=GRID; ctx.beginPath(); ctx.moveTo(60,724); ctx.lineTo(945,724); ctx.stroke();
+    var y=760, shown=D.ent.slice(0,4);
+    shown.forEach(function(e){
+      ctx.fillStyle=TEXT; ctx.font="bold 27px "+FF; ctx.fillText(e.cid,60,y);
+      ctx.fillStyle=GRAY; ctx.font="21px "+FF; ctx.fillText((e.cli||"").slice(0,44),60,y+30);
+      ctx.textAlign="right"; ctx.fillStyle=TEXT; ctx.font="bold 28px "+FF; ctx.fillText(fmtKg(e.peso),940,y+8); ctx.textAlign="left";
+      y+=84; ctx.strokeStyle=GRID; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(60,y-16); ctx.lineTo(945,y-16); ctx.stroke();
+    });
+    if(D.ent.length>4){ctx.fillStyle=GRAY;ctx.font="italic 20px "+FF;ctx.fillText("+ "+(D.ent.length-4)+" entrega(s)",60,y+4);y+=40;}
+    // observacao
+    var oy=Math.max(y+6,1000);
+    ctx.fillStyle="#F6F9FF"; rr(ctx,55,oy,890,120,14); ctx.fill();
+    ctx.fillStyle=GRAY; ctx.font="19px "+FF; ctx.fillText("OBSERVACAO DE DESCARGA",78,oy+30);
+    ctx.fillStyle=TEXT; ctx.font="24px "+FF;
+    var obs=(D.obs||"A combinar."), max=64, line1=obs.slice(0,max), line2=obs.slice(max,max*2);
+    ctx.fillText(line1,78,oy+66); if(line2)ctx.fillText(line2,78,oy+96);
+    // footer
+    ctx.fillStyle=DGREEN; ctx.fillRect(0,H-90,W,90);
+    ctx.textAlign="center"; ctx.fillStyle=WHITE; ctx.font="bold 24px "+FF;
+    ctx.fillText("Transportadores interessados, chamar no privado",W/2,H-52);
+    ctx.fillStyle=GREEN2; ctx.font="19px "+FF; ctx.fillText("N1 Alimentos - Logistica",W/2,H-24); ctx.textAlign="left";
+  }
+  function redraw(){ if(curT)draw(dados(curT)); }
+  window.openDivulg=function(t){
+    curT=t; var o=g("divOverlay"); if(!o)return;
+    if(g("divFrete"))g("divFrete").value=t.freteDivulg||(t.fretePago?String(Math.round(t.fretePago*(truckLoad(t)/1000))).replace(/\B(?=(\d{3})+(?!\d))/g,".")+",00":"");
+    if(g("divObs"))g("divObs").value=t.obsDescarga||"";
+    var D=dados(t);
+    if(g("divInfo"))g("divInfo").innerHTML="<b>"+D.carga+"</b> &middot; "+D.rota+"<br>Origem: "+D.origem+" &middot; Peso: "+fmtKg(D.peso)+" &middot; "+D.veiculo+"<br>Embarque: "+D.embarque+" &middot; "+D.ent.length+" entrega(s)";
+    o.classList.add("open"); redraw();
+  };
+  function closeD(){var o=g("divOverlay");if(o)o.classList.remove("open");}
+  var fr=g("divFrete"); if(fr)fr.addEventListener("input",function(){if(curT)curT.freteDivulg=fr.value;redraw();});
+  var ob=g("divObs"); if(ob)ob.addEventListener("input",function(){if(curT)curT.obsDescarga=ob.value;redraw();});
+  var cl=g("divClose"); if(cl)cl.addEventListener("click",closeD);
+  var ov=g("divOverlay"); if(ov)ov.addEventListener("click",function(e){if(e.target===ov)closeD();});
+  var dl=g("divDownload"); if(dl)dl.addEventListener("click",function(){
+    var c=g("divCanvas"); if(!c)return; redraw();
+    c.toBlob(function(blob){ if(!blob){toast&&toast("Nao foi possivel gerar a imagem.","err");return;}
+      var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+      a.download="Divulgacao_"+((curT&&curT.numeroCarga)?("Carga"+curT.numeroCarga):"carga")+"_"+((curT&&curT.rota)||"").replace(/[^\w]+/g,"_")+".png";
+      document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
+      toast&&toast("Imagem gerada. Envie no grupo das transportadoras.","ok");
+    },"image/png");
+  });
+})();
+</script>
+
+<script>
+/* ===== Central de Novidades (padrao ADM de Vendas) ===== */
+(function(){
+  "use strict";
+  function g(id){return document.getElementById(id);}
+  var SEEN_KEY="n1fc_nov_seen";
+  var CHANGELOG=[
+    {v:"v1.4",d:"03/07/2026",items:[
+      {t:"add",s:"Divulgacao: gere uma imagem no padrao N1 (cores e fontes) para enviar no grupo das transportadoras, direto da carga fechada."},
+      {t:"add",s:"Numero sequencial de carga por semana: Carga 1, 2, 3... reiniciando a cada semana."},
+      {t:"add",s:"Resumo dos pedidos por rota, com as colunas do ERP e subtotais de peso."},
+      {t:"add",s:"Filtros de cidade e estado, e ordenacao por entrega mais antiga."},
+      {t:"add",s:"Editar a data de embarque de uma carga fechada, com motivo registrado no historico."},
+      {t:"add",s:"Central de Novidades (este sino) para acompanhar o que muda no sistema."}
+    ]},
+    {v:"v1.3",d:"01/07/2026",items:[
+      {t:"add",s:"Painel executivo: indicadores da operacao e prazos em risco (atrasado, hoje, ate 2 dias)."},
+      {t:"add",s:"Margem da carga depois do frete real contratado, com alerta quando o frete pago passa da tabela."},
+      {t:"imp",s:"Motivo obrigatorio ao voltar o status de uma carga e ao fechar abaixo do minimo."}
+    ]},
+    {v:"v1.2",d:"30/06/2026",items:[
+      {t:"add",s:"Modulo Comunicacao: solicitacoes formais por pedido (prioridade, urgencia, prazo), com autor e horario."}
+    ]}
+  ];
+  var TAG={add:["NOVO","tag-add"],imp:["MELHORIA","tag-imp"],fix:["CORRECAO","tag-fix"]};
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function latest(){return CHANGELOG[0]?CHANGELOG[0].v:"";}
+  function getSeen(){try{return localStorage.getItem(SEEN_KEY)||"";}catch(e){return "";}}
+  function setSeen(v){try{localStorage.setItem(SEEN_KEY,v);}catch(e){}}
+  function updateDot(){var dot=g("novDot");if(!dot)return;dot.style.display=(getSeen()!==latest())?"block":"none";}
+  function buildBody(){
+    var host=g("novBody"); if(!host)return;
+    host.innerHTML=CHANGELOG.map(function(rel){
+      return '<div class="nov-rel"><div class="nov-rel-h"><span class="nov-v">'+esc(rel.v)+'</span><span class="nov-d">'+esc(rel.d)+'</span></div>'+
+        rel.items.map(function(it){var tg=TAG[it.t]||TAG.add;return '<div class="nov-i"><span class="nov-tag '+tg[1]+'">'+tg[0]+'</span><span class="nov-s">'+esc(it.s)+'</span></div>';}).join("")+
+        '</div>';
+    }).join("");
+  }
+  function open(){var o=g("novOverlay");if(!o)return;buildBody();o.classList.add("open");setSeen(latest());updateDot();}
+  function close(){var o=g("novOverlay");if(o)o.classList.remove("open");}
+  var b=g("novBell"); if(b)b.addEventListener("click",open);
+  var c=g("novClose"); if(c)c.addEventListener("click",close);
+  var ov=g("novOverlay"); if(ov)ov.addEventListener("click",function(e){if(e.target===ov)close();});
+  updateDot();
 })();
 </script>
 
