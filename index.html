@@ -6023,6 +6023,15 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .rgrp-veic{font-size:11px;padding:3px 6px;border:1px solid var(--verde-2);border-radius:6px;background:#fff;color:var(--texto)}
   .rgrp-criar{font-size:11px;font-weight:700;padding:4px 11px;border:none;border-radius:6px;background:var(--verde);color:#fff;cursor:pointer;white-space:nowrap}
   .rgrp-criar:hover{background:var(--verde-2)}
+  .fmulti{position:relative}
+  .fmulti-btn{width:100%;text-align:left;padding:9px 11px;border:1px solid var(--grade);border-radius:8px;background:#fff;font-family:inherit;font-size:13px;color:var(--cinza);cursor:pointer}
+  .fmulti-btn.active{color:var(--texto);border-color:var(--verde-2);font-weight:600}
+  .fmulti-btn::after{content:"\25BE";float:right;color:var(--cinza)}
+  .fmulti-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--grade);border-radius:8px;box-shadow:var(--sombra);z-index:40;padding:6px;min-width:170px}
+  .fmulti-menu.open{display:block}
+  .fmulti-menu label{display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:13px;color:var(--texto);cursor:pointer;border-radius:6px}
+  .fmulti-menu label:hover{background:var(--verde-bg)}
+  .fmulti-menu input{width:15px;height:15px;accent-color:var(--verde)}
 </style>
 </head>
 <body>
@@ -6111,7 +6120,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
               <input id="fVendedor" list="dlVendedor" placeholder="Vendedor (busca)" autocomplete="off"><datalist id="dlVendedor"></datalist>
               <input id="fCidade" list="dlCidade" placeholder="Cidade (busca)" autocomplete="off"><datalist id="dlCidade"></datalist>
               <input id="fUf" list="dlUf" placeholder="UF" autocomplete="off" style="width:64px"><datalist id="dlUf"></datalist>
-              <select id="fFin"><option value="">Status</option></select>
+              <div class="fmulti" id="fFinWrap"><button type="button" class="fmulti-btn" id="fFinBtn">Status</button><div class="fmulti-menu" id="fFinMenu"><label><input type="checkbox" class="fFinChk" value="Apto"> Apto</label><label><input type="checkbox" class="fFinChk" value="Bloqueado"> Bloqueado</label><label><input type="checkbox" class="fFinChk" value="MC negativa"> MC negativa</label></div></div>
               <input id="fCanal" list="dlCanal" placeholder="Canal (busca)" autocomplete="off" style="display:none"><datalist id="dlCanal"></datalist>
               <input id="fPesoMin" type="number" min="0" step="100" inputmode="numeric" placeholder="kg de" autocomplete="off" title="Peso minimo (kg)" style="width:84px">
               <input id="fPesoMax" type="number" min="0" step="100" inputmode="numeric" placeholder="kg ate" autocomplete="off" title="Peso maximo (kg)" style="width:84px">
@@ -6803,13 +6812,13 @@ function buildFilters(){
   fillDL("dlVendedor",bp.map(p=>p.vendedor));
   fillDL("dlCidade",bp.map(p=>p.cidade));
   fillDL("dlUf",bp.map(p=>p.uf));
-  $("#fFin").innerHTML='<option value="">Status</option><option>Apto</option><option>Bloqueado</option><option>MC negativa</option>';
+  /* status agora e multi-select (checkboxes) */
   const canais=[...new Set(bp.map(p=>p.canal).filter(v=>v!=null&&String(v).trim()!==""))];
   const selC=$("#fCanal");if(selC){if(canais.length){selC.style.display="";fillDL("dlCanal",canais);}else{selC.style.display="none";selC.value="";}}
   $("#rotaList").innerHTML=[...new Set(bp.map(p=>p.rota).filter(Boolean))].sort().map(r=>'<option value="'+esc(r)+'"></option>').join("");
 }
 function filterPred(){
-  const ff=$("#fFilial").value.trim().toLowerCase(),fr=$("#fRota").value.trim().toLowerCase(),fp=$("#fProduto").value.trim().toLowerCase(),fin=$("#fFin").value,fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
+  const ff=$("#fFilial").value.trim().toLowerCase(),fr=$("#fRota").value.trim().toLowerCase(),fp=$("#fProduto").value.trim().toLowerCase(),finChk=[].map.call(document.querySelectorAll(".fFinChk:checked"),function(c){return c.value;}),fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
   const fv=$("#fVendedor")?$("#fVendedor").value.trim().toLowerCase():"";
   const fc=$("#fCanal")?$("#fCanal").value.trim().toLowerCase():"";
   const fcd=$("#fCidade")?$("#fCidade").value.trim().toLowerCase():"";
@@ -6825,9 +6834,7 @@ function filterPred(){
     if(fp&&!p.produtos.some(x=>inc(x,fp)))return false;
     if(fv&&!inc(p.vendedor,fv))return false;
     if(fc&&!inc(p.canal,fc))return false;
-    if(fin==="Apto"&&!p.apto)return false;
-    if(fin==="Bloqueado"&&!p.bloqueado)return false;
-    if(fin==="MC negativa"&&!(p.mcPct<0))return false;
+    if(finChk.length){var _okS=false;if(finChk.indexOf("Apto")>-1&&p.apto)_okS=true;if(finChk.indexOf("Bloqueado")>-1&&p.bloqueado)_okS=true;if(finChk.indexOf("MC negativa")>-1&&p.mcPct<0)_okS=true;if(!_okS)return false;}
     if(pmin!=null&&(p.peso||0)<pmin)return false;
     if(pmax!=null&&(p.peso||0)>pmax)return false;
     if(fb){const hay=(String(p.pedido)+" "+(p.cliente||"")).toLowerCase();if(hay.indexOf(fb)===-1)return false;}
@@ -7489,9 +7496,9 @@ function importCarriers(file){
     let hi=-1;for(let i=0;i<Math.min(aoa.length,20);i++){const ns=(aoa[i]||[]).map(norm);if(ns.some(n=>n.includes("transportadora")||n.includes("razaosocial")||n==="nome"||n.includes("fantasia"))){hi=i;break;}}
     if(hi<0){toast("Planilha de transportadoras: nao achei coluna de nome.","err");return;}
     const H=aoa[hi].map(h=>String(h).trim());const idx=preds=>{for(const p of preds){const i=H.findIndex(h=>p(norm(h)));if(i>-1)return i;}return -1;};
-    const ci={nome:idx([n=>n.includes("transportadora"),n=>n.includes("razaosocial"),n==="nome",n=>n.includes("nome"),n=>n.includes("fantasia")]),cnpj:idx([n=>n.includes("cnpj")]),tel:idx([n=>n.includes("tel")||n.includes("fone")||n.includes("celular")]),contato:idx([n=>n.includes("contato")||n.includes("responsavel")])};
-    let n=0;for(let i=hi+1;i<aoa.length;i++){const a=aoa[i]||[];const nome=ci.nome>-1?String(a[ci.nome]||"").trim():"";if(!nome)continue;if(addCarrier(nome,ci.cnpj>-1?String(a[ci.cnpj]==null?"":a[ci.cnpj]).trim():"",ci.tel>-1?a[ci.tel]:"",ci.contato>-1?a[ci.contato]:""))n++;}
-    renderCarriers();saveState();toast(n+" transportadora(s) importada(s).","ok");
+    const ci={nome:idx([n=>n.includes("transportadora"),n=>n.includes("razaosocial"),n=>n==="nome",n=>n.includes("nome"),n=>n.includes("fantasia")]),cnpj:idx([n=>n.includes("cnpj")]),tel:idx([n=>n.includes("tel")||n.includes("fone")||n.includes("celular")]),contato:idx([n=>n.includes("contato")||n.includes("responsavel")])};
+    const existing=new Set(state.carriers.map(c=>String(c.nome||"").trim().toLowerCase()));let n=0,dup=0;for(let i=hi+1;i<aoa.length;i++){const a=aoa[i]||[];const nome=ci.nome>-1?String(a[ci.nome]||"").trim():"";if(!nome)continue;const key=nome.toLowerCase();if(existing.has(key)){dup++;continue;}existing.add(key);state.carriers.push({nome:nome,cnpj:ci.cnpj>-1?String(a[ci.cnpj]==null?"":a[ci.cnpj]).trim():"",tel:ci.tel>-1?String(a[ci.tel]==null?"":a[ci.tel]).trim():"",contato:ci.contato>-1?String(a[ci.contato]==null?"":a[ci.contato]).trim():""});n++;}
+    refreshCarrierList();renderCarriers();saveState();toast(n+" transportadora(s) importada(s)."+(dup?" ("+dup+" ja existiam)":""),"ok");
   }catch(err){toast("Erro ao importar transportadoras: "+err.message,"err");}};
   reader.readAsArrayBuffer(file);
 }
@@ -7918,10 +7925,10 @@ $("#ffFilial").addEventListener("change",renderFreteTab);
 $("#ffBusca").addEventListener("input",renderFreteTab);
 ["#fFilial","#fRota","#fProduto","#fVendedor","#fCanal","#fCidade","#fUf"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
 $("#fSortEntrega")&&$("#fSortEntrega").addEventListener("change",()=>{renderPedidos();});
-$("#fFin").addEventListener("change",()=>{renderPedidos();renderKpis();});
+(function(){var wrap=$("#fFinWrap"),btn=$("#fFinBtn"),menu=$("#fFinMenu");if(btn&&menu){btn.addEventListener("click",function(e){e.stopPropagation();menu.classList.toggle("open");});document.addEventListener("click",function(e){if(wrap&&!wrap.contains(e.target))menu.classList.remove("open");});[].forEach.call(document.querySelectorAll(".fFinChk"),function(c){c.addEventListener("change",function(){var sel=[].map.call(document.querySelectorAll(".fFinChk:checked"),function(x){return x.value;});btn.textContent=sel.length?(sel.length===1?sel[0]:sel.length+" status"):"Status";btn.classList.toggle("active",sel.length>0);renderPedidos();renderKpis();});});}})();
 $("#fBusca").addEventListener("input",()=>{renderPedidos();renderKpis();});
 ["#fPesoMin","#fPesoMax"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
-$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fVendedor","#fFin","#fCidade","#fUf"].forEach(s=>{if($(s))$(s).value="";});if($("#fSortEntrega"))$("#fSortEntrega").checked=false;$("#fBusca").value="";if($("#fCanal"))$("#fCanal").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
+$("#clearF").addEventListener("click",()=>{["#fFilial","#fRota","#fProduto","#fVendedor","#fFin","#fCidade","#fUf"].forEach(s=>{if($(s))$(s).value="";});if($("#fSortEntrega"))$("#fSortEntrega").checked=false;[].forEach.call(document.querySelectorAll(".fFinChk"),function(c){c.checked=false;});if($("#fFinBtn")){$("#fFinBtn").textContent="Status";$("#fFinBtn").classList.remove("active");}$("#fBusca").value="";if($("#fCanal"))$("#fCanal").value="";["#fPesoMin","#fPesoMax"].forEach(s=>{if($(s))$(s).value="";});renderPedidos();renderKpis();});
 document.querySelectorAll(".navbtn,.botnav button,#legHelp").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("#pickClose").addEventListener("click",()=>$("#pickOverlay").classList.remove("open"));
 $("#pickOverlay").addEventListener("click",e=>{if(e.target.id==="pickOverlay")$("#pickOverlay").classList.remove("open");});
