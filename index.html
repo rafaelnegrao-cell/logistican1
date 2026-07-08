@@ -6032,6 +6032,13 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .fmulti-menu label{display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:13px;color:var(--texto);cursor:pointer;border-radius:6px}
   .fmulti-menu label:hover{background:var(--verde-bg)}
   .fmulti-menu input{width:15px;height:15px;accent-color:var(--verde)}
+  .emb-hist{display:flex;gap:18px;align-items:center;background:var(--card);border:1px solid var(--grade);border-radius:12px;padding:16px 18px;box-shadow:var(--sombra);flex-wrap:wrap}
+  .emb-hist-main .v{font-size:36px;font-weight:800;color:var(--verde);line-height:1}
+  .emb-hist-main .l{font-size:11px;color:var(--cinza);text-transform:uppercase;letter-spacing:.4px;margin-top:4px}
+  .emb-hist-side{display:flex;flex-direction:column;gap:6px;flex:1;min-width:220px}
+  .emb-hist-sel{padding:7px 10px;border:1px solid var(--grade);border-radius:8px;font-family:inherit;font-size:13px;max-width:240px}
+  .emb-hist-wk{font-size:13px;color:var(--texto)}
+  .emb-hist-note{font-size:10.5px;color:var(--cinza);line-height:1.4}
 </style>
 </head>
 <body>
@@ -6924,6 +6931,7 @@ function renderPedidos(){
 /* frete da carga: preco = R$/ton REAL dos pedidos (proporcionalizado por peso quando >1) */
 function loadFreight(t){
   const ps=state.pedidos.filter(p=>p.assignedTo===t.id);
+  if(!ps.length&&t.freteSnap)return t.freteSnap;
   const kg=ps.reduce((s,p)=>s+p.peso,0);
   // preco total = soma (peso_i/1000 * frete_real_i do pedido)
   const total=ps.reduce((s,p)=>s+(p.peso/1000)*(p.frete||0),0);
@@ -6936,8 +6944,12 @@ function loadFreight(t){
   return {total,kg,alloc,rate,sumV,pagoTon,pagoTotal,saldo};
 }
 
-function truckLoad(t){return state.pedidos.filter(p=>p.assignedTo===t.id).reduce((s,p)=>s+p.peso,0);}function cargaMargem(t){var ps=state.pedidos.filter(function(p){return p.assignedTo===t.id;});var mc=0,vl=0,tons=0,ftab=0;ps.forEach(function(p){mc+=(p.mcRs||0);vl+=(p.vl||0);tons+=(p.peso||0)/1000;ftab+=((p.peso||0)/1000)*(p.frete||0);});var mcPct=vl>0?mc/vl*100:0;var fpago=(t.fretePago>0)?t.fretePago*tons:null;var mcLiq=mc,mcPctLiq=mcPct,acima=false,delta=0;if(fpago!=null){delta=fpago-ftab;mcLiq=mc-delta;mcPctLiq=vl>0?mcLiq/vl*100:0;acima=delta>0.5;}return{mc:mc,vl:vl,mcPct:mcPct,mcLiq:mcLiq,mcPctLiq:mcPctLiq,freteTab:ftab,fretePago:fpago,acima:acima,delta:delta,tons:tons};}function _mcCor(c){return c<0?"var(--risco)":(c<8?"var(--alerta)":"var(--ok)");}function margemLine(t){var m=cargaMargem(t);if(m.vl<=0)return "";var s='<div class="cargamc">MC carga: <b style="color:'+_mcCor(m.mcPct)+'">'+m.mcPct.toFixed(1)+'%</b>';if(m.fretePago!=null){s+=' &middot; apos frete pago: <b style="color:'+_mcCor(m.mcPctLiq)+'">'+m.mcPctLiq.toFixed(1)+'%</b>';if(m.acima)s+=' <span class="mc-warn">&#9888; frete acima da tabela +'+fmtMoney(m.delta)+'</span>';}s+='</div>';return s;}function weekKeyN(d){d=new Date(d.getFullYear(),d.getMonth(),d.getDate());var day=(d.getDay()+6)%7;d.setDate(d.getDate()-day+3);var firstThu=new Date(d.getFullYear(),0,4);var wk=1+Math.round(((d-firstThu)/86400000-3+((firstThu.getDay()+6)%7))/7);return d.getFullYear()+"-W"+(wk<10?"0"+wk:wk);}
-function cargaTag(t){return t.numeroCarga?'<span class="cargaseq">Carga '+t.numeroCarga+'</span> ':'';}
+function truckLoad(t){var _s=state.pedidos.filter(p=>p.assignedTo===t.id).reduce((s,p)=>s+p.peso,0);if(_s===0&&t.freteSnap&&t.freteSnap.kg)return t.freteSnap.kg;return _s;}function cargaMargem(t){var ps=state.pedidos.filter(function(p){return p.assignedTo===t.id;});var mc=0,vl=0,tons=0,ftab=0;ps.forEach(function(p){mc+=(p.mcRs||0);vl+=(p.vl||0);tons+=(p.peso||0)/1000;ftab+=((p.peso||0)/1000)*(p.frete||0);});var mcPct=vl>0?mc/vl*100:0;var fpago=(t.fretePago>0)?t.fretePago*tons:null;var mcLiq=mc,mcPctLiq=mcPct,acima=false,delta=0;if(fpago!=null){delta=fpago-ftab;mcLiq=mc-delta;mcPctLiq=vl>0?mcLiq/vl*100:0;acima=delta>0.5;}return{mc:mc,vl:vl,mcPct:mcPct,mcLiq:mcLiq,mcPctLiq:mcPctLiq,freteTab:ftab,fretePago:fpago,acima:acima,delta:delta,tons:tons};}function _mcCor(c){return c<0?"var(--risco)":(c<8?"var(--alerta)":"var(--ok)");}function margemLine(t){var m=cargaMargem(t);if(m.vl<=0)return "";var s='<div class="cargamc">MC carga: <b style="color:'+_mcCor(m.mcPct)+'">'+m.mcPct.toFixed(1)+'%</b>';if(m.fretePago!=null){s+=' &middot; apos frete pago: <b style="color:'+_mcCor(m.mcPctLiq)+'">'+m.mcPctLiq.toFixed(1)+'%</b>';if(m.acima)s+=' <span class="mc-warn">&#9888; frete acima da tabela +'+fmtMoney(m.delta)+'</span>';}s+='</div>';return s;}function weekKeyN(d){d=new Date(d.getFullYear(),d.getMonth(),d.getDate());var day=(d.getDay()+6)%7;d.setDate(d.getDate()-day+3);var firstThu=new Date(d.getFullYear(),0,4);var wk=1+Math.round(((d-firstThu)/86400000-3+((firstThu.getDay()+6)%7))/7);return d.getFullYear()+"-W"+(wk<10?"0"+wk:wk);}
+function filialCode(f){f=String(f||"").trim().toLowerCase();if(f.indexOf("itaju")>-1||f.indexOf("filial")>-1||f==="sp"||f==="ita")return "ITA";if(f.indexOf("sertan")>-1||f.indexOf("matriz")>-1||f==="pr"||f==="srt")return "SRT";return f?f.slice(0,3).toUpperCase():"N1";}function truckFilial(t){var ps=state.pedidos.filter(function(p){return p.assignedTo===t.id;});var cnt={};ps.forEach(function(p){var c=filialCode(p.filial);cnt[c]=(cnt[c]||0)+1;});var best="N1",bn=-1;Object.keys(cnt).forEach(function(k){if(cnt[k]>bn){bn=cnt[k];best=k;}});return best;}
+function _incF(v,q){return String(v==null?"":v).toLowerCase().includes(q);}
+function embMatchFilters(rec){var ff=$("#fFilial")?$("#fFilial").value.trim().toLowerCase():"",fr=$("#fRota")?$("#fRota").value.trim().toLowerCase():"",fuf=$("#fUf")?$("#fUf").value.trim().toLowerCase():"",fcd=$("#fCidade")?$("#fCidade").value.trim().toLowerCase():"",fv=$("#fVendedor")?$("#fVendedor").value.trim().toLowerCase():"";if(ff&&!(_incF(rec.filialNome,ff)||_incF(rec.filial,ff)))return false;if(fr&&!_incF(rec.rota,fr))return false;if(fuf&&!((rec.ufs||[]).some(function(u){return _incF(u,fuf);})))return false;if(fcd&&!((rec.cidades||[]).some(function(c){return _incF(c,fcd);})))return false;if(fv&&!((rec.vendedores||[]).some(function(v){return _incF(v,fv);})))return false;return true;}
+function embHistFilt(){return (state.embHist||[]).filter(embMatchFilters);}
+function filtrosAtivos(){return ["#fFilial","#fRota","#fUf","#fCidade","#fVendedor"].some(function(s){return $(s)&&$(s).value.trim()!=="";});}function cargaTag(t){return t.numeroCarga?'<span class="cargaseq">'+(t.filialCarga?t.filialCarga+' &middot; ':'')+'Carga '+t.numeroCarga+'</span> ':'';}
 function _hesc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function histHtml(t){if(!t.history||!t.history.length)return "";return '<div class="clhist"><div class="clhist-t">Historico de embarque</div>'+t.history.map(function(hh){return '<div class="clhist-i">Para <b>'+_hesc(hh.para)+'</b> (era '+_hesc(hh.de)+') &middot; '+new Date(hh.ts).toLocaleDateString("pt-BR")+' &middot; '+_hesc(hh.user)+' &mdash; '+_hesc(hh.motivo)+'</div>';}).join("")+'</div>';}
 function editarEmbarque(t){var atual=t.eta?fmtEta(t.eta):"(nao definida)";var nova=(prompt("Nova data de embarque (dd/mm/aaaa):\nAtual: "+atual)||"").trim();if(!nova)return;var d=parseDateBr(nova);if(d==null){toast("Data invalida. Use dd/mm/aaaa.","err");return;}var motivo=(prompt("Motivo da alteracao da data de embarque:")||"").trim();if(!motivo){toast("Informe o motivo da alteracao.","err");return;}var dt=new Date(d),iso=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");var de=t.eta?fmtEta(t.eta):"-";t.eta=iso;t.history=t.history||[];t.history.push({ts:Date.now(),user:(typeof CUR!=="undefined"&&(CUR.nome||CUR.user))||"",de:de,para:fmtEta(iso),motivo:motivo});renderAll();toast("Data de embarque atualizada.","ok");logAction("editar_embarque",(t.rota||"")+": "+de+" -> "+fmtEta(iso)+" | Motivo: "+motivo);}
@@ -7072,7 +7084,7 @@ function fecharCarga(t){
     if(!motivo){toast("Motivo obrigatorio para fechar abaixo do minimo.","err");return;}
     abaixo=true;t.belowMinReason=motivo;
   }
-  t.status="fechada";t.closedAt=new Date();t.belowMin=abaixo;if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date());state.cargaSeq[_wk]=(state.cargaSeq[_wk]||0)+1;t.numeroCarga=state.cargaSeq[_wk];t.semana=_wk;}
+  t.status="fechada";t.closedAt=new Date();t.belowMin=abaixo;if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date()),_fk=truckFilial(t),_key=_fk+"|"+_wk;state.cargaSeq[_key]=(state.cargaSeq[_key]||0)+1;t.numeroCarga=state.cargaSeq[_key];t.semana=_wk;t.filialCarga=_fk;}
   renderAll();
   toast("Carga da rota \""+(t.rota||"-")+"\" fechada e movida para Aguardando Contratacao."+(abaixo?" (abaixo do minimo)":""),"ok");logAction("fechar_carga",(t.rota||"")+" "+pct.toFixed(0)+"%"+(abaixo?" - ABAIXO DO MINIMO | Motivo: "+(t.belowMinReason||""):""));
 }
@@ -7179,7 +7191,7 @@ function veiculoContratado(t){
 }
 function embarcarCarga(t){
   if(!requirePerm("embarcar"))return;
-  t.status="embarcada";t.shippedAt=new Date();renderAll();setTab("embarcadas");
+  t.status="embarcada";t.shippedAt=new Date();var _ps=state.pedidos.filter(function(p){return p.assignedTo===t.id;});var _fr=loadFreight(t);t.freteSnap={total:_fr.total,pagoTotal:_fr.pagoTotal,saldo:_fr.saldo,kg:_ps.reduce(function(s,p){return s+(p.peso||0);},0),rate:_fr.rate,pagoTon:_fr.pagoTon};if(!t.embLogged){state.embHist=state.embHist||[];state.embHist.push({ts:Date.now(),filial:(t.filialCarga||truckFilial(t)),filialNome:(_ps[0]&&_ps[0].filial)||"",rota:t.rota||"",ufs:Array.from(new Set(_ps.map(function(p){return String(p.uf||"").toUpperCase();}).filter(Boolean))),cidades:Array.from(new Set(_ps.map(function(p){return p.cidade;}).filter(Boolean))),vendedores:Array.from(new Set(_ps.map(function(p){return p.vendedor;}).filter(Boolean))),num:t.numeroCarga||null,semana:t.semana||"",kg:t.freteSnap.kg,saldo:_fr.saldo});t.embLogged=true;}renderAll();setTab("embarcadas");
   toast("Carga \""+(t.rota||"-")+"\" marcada como Embarcada.","ok");logAction("embarcar",(t.rota||"")+" "+VEHICLES[String(t.cap)]);
 }
 
@@ -7215,7 +7227,7 @@ function renderEmbarcadas(){
   const cs=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
   const fobEmb=state.pedidos.filter(p=>p.fob&&p.embarcado&&inScope(p));
   setBadge("emb",cs.length+fobEmb.length);
-  if($("#embMeta"))$("#embMeta").textContent=cs.length+" carga(s) CIF + "+fobEmb.length+" pedido(s) FOB";
+  if($("#embMeta")){var _eh=embHistFilt();$("#embMeta").textContent=cs.length+" carga(s) CIF + "+fobEmb.length+" pedido(s) FOB \u00b7 Total embarcadas (hist\u00f3rico"+(filtrosAtivos()?", filtrado":"")+"): "+_eh.length;}
   if($("#btnExportEmb"))$("#btnExportEmb").disabled=cs.length===0;
   const body=$("#embBody");if(!body)return;
   if(!cs.length&&!fobEmb.length){body.innerHTML='<div class="empty">Nenhuma carga ou pedido embarcado ainda.</div>';return;}
@@ -7298,7 +7310,7 @@ function renderKpis(){
   if($("#kContr"))$("#kContr").textContent=contr.length;
   const emb=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
   if($("#kEmb"))$("#kEmb").textContent=emb.length;
-  const saldo=contr.concat(emb).filter(truckInFilter).reduce((s,t)=>s+loadFreight(t).saldo,0);
+  const saldo=contr.concat(emb).filter(truckInScope).reduce((s,t)=>s+loadFreight(t).saldo,0);
   const ks=$("#kSaldo");ks.textContent=(saldo>=0?"":"-")+"R$ "+Math.abs(saldo).toLocaleString("pt-BR",{maximumFractionDigits:0});
   const ksc=$("#kSaldoCard");if(ksc){ksc.classList.toggle("green",saldo>=0);ksc.classList.toggle("alert",saldo<0);ksc.classList.toggle("neutral",false);}
   $("#kAloc").textContent=fmtT(aloc);
@@ -7376,7 +7388,7 @@ function readFile(file){state.fileName=file.name;$("#fileMeta").textContent=file
 function setupBankDrop(){const bank=$("#pedidosList");bank.addEventListener("dragover",e=>e.preventDefault());bank.addEventListener("drop",e=>{e.preventDefault();const id=e.dataTransfer.getData("text/plain");const p=state.pedidos.find(x=>x.id===id);if(p&&p.assignedTo!==null){p.assignedTo=null;renderAll();}});}
 
 /* tabs */
-function setTab(tab,force){if(!force&&typeof CUR!=="undefined"&&CUR.profile&&!canSee(tab))return;state.tab=tab;document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.panel===tab));if(tab==="config")renderConfig();if(tab==="monitoria"){refreshAudit().then(renderMonitoria);}if(tab==="comunicacao"&&window.renderComm){window.renderComm();}if(tab==="painel"&&window.renderPainel){window.renderPainel();}labelTables();window.scrollTo(0,0);}
+function setTab(tab,force){if(!force&&typeof CUR!=="undefined"&&CUR.profile&&!canSee(tab))return;state.tab=tab;document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.panel===tab));if(tab==="config")renderConfig();if(tab==="monitoria"){refreshAudit().then(renderMonitoria);}if(tab==="comunicacao"&&window.renderComm){window.renderComm();}if(tab==="painel"&&window.renderPainel){window.renderPainel();}if(tab==="embarcadas"){renderEmbarcadas();}if(tab==="contratadas"){renderContratadas();}labelTables();window.scrollTo(0,0);}
 
 /* ================= MAPA DOS DESTINOS (offline) ================= */
 let _muniMap=null;
@@ -7562,7 +7574,7 @@ function updateSavedInfo(ts,fail){
 }
 function saveState(){
   if(_restoring)return;
-  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
+  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,cargaSeq:state.cargaSeq||{},embHist:state.embHist||[],pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
   try{localStorage.setItem(SKEY,JSON.stringify(data));updateSavedInfo(data.ts);}catch(err){updateSavedInfo(null,true);}
   pushApp(data);
 }
@@ -7579,6 +7591,9 @@ function applyAppData(d){
   state.hasFrete=!!d.hasFrete;
   state.maxMcRs=d.maxMcRs||1;
   state.nextTruck=d.nextTruck||(state.trucks.length+1);
+  state.cargaSeq=(d.cargaSeq&&typeof d.cargaSeq==="object")?d.cargaSeq:{};
+  state.embHist=Array.isArray(d.embHist)?d.embHist:[];
+  state.trucks.forEach(function(_t){if(_t.status==="embarcada"&&!_t.embLogged){state.embHist.push({ts:_t.shippedAt?+new Date(_t.shippedAt):Date.now(),filial:(_t.filialCarga||truckFilial(_t)),rota:_t.rota||"",num:_t.numeroCarga||null,semana:_t.semana||"",kg:truckLoad(_t)});_t.embLogged=true;}});
   state.prioMap=d.prioMap&&typeof d.prioMap==="object"?d.prioMap:{};
   state.prioFileName=d.prioFileName||"";
   state.prioUpdatedAt=d.prioUpdatedAt||"";
@@ -8109,6 +8124,7 @@ netBoot();
       }).join("")+'</ul>':'<div class="pz-empty">Nada em risco aqui.</div>';
     return '<div class="pz-b"><div class="pz-b-h '+cls+'"><span>'+titulo+'</span><span>'+arr.length+'</span></div>'+body+'</div>';
   }
+  function embHistBlock(){var eh=(typeof state!=="undefined"&&state.embHist)||[];eh=eh||[];var sel=g("pnEmbFil"),fil=sel?sel.value:"";var wk=(typeof weekKeyN==="function")?weekKeyN(new Date()):"";var ehF=fil?eh.filter(function(x){return x.filial===fil;}):eh;var wkN=ehF.filter(function(x){return x.semana===wk;}).length;var fset={};eh.forEach(function(x){if(x.filial)fset[x.filial]=1;});var opts='<option value="">Todas as filiais</option>'+Object.keys(fset).sort().map(function(f){return '<option value="'+f+'"'+(f===fil?" selected":"")+'>'+f+'</option>';}).join("");return '<div class="painel-title" style="margin-top:22px">Historico de embarques</div><div class="emb-hist"><div class="emb-hist-main"><div class="v">'+ehF.length+'</div><div class="l">cargas embarcadas'+(fil?" ("+fil+")":" (total)")+'</div></div><div class="emb-hist-side"><select id="pnEmbFil" class="emb-hist-sel">'+opts+'</select><div class="emb-hist-wk">Esta semana: <b>'+wkN+'</b></div><div class="emb-hist-note">Indicador acumulado desde o inicio do uso &middot; independente da numeracao semanal da carga.</div></div></div>';}
   window.renderPainel=function(){
     var host=g("painelBody"); if(!host) return;
     var trucks=state.trucks||[], peds=state.pedidos||[];
@@ -8143,7 +8159,8 @@ netBoot();
       +bucket("atr","Atrasados",d.atr)+bucket("hoje","Vencem hoje",d.hj)+bucket("risco","Vencem em ate 2 dias",d.ris)
       +'</div>';
     html+='<div style="margin-top:10px;font-size:11.5px;color:var(--cinza)">'+d.comData+' pedido(s) com prazo mapeado'+(d.futuros?' &middot; '+d.futuros+' com entrega futura (>2 dias)':'')+(d.semData?' &middot; <b style="color:var(--risco)">'+d.semData+' sem data de entrega</b>':'')+'</div>';
-    host.innerHTML=html;
+    html+=embHistBlock();host.innerHTML=html;
+    (function(){var ef=g("pnEmbFil");if(ef)ef.addEventListener("change",window.renderPainel);})();
     updateRiskBadge();
   };
   setInterval(function(){if(typeof CUR!=="undefined"&&CUR.user)updateRiskBadge();},30000);
