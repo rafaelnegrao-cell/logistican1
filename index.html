@@ -6039,6 +6039,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .emb-hist-sel{padding:7px 10px;border:1px solid var(--grade);border-radius:8px;font-family:inherit;font-size:13px;max-width:240px}
   .emb-hist-wk{font-size:13px;color:var(--texto)}
   .emb-hist-note{font-size:10.5px;color:var(--cinza);line-height:1.4}
+  .clbtn.canc{color:#b02a37;border:1px solid #f1c2c7;background:#fff}
+  .clbtn.canc:hover{background:#fbe9eb;border-color:#e0a6ac}
 </style>
 </head>
 <body>
@@ -6934,7 +6936,7 @@ function loadFreight(t){
   if(!ps.length&&t.freteSnap)return t.freteSnap;
   const kg=ps.reduce((s,p)=>s+p.peso,0);
   // preco total = soma (peso_i/1000 * frete_real_i do pedido)
-  const total=ps.reduce((s,p)=>s+(p.peso/1000)*(p.frete||0),0);
+  let total=0;{const _grp={};ps.forEach(p=>{const _k=norm(p.cliente)+"|"+norm(p.cidade)+"|"+norm(p.uf);(_grp[_k]=_grp[_k]||[]).push(p);});Object.keys(_grp).forEach(_k=>{const g=_grp[_k];const gkg=g.reduce((s,p)=>s+p.peso,0);const heavy=g.reduce((a,b)=>b.peso>a.peso?b:a,g[0]);total+=(gkg/1000)*(heavy.frete||0);});}
   const rate=kg>0?total/(kg/1000):0;            // R$/ton efetivo proporcionalizado
   const sumP=kg||1, sumV=ps.reduce((s,p)=>s+(p.valor||0),0);
   const alloc={};
@@ -6951,7 +6953,7 @@ function embMatchFilters(rec){var ff=$("#fFilial")?$("#fFilial").value.trim().to
 function embHistFilt(){return (state.embHist||[]).filter(embMatchFilters);}
 function filtrosAtivos(){return ["#fFilial","#fRota","#fUf","#fCidade","#fVendedor"].some(function(s){return $(s)&&$(s).value.trim()!=="";});}function cargaTag(t){return t.numeroCarga?'<span class="cargaseq">'+(t.filialCarga?t.filialCarga+' &middot; ':'')+'Carga '+t.numeroCarga+'</span> ':'';}
 function _hesc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-function histHtml(t){if(!t.history||!t.history.length)return "";return '<div class="clhist"><div class="clhist-t">Historico de embarque</div>'+t.history.map(function(hh){return '<div class="clhist-i">Para <b>'+_hesc(hh.para)+'</b> (era '+_hesc(hh.de)+') &middot; '+new Date(hh.ts).toLocaleDateString("pt-BR")+' &middot; '+_hesc(hh.user)+' &mdash; '+_hesc(hh.motivo)+'</div>';}).join("")+'</div>';}
+function histHtml(t){if(!t.history||!t.history.length)return "";return '<div class="clhist"><div class="clhist-t">Historico da carga</div>'+t.history.map(function(hh){var q=new Date(hh.ts).toLocaleDateString("pt-BR")+" "+new Date(hh.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});var head=hh.tipo?_hesc(hh.tipo):("Embarque para "+_hesc(hh.para)+(hh.de?" (era "+_hesc(hh.de)+")":""));return '<div class="clhist-i"><b>'+head+'</b> &middot; '+q+' &middot; '+_hesc(hh.user)+(hh.motivo?' &mdash; '+_hesc(hh.motivo):'')+'</div>';}).join("")+'</div>';}
 function editarEmbarque(t){var atual=t.eta?fmtEta(t.eta):"(nao definida)";var nova=(prompt("Nova data de embarque (dd/mm/aaaa):\nAtual: "+atual)||"").trim();if(!nova)return;var d=parseDateBr(nova);if(d==null){toast("Data invalida. Use dd/mm/aaaa.","err");return;}var motivo=(prompt("Motivo da alteracao da data de embarque:")||"").trim();if(!motivo){toast("Informe o motivo da alteracao.","err");return;}var dt=new Date(d),iso=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");var de=t.eta?fmtEta(t.eta):"-";t.eta=iso;t.history=t.history||[];t.history.push({ts:Date.now(),user:(typeof CUR!=="undefined"&&(CUR.nome||CUR.user))||"",de:de,para:fmtEta(iso),motivo:motivo});renderAll();toast("Data de embarque atualizada.","ok");logAction("editar_embarque",(t.rota||"")+": "+de+" -> "+fmtEta(iso)+" | Motivo: "+motivo);}
 function routeMismatch(t){if(!t||!t.rota||!t.rota.trim())return false;const tr=normRota(t.rota);return state.pedidos.some(p=>p.assignedTo===t.id&&p.rota&&normRota(p.rota)!==tr);}
 function assign(p,t){if(!inScope(p)){toast("Pedido fora do seu escopo de filial/estado.","err");return;}
@@ -7007,7 +7009,7 @@ function truckCard(t){
   card.querySelector(".edit").addEventListener("click",()=>openModal(t));
   const rw=card.querySelector(".rw-edit");if(rw)rw.addEventListener("click",()=>openModal(t));
   card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
-  card.querySelector(".del").addEventListener("click",()=>{if(confirm("Excluir esta carga? Os pedidos voltam para o banco.")){state.pedidos.forEach(p=>{if(p.assignedTo===t.id)p.assignedTo=null;});state.trucks=state.trucks.filter(x=>x.id!==t.id);renderAll();}});
+  card.querySelector(".del").addEventListener("click",()=>{if(t.numeroCarga){cancelarCarga(t);return;}if(confirm("Excluir esta carga? Os pedidos voltam para o banco.")){state.pedidos.forEach(p=>{if(p.assignedTo===t.id)p.assignedTo=null;});state.trucks=state.trucks.filter(x=>x.id!==t.id);renderAll();}});
   card.querySelector(".btn-auto").addEventListener("click",()=>autoFill(t));
   card.querySelector(".btn-parcial").addEventListener("click",()=>fecharParcial(t));
   card.querySelector(".btn-close").addEventListener("click",()=>fecharCarga(t));
@@ -7084,7 +7086,7 @@ function fecharCarga(t){
     if(!motivo){toast("Motivo obrigatorio para fechar abaixo do minimo.","err");return;}
     abaixo=true;t.belowMinReason=motivo;
   }
-  t.status="fechada";t.closedAt=new Date();t.belowMin=abaixo;if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date()),_fk=truckFilial(t),_key=_fk+"|"+_wk;state.cargaSeq[_key]=(state.cargaSeq[_key]||0)+1;t.numeroCarga=state.cargaSeq[_key];t.semana=_wk;t.filialCarga=_fk;}
+  t.status="fechada";t.closedAt=new Date();t.belowMin=abaixo;
   renderAll();
   toast("Carga da rota \""+(t.rota||"-")+"\" fechada e movida para Aguardando Contratacao."+(abaixo?" (abaixo do minimo)":""),"ok");logAction("fechar_carga",(t.rota||"")+" "+pct.toFixed(0)+"%"+(abaixo?" - ABAIXO DO MINIMO | Motivo: "+(t.belowMinReason||""):""));
 }
@@ -7097,7 +7099,7 @@ function fecharParcial(t){
   renderAll();setTab("parcial");
   toast("Carga \""+(t.rota||"-")+"\" movida para Fechado Parcial ("+pct.toFixed(0)+"%). Complete o volume ate "+MIN_CLOSE_PCT+"% para fechar.","ok",7000);logAction("fechar_parcial",(t.rota||"")+" "+pct.toFixed(0)+"%");
 }
-function reabrirCarga(t){if(!requirePerm("reverterStatus"))return;const motivo=(prompt("Informe o motivo para voltar o status desta carga:")||"").trim();if(!motivo){toast("Motivo obrigatorio para voltar o status.","err");return;}const de=t.status;t.status="montada";t.revertReason=motivo;renderAll();setTab("formador");toast("Carga reaberta no Formador.","info");logAction("reverter_status",(t.rota||"")+": "+de+" -> montagem | Motivo: "+motivo);}
+function pushHist(t,e){t.history=t.history||[];t.history.push({ts:Date.now(),user:(typeof CUR!=="undefined"&&(CUR.nome||CUR.user))||"",tipo:e.tipo||"",de:e.de||"",para:e.para||"",motivo:e.motivo||""});}function cancelarCarga(t){if(!requirePerm("reverterStatus"))return;var rot=(t.numeroCarga?("carga "+(t.filialCarga?t.filialCarga+" ":"")+"No "+t.numeroCarga):"carga");var motivo=(prompt("Motivo do CANCELAMENTO da "+rot+":")||"").trim();if(!motivo){toast("Motivo obrigatorio para cancelar.","err");return;}if(!confirm("Confirmar cancelamento da "+rot+"?\nOs pedidos voltam para o banco. O numero e o historico ficam registrados."))return;var de=t.status;state.pedidos.forEach(function(p){if(p.assignedTo===t.id)p.assignedTo=null;});t.status="cancelada";t.canceladaEm=Date.now();pushHist(t,{tipo:"Cancelamento",de:de,para:"cancelada",motivo:motivo});renderAll();toast("Carga cancelada. Numero e historico preservados.","info");logAction("cancelar_carga",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> cancelada | Motivo: "+motivo);}function reabrirCarga(t){if(!requirePerm("reverterStatus"))return;const motivo=(prompt("Informe o motivo para voltar o status desta carga:")||"").trim();if(!motivo){toast("Motivo obrigatorio para voltar o status.","err");return;}const de=t.status;t.status="montada";t.revertReason=motivo;pushHist(t,{tipo:"Reversao de status",de:de,para:"montagem",motivo:motivo});renderAll();setTab("formador");toast((t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+"reaberta no Formador."+(t.numeroCarga?" Numero preservado.":""),"info");logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> montagem | Motivo: "+motivo);}
 
 /* PAINEL FECHADO PARCIAL */
 function renderParcial(){
@@ -7186,7 +7188,7 @@ function renderFechadas(){
 function veiculoContratado(t){
   if(!requirePerm("contratar"))return;
   if(!transporteCompleto(t)){toast("Dados de transporte / frete pago incompletos.","err");return;}
-  t.status="contratada";t.contractedAt=new Date();renderAll();setTab("contratadas");
+  if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date()),_fk=truckFilial(t),_key=_fk+"|"+_wk;state.cargaSeq[_key]=(state.cargaSeq[_key]||0)+1;t.numeroCarga=state.cargaSeq[_key];t.semana=_wk;t.filialCarga=_fk;pushHist(t,{tipo:"Numero de carga gerado",de:"fechada",para:"contratada",motivo:"Carga "+_fk+" No "+t.numeroCarga});}t.status="contratada";t.contractedAt=new Date();renderAll();setTab("contratadas");
   toast("Veiculo contratado para \""+(t.rota||"-")+"\". Movido para Cargas Programadas.","ok");logAction("contratar",(t.rota||"")+" - "+(t.transp||""));
 }
 function embarcarCarga(t){
@@ -7211,10 +7213,10 @@ function renderContratadas(){
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
     card.innerHTML=
       '<div class="clh" style="background:linear-gradient(135deg,#0a5d44,#008D67)"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+' <span class="pill contr">PROGRAMADA</span></div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'% &middot; '+(t.transp||"-")+' &middot; '+(t.placa||"-")+'</div>'+margemLine(t)+'</div>'+
-      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn emb">&#128666; Embarcado</button><button class="clbtn reab">Voltar p/ Aguardando</button></div></div>'+
+      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn emb">&#128666; Embarcado</button><button class="clbtn reab">Voltar p/ Aguardando</button><button class="clbtn canc">Cancelar</button></div></div>'+
       '<div class="clinfo" style="padding:10px 16px;background:#f1faf6;display:flex;gap:22px;font-size:12px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete (tabela): <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b></span><span>Frete pago: <b>'+fmtMoney(fr.pagoTotal)+'</b></span><span>Saldo: <b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'" style="font-size:14px">'+fmtMoney(fr.saldo)+'</b></span><span>R$/ton tabela <b>'+fmtMoney(fr.rate)+'</b> vs pago <b>'+fmtMoney(fr.pagoTon)+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>'+
       '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table>'+histHtml(t)+'</div>';
-    card.querySelector(".reab").addEventListener("click",()=>{if(!requirePerm("reverterStatus"))return;t.status="fechada";renderAll();setTab("fechadas");toast("Carga retornada para Aguardando Contratacao.","info");logAction("reverter_status",(t.rota||"")+": contratada -> fechada");});
+    card.querySelector(".reab").addEventListener("click",()=>{if(!requirePerm("reverterStatus"))return;var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Programada para Aguardando Contratacao:")||"").trim();if(!m){toast("Motivo obrigatorio.","err");return;}t.status="fechada";pushHist(t,{tipo:"Reversao de status",de:"contratada",para:"fechada",motivo:m});renderAll();setTab("fechadas");toast("Carga retornada para Aguardando Contratacao. Numero preservado.","info");logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": contratada -> fechada | Motivo: "+m);});var _cc=card.querySelector(".canc");if(_cc)_cc.addEventListener("click",()=>cancelarCarga(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     card.querySelector(".emb").addEventListener("click",()=>embarcarCarga(t));
     card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
@@ -7239,10 +7241,10 @@ function renderEmbarcadas(){
     let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
     card.innerHTML=
       '<div class="clh" style="background:linear-gradient(135deg,#0b3d6e,#1454b3)"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+' <span class="pill" style="background:rgba(255,255,255,.22);color:#fff">EMBARCADA</span></div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'% &middot; '+(t.transp||"-")+' &middot; '+(t.placa||"-")+'</div>'+margemLine(t)+'</div>'+
-      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn reab">Voltar p/ Programadas</button></div></div>'+
+      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn reab">Voltar p/ Programadas</button><button class="clbtn canc">Cancelar</button></div></div>'+
       '<div class="clinfo" style="padding:10px 16px;background:#eef4fb;display:flex;gap:22px;font-size:12px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete (tabela): <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b></span><span>Frete pago: <b>'+fmtMoney(fr.pagoTotal)+'</b></span><span>Saldo: <b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'" style="font-size:14px">'+fmtMoney(fr.saldo)+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>'+
       '<div class="clbody det-body hidden"><table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th class="num">Frete rateado</th></tr></thead><tbody>'+rows+'</tbody></table>'+histHtml(t)+'</div>';
-    card.querySelector(".reab").addEventListener("click",()=>{if(!requirePerm("reverterStatus"))return;t.status="contratada";renderAll();setTab("contratadas");toast("Carga retornada para Cargas Programadas.","info");logAction("reverter_status",(t.rota||"")+": embarcada -> contratada");});
+    card.querySelector(".reab").addEventListener("click",()=>{if(!requirePerm("reverterStatus"))return;var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Embarcada para Programada:")||"").trim();if(!m){toast("Motivo obrigatorio.","err");return;}t.status="contratada";pushHist(t,{tipo:"Reversao de status",de:"embarcada",para:"contratada",motivo:m});renderAll();setTab("contratadas");toast("Carga retornada para Cargas Programadas. Numero preservado.","info");logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": embarcada -> contratada | Motivo: "+m);});var _cc2=card.querySelector(".canc");if(_cc2)_cc2.addEventListener("click",()=>cancelarCarga(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
     body.appendChild(card);
