@@ -238,6 +238,7 @@ def api_comms():
                 "ts": int(time.time() * 1000), "status": "aberto",
                 "pedido": body.get("pedido", ""), "cliente": body.get("cliente", ""),
                 "setor": body.get("setor", ""), "tipo": body.get("tipo", ""),
+                "categoria": body.get("categoria", "Pedido"),
                 "urgencia": body.get("urgencia", "") or "Media",
                 "assunto": assunto, "by": author,
                 "msgs": [_msg(author, mensagem)]

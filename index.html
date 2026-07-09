@@ -6062,6 +6062,20 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .rom-s{font-size:11.5px;color:var(--cinza);margin-top:2px}
   .rom-b{border:none;background:var(--verde);color:#fff;font-weight:700;font-size:11.5px;padding:7px 12px;border-radius:7px;cursor:pointer;white-space:nowrap}
   .rom-b:hover{background:var(--verde-2)}
+  .userbar .novbell{position:relative;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:3px 8px;font-size:14px;cursor:pointer;line-height:1;margin-left:auto;margin-right:6px}
+  .userbar .novbell:hover{background:rgba(255,255,255,.22)}
+  .novdot{position:absolute;top:-3px;right:-3px;width:11px;height:11px;background:var(--risco);border:2px solid var(--sidebar);border-radius:50%;display:none;animation:novpulse 1.4s infinite}
+  @keyframes novpulse{0%{box-shadow:0 0 0 0 rgba(220,53,69,.7)}70%{box-shadow:0 0 0 7px rgba(220,53,69,0)}100%{box-shadow:0 0 0 0 rgba(220,53,69,0)}}
+  .nov-foot{padding:12px 16px;border-top:1px solid var(--grade);display:flex;justify-content:flex-end}
+  .nov-rel.old{opacity:.72}
+  .nov-v.old{background:var(--cinza)}
+  .nov-atual{background:var(--verde-bg);color:var(--verde);font-weight:800;font-size:10.5px;padding:2px 9px;border-radius:10px;margin-left:auto}
+  .nov-i.atual{border-left:3px solid var(--verde-2);padding-left:9px;background:#fbfefd;border-radius:0 6px 6px 0}
+  .comm-tabs{display:flex;gap:8px;margin-bottom:12px}
+  .comm-tab{flex:1;padding:9px 12px;border:1px solid var(--grade);background:#fff;border-radius:9px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--cinza);cursor:pointer}
+  .comm-tab.active{background:var(--verde-bg);border-color:var(--verde-2);color:var(--verde)}
+  .comm-devhelp{font-size:11.5px;color:var(--cinza);background:#F6F9FF;border:1px solid var(--grade);border-radius:8px;padding:8px 11px}
+  .comm-dev{background:#1F6FEB;color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:10px;letter-spacing:.3px}
 </style>
 </head>
 <body>
@@ -6094,7 +6108,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 </div>
 
 <aside class="sidebar">
-  <div class="brand"><div class="logo">N1</div><div><h1>N1 Alimentos</h1><small>Logistica</small></div><button class="novbell" id="novBell" title="Novidades do sistema">&#128276;<span class="novdot" id="novDot"></span></button></div>
+  <div class="brand"><div class="logo">N1</div><div><h1>N1 Alimentos</h1><small>Logistica</small></div></div>
   <button class="btn-import" id="btnImport">&#128193; Importar Pedidos a Faturar</button>
   <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden">
   <div class="sb-sub">Areas</div>
@@ -6111,7 +6125,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     <button class="navbtn" data-tab="monitoria">&#128202; Monitoria</button><button class="navbtn" data-tab="painel">&#128200; Painel <span class="nbadge" data-badge="risco"></span></button><button class="navbtn" data-tab="comunicacao">&#128172; Comunicacao <span class="nbadge" data-badge="comm"></span></button>
     <button class="navbtn" data-tab="config">&#9881; Configuracoes</button>
   </div>
-  <div class="userbar"><span>&#128100;</span><span id="curUser"></span><button class="logoutb" id="btnLogout">Sair</button></div>
+  <div class="userbar"><span>&#128100;</span><span id="curUser"></span><button class="novbell" id="novBell" title="Novidades do sistema">&#128276;<span class="novdot" id="novDot"></span></button><button class="logoutb" id="btnLogout">Sair</button></div>
   <div class="sb-foot">Salvamento automatico no navegador (pedidos, frete e cargas).<br>Verde=priorizado | Azul=MC+ | Vermelho=MC-</div>
 </aside>
 
@@ -6493,7 +6507,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 <div class="overlay" id="novOverlay">
   <div class="modal" style="width:640px;max-width:96vw">
     <div class="modal-head"><h3>&#128276; Novidades do sistema</h3><button class="modal-x" id="novClose">&times;</button></div>
-    <div class="modal-body" style="max-height:78vh;overflow:auto"><div id="novBody"></div></div>
+    <div class="modal-body" style="max-height:72vh;overflow:auto"><div id="novBody"></div></div>
+    <div class="nov-foot"><button class="btn primary" id="novOk">Entendido</button></div>
   </div>
 </div>
 <div class="overlay" id="divOverlay">
@@ -6991,7 +7006,7 @@ function renderPedidos(){
 }
 
 /* frete da carga: preco = R$/ton REAL dos pedidos (proporcionalizado por peso quando >1) */
-function freteTabelaRate(rotaName,rotaCod,kg){if(!state.freightTable)return null;var keys=Object.keys(state.freightTable),entry=null;if(rotaCod){for(var i=0;i<keys.length;i++){var e=state.freightTable[keys[i]];if(e.cod&&String(e.cod).trim()!==""&&String(e.cod).trim()===String(rotaCod).trim()){entry=e;break;}}}if(!entry){var rn=norm(rotaName);for(var j=0;j<keys.length;j++){var e2=state.freightTable[keys[j]];if(rn&&norm(e2.destino)===rn){entry=e2;break;}}}if(!entry||!entry.tiers)return null;var ate=[],acima=[];Object.keys(entry.tiers).forEach(function(lab){var m=String(lab).match(/([\d.,]+)/);if(!m)return;var t=parseFloat(m[1].replace(/\./g,"").replace(",","."))*1000;var rate=entry.tiers[lab];if(!(rate>0))return;if(/acima|>|\+/i.test(lab))acima.push({kg:t,rate:rate});else ate.push({kg:t,rate:rate});});ate.sort(function(a,b){return a.kg-b.kg;});acima.sort(function(a,b){return a.kg-b.kg;});for(var k=0;k<ate.length;k++){if(kg<=ate[k].kg)return ate[k].rate;}var pick=null;for(var l=0;l<acima.length;l++){if(kg>acima[l].kg&&(!pick||acima[l].kg>pick.kg))pick=acima[l];}if(pick)return pick.rate;if(acima.length)return acima[acima.length-1].rate;if(ate.length)return ate[ate.length-1].rate;return null;}
+function freteTabelaRate(rotaName,rotaCod,kg){if(!state.freightTable)return null;if(state.freightSource!=="import"&&state.freightSource!=="manual")return null;var keys=Object.keys(state.freightTable),entry=null;if(rotaCod){for(var i=0;i<keys.length;i++){var e=state.freightTable[keys[i]];if(e.cod&&String(e.cod).trim()!==""&&String(e.cod).trim()===String(rotaCod).trim()){entry=e;break;}}}if(!entry){var rn=norm(rotaName);for(var j=0;j<keys.length;j++){var e2=state.freightTable[keys[j]];if(rn&&norm(e2.destino)===rn){entry=e2;break;}}}if(!entry||!entry.tiers)return null;var ate=[],acima=[];Object.keys(entry.tiers).forEach(function(lab){var L=String(lab);if(!/(kg|t\b|ate|at\u00e9|acima|>|\+|\u2265)/i.test(L))return;var m=L.match(/([\d.,]+)/);if(!m)return;var t=parseFloat(m[1].replace(/\./g,"").replace(",","."))*1000;var rate=entry.tiers[lab];if(!(rate>0))return;if(/acima|>|\+/i.test(lab))acima.push({kg:t,rate:rate});else ate.push({kg:t,rate:rate});});ate.sort(function(a,b){return a.kg-b.kg;});acima.sort(function(a,b){return a.kg-b.kg;});for(var k=0;k<ate.length;k++){if(kg<=ate[k].kg)return ate[k].rate;}var pick=null;for(var l=0;l<acima.length;l++){if(kg>acima[l].kg&&(!pick||acima[l].kg>pick.kg))pick=acima[l];}if(pick)return pick.rate;if(acima.length)return acima[acima.length-1].rate;if(ate.length)return ate[ate.length-1].rate;return null;}
 function loadFreight(t){
   const ps=state.pedidos.filter(p=>p.assignedTo===t.id);
   if(!ps.length&&t.freteSnap)return t.freteSnap;
@@ -8044,6 +8059,9 @@ netBoot();
   "use strict";
   var SETORES=["Comercial","Logistica","PCP","Producao","Financeiro","Qualidade","Outro"];
   var TIPOS=["Prioridade","Urgencia","Prazo","Duvida","Correcao","Outro"];
+  var TIPOS_DEV=["Melhoria","Novidade","Correcao"];
+  var DEV_HELP={Melhoria:"Melhorar uma funcao que ja funciona.",Novidade:"Criar uma funcao nova, que hoje nao existe.",Correcao:"Corrigir uma funcao que nao entrega o que deveria."};
+  var catAtual="Pedido";
   var URGS=["Baixa","Media","Alta"];
   var URGCOR={Baixa:"#28A745",Media:"#FFC107",Alta:"#DC3545"};
   var cache={threads:[]};
@@ -8061,18 +8079,27 @@ netBoot();
     var peds=pedOpts();
     host.innerHTML=
       '<div class="comm-new"><h3>&#10133; Nova solicitacao</h3>'+
-      '<div class="comm-grid">'+
+      '<div class="comm-tabs"><button class="comm-tab active" data-cat="Pedido">&#128230; Pedido / Operacao</button><button class="comm-tab" data-cat="Desenvolvedor">&#128736; Desenvolvedor (sistema)</button></div>'+
+      '<div class="comm-grid" id="cGridPed">'+
         '<input id="cNPed" list="cNPedList" placeholder="Pedido (opcional)" autocomplete="off"><datalist id="cNPedList">'+peds.map(function(n){return '<option value="'+esc(n)+'">';}).join("")+'</datalist>'+
         '<input id="cNCli" placeholder="Cliente" autocomplete="off">'+
         '<select id="cNSetor">'+opts(SETORES,"Logistica")+'</select>'+
         '<select id="cNTipo">'+opts(TIPOS,"Prazo")+'</select>'+
         '<select id="cNUrg">'+opts(URGS,"Media")+'</select>'+
         '<span></span>'+
+      '</div>'+
+      '<div class="comm-grid" id="cGridDev" style="display:none">'+
+        '<select id="cNTipoDev">'+opts(TIPOS_DEV,"Melhoria")+'</select>'+
+        '<select id="cNUrgDev">'+opts(URGS,"Media")+'</select>'+
+        '<div class="comm-devhelp full" id="cDevHelp"></div>'+
+      '</div>'+
+      '<div class="comm-grid">'+
         '<input id="cNAss" class="full" placeholder="Assunto" autocomplete="off">'+
         '<textarea id="cNMsg" class="full" placeholder="Descreva a solicitacao..."></textarea>'+
       '</div>'+
       '<div class="comm-actions"><button class="btn primary" id="cNBtn">Abrir solicitacao</button></div></div>'+
       '<div class="comm-filters">'+
+        '<select id="cFCat"><option value="">Todas as origens</option><option value="Pedido">Pedido / Operacao</option><option value="Desenvolvedor">Desenvolvedor</option></select>'+
         '<select id="cFStatus"><option value="aberto">Abertas</option><option value="resolvido">Resolvidas</option><option value="">Todas</option></select>'+
         '<select id="cFUrg"><option value="">Toda urgencia</option>'+opts(URGS)+'</select>'+
         '<label class="comm-mine"><input type="checkbox" id="cFMine"> Somente minhas</label>'+
@@ -8081,16 +8108,24 @@ netBoot();
       '<div class="comm-list" id="commList"></div>';
     var pedInp=g("cNPed"); if(pedInp) pedInp.addEventListener("input",function(){var c=cliDoPed(this.value);if(c)g("cNCli").value=c;});
     g("cNBtn").addEventListener("click",abrir);
-    ["cFStatus","cFUrg","cFMine","cFBusca"].forEach(function(id){var e=g(id);if(e)e.addEventListener(id==="cFBusca"?"input":"change",renderList);});
+    Array.prototype.forEach.call(host.querySelectorAll(".comm-tab"),function(bt){bt.addEventListener("click",function(){catAtual=bt.getAttribute("data-cat");Array.prototype.forEach.call(host.querySelectorAll(".comm-tab"),function(x){x.classList.toggle("active",x===bt);});var dev=(catAtual==="Desenvolvedor");g("cGridPed").style.display=dev?"none":"";g("cGridDev").style.display=dev?"":"none";g("cNAss").placeholder=dev?"Assunto (ex.: filtro de cidade nao limpa)":"Assunto";g("cNMsg").placeholder=dev?"Descreva o que acontece hoje e o que deveria acontecer...":"Descreva a solicitacao...";devHelp();});});
+    var tdev=g("cNTipoDev"); if(tdev)tdev.addEventListener("change",devHelp);
+    devHelp();
+    ["cFCat","cFStatus","cFUrg","cFMine","cFBusca"].forEach(function(id){var e=g(id);if(e)e.addEventListener(id==="cFBusca"?"input":"change",renderList);});
     load();
   };
 
+  function devHelp(){var e=g("cDevHelp");if(!e)return;var t=g("cNTipoDev")?g("cNTipoDev").value:"Melhoria";e.textContent=DEV_HELP[t]||"";}
   function abrir(){
-    var ped=g("cNPed").value.trim(), cli=g("cNCli").value.trim(), ass=g("cNAss").value.trim(), msg=g("cNMsg").value.trim();
+    var dev=(catAtual==="Desenvolvedor");
+    var ass=g("cNAss").value.trim(), msg=g("cNMsg").value.trim();
     if(!ass){toast("Informe o assunto.","err");return;}
     if(!msg){toast("Descreva a solicitacao.","err");return;}
-    apiPost("/comms",{action:"open",pedido:ped,cliente:cli,setor:g("cNSetor").value,tipo:g("cNTipo").value,urgencia:g("cNUrg").value,assunto:ass,mensagem:msg,by:author()})
-      .then(function(){toast("Solicitacao aberta.","ok");g("cNPed").value="";g("cNCli").value="";g("cNAss").value="";g("cNMsg").value="";load();})
+    var body=dev
+      ? {action:"open",categoria:"Desenvolvedor",pedido:"",cliente:"",setor:"Desenvolvimento",tipo:g("cNTipoDev").value,urgencia:g("cNUrgDev").value,assunto:ass,mensagem:msg,by:author()}
+      : {action:"open",categoria:"Pedido",pedido:g("cNPed").value.trim(),cliente:g("cNCli").value.trim(),setor:g("cNSetor").value,tipo:g("cNTipo").value,urgencia:g("cNUrg").value,assunto:ass,mensagem:msg,by:author()};
+    apiPost("/comms",body)
+      .then(function(){toast(dev?"Solicitacao enviada ao desenvolvedor.":"Solicitacao aberta.","ok");if(g("cNPed"))g("cNPed").value="";if(g("cNCli"))g("cNCli").value="";g("cNAss").value="";g("cNMsg").value="";load();})
       .catch(function(){toast("Nao foi possivel abrir (verifique a conexao).","err");});
   }
   function load(){
@@ -8099,6 +8134,8 @@ netBoot();
   }
   function passa(t){
     var st=g("cFStatus")?g("cFStatus").value:"", ur=g("cFUrg")?g("cFUrg").value:"", mine=g("cFMine")&&g("cFMine").checked, q=(g("cFBusca")?g("cFBusca").value:"").trim().toLowerCase();
+    var cat=g("cFCat")?g("cFCat").value:"";
+    if(cat&&((t.categoria||"Pedido")!==cat))return false;
     if(st&&t.status!==st)return false;
     if(ur&&t.urgencia!==ur)return false;
     if(mine&&!(t.by&&t.by.user===CUR.user))return false;
@@ -8122,6 +8159,7 @@ netBoot();
         : '<button class="btn primary cResolve" data-id="'+esc(t.id)+'">Marcar resolvida</button>';}
       return '<div class="comm-card'+(resolved?' res':'')+'">'+
         '<div class="comm-card-h">'+
+          ((t.categoria==="Desenvolvedor")?'<span class="comm-dev">&#128736; DEV &middot; '+esc(t.tipo||"")+'</span>':'')+
           (t.pedido?'<span class="comm-ped">#'+esc(t.pedido)+'</span>':'')+
           (t.cliente?'<span class="comm-cli">'+esc(t.cliente)+'</span>':'')+
           '<span class="comm-pill '+(resolved?'res':'ab')+'">'+(resolved?'Resolvida':'Aberta')+'</span>'+
@@ -8301,8 +8339,23 @@ netBoot();
   function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
   var FF="Calibri, Carlito, 'Segoe UI', sans-serif";
   var DGREEN="#0A3D2E",GREEN="#008D67",GREEN2="#41C097",WHITE="#fff",TEXT="#333",GRAY="#6C757D",GRID="#E9ECEF",TINT="#E6F6EF";
+  function layout(D){
+    var n=D.ent.length;
+    var rowH,fCid,fCli,fPeso;
+    if(n<=6){rowH=84;fCid=27;fCli=21;fPeso=28;}
+    else if(n<=10){rowH=68;fCid=24;fCli=18;fPeso=25;}
+    else if(n<=16){rowH=54;fCid=21;fCli=16;fPeso=22;}
+    else if(n<=24){rowH=44;fCid=18;fCli=14;fPeso=19;}
+    else {rowH=36;fCid=16;fCli=12.5;fPeso=17;}
+    var top=760, obsH=120, footH=90;
+    var H=top+Math.max(n,1)*rowH+30+obsH+footH+30;
+    return {n:n,rowH:rowH,fCid:fCid,fCli:fCli,fPeso:fPeso,top:top,H:Math.max(H,1150)};
+  }
   function draw(D){
-    var c=g("divCanvas"); if(!c)return; var ctx=c.getContext("2d"); var W=c.width,H=c.height;
+    var c=g("divCanvas"); if(!c)return;
+    var L=layout(D);
+    if(c.height!==L.H)c.height=L.H;
+    var ctx=c.getContext("2d"); var W=c.width,H=c.height;
     ctx.clearRect(0,0,W,H); ctx.fillStyle=WHITE; ctx.fillRect(0,0,W,H);
     ctx.textBaseline="alphabetic";
     // header
@@ -8331,16 +8384,17 @@ netBoot();
     // entregas
     ctx.fillStyle=GREEN; ctx.font="bold 24px "+FF; ctx.fillText("ENTREGAS",60,700);
     ctx.strokeStyle=GRID; ctx.beginPath(); ctx.moveTo(60,724); ctx.lineTo(945,724); ctx.stroke();
-    var y=760, shown=D.ent.slice(0,4);
-    shown.forEach(function(e){
-      ctx.fillStyle=TEXT; ctx.font="bold 27px "+FF; ctx.fillText(e.cid,60,y);
-      ctx.fillStyle=GRAY; ctx.font="21px "+FF; ctx.fillText((e.cli||"").slice(0,44),60,y+30);
-      ctx.textAlign="right"; ctx.fillStyle=TEXT; ctx.font="bold 28px "+FF; ctx.fillText(fmtKg(e.peso),940,y+8); ctx.textAlign="left";
-      y+=84; ctx.strokeStyle=GRID; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(60,y-16); ctx.lineTo(945,y-16); ctx.stroke();
+    var y=L.top, maxCli=Math.round(52*(21/L.fCli));
+    D.ent.forEach(function(e){
+      ctx.fillStyle=TEXT; ctx.font="bold "+L.fCid+"px "+FF; ctx.fillText(e.cid,60,y);
+      ctx.fillStyle=GRAY; ctx.font=L.fCli+"px "+FF;
+      var cli=String(e.cli||""); if(cli.length>maxCli)cli=cli.slice(0,maxCli-1)+"\u2026";
+      ctx.fillText(cli,60,y+L.fCid*1.12);
+      ctx.textAlign="right"; ctx.fillStyle=TEXT; ctx.font="bold "+L.fPeso+"px "+FF; ctx.fillText(fmtKg(e.peso),940,y+8); ctx.textAlign="left";
+      y+=L.rowH; ctx.strokeStyle=GRID; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(60,y-L.rowH*0.19); ctx.lineTo(945,y-L.rowH*0.19); ctx.stroke();
     });
-    if(D.ent.length>4){ctx.fillStyle=GRAY;ctx.font="italic 20px "+FF;ctx.fillText("+ "+(D.ent.length-4)+" entrega(s)",60,y+4);y+=40;}
     // observacao
-    var oy=Math.max(y+6,1000);
+    var oy=y+16;
     ctx.fillStyle="#F6F9FF"; rr(ctx,55,oy,890,120,14); ctx.fill();
     ctx.fillStyle=GRAY; ctx.font="19px "+FF; ctx.fillText("OBSERVACAO DE DESCARGA",78,oy+30);
     ctx.fillStyle=TEXT; ctx.font="24px "+FF;
@@ -8379,49 +8433,91 @@ netBoot();
 </script>
 
 <script>
-/* ===== Central de Novidades (padrao ADM de Vendas) ===== */
+/* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  function g(id){return document.getElementById(id);}
-  var SEEN_KEY="n1fc_nov_seen";
+  var APP_VERSION="1.5.0";
+  /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
-    {v:"v1.4",d:"03/07/2026",items:[
-      {t:"add",s:"Divulgacao: gere uma imagem no padrao N1 (cores e fontes) para enviar no grupo das transportadoras, direto da carga fechada."},
-      {t:"add",s:"Numero sequencial de carga por semana: Carga 1, 2, 3... reiniciando a cada semana."},
-      {t:"add",s:"Resumo dos pedidos por rota, com as colunas do ERP e subtotais de peso."},
-      {t:"add",s:"Filtros de cidade e estado, e ordenacao por entrega mais antiga."},
-      {t:"add",s:"Editar a data de embarque de uma carga fechada, com motivo registrado no historico."},
-      {t:"add",s:"Central de Novidades (este sino) para acompanhar o que muda no sistema."}
+    {versao:"1.5.0",data:"09/07/2026",itens:[
+      ["NOVO","Solicitacoes ao desenvolvedor na aba Comunicacao: peca Melhoria, Novidade ou Correcao direto pelo sistema."],
+      ["NOVO","Piso minimo de frete da ANTT em cada carga: dados prontos para a calculadora e comparacao com o frete pago."],
+      ["NOVO","Romaneios por destino: gere um romaneio para cada cliente/cidade da carga, ou todos de uma vez."],
+      ["MELHORIA","Cartao de divulgacao agora mostra todos os pedidos da carga, ajustando a fonte automaticamente."],
+      ["MELHORIA","Central de Novidades no padrao dos demais sistemas N1, com data, tipo e alerta no sino."]
     ]},
-    {v:"v1.3",d:"01/07/2026",items:[
-      {t:"add",s:"Painel executivo: indicadores da operacao e prazos em risco (atrasado, hoje, ate 2 dias)."},
-      {t:"add",s:"Margem da carga depois do frete real contratado, com alerta quando o frete pago passa da tabela."},
-      {t:"imp",s:"Motivo obrigatorio ao voltar o status de uma carga e ao fechar abaixo do minimo."}
+    {versao:"1.4.0",data:"08/07/2026",itens:[
+      ["NOVO","Numero sequencial da carga gerado na contratacao, por filial, reiniciando a cada semana."],
+      ["NOVO","Cancelamento de carga com motivo obrigatorio: o numero e o historico ficam preservados."],
+      ["MELHORIA","Carga ja numerada nao pode mais ser excluida do sistema."],
+      ["MELHORIA","Reversao de status exige motivo e fica registrada no historico da carga."],
+      ["CORRECAO","Frete de tabela passa a considerar a faixa de peso da rota (inclusive acima de 27.000 kg)."],
+      ["CORRECAO","Pedidos do mesmo cliente e mesma cidade contam como uma unica entrega no calculo do frete."]
     ]},
-    {v:"v1.2",d:"30/06/2026",items:[
-      {t:"add",s:"Modulo Comunicacao: solicitacoes formais por pedido (prioridade, urgencia, prazo), com autor e horario."}
+    {versao:"1.3.0",data:"07/07/2026",itens:[
+      ["NOVO","Divulgacao da carga: imagem pronta, no padrao N1, para o grupo das transportadoras."],
+      ["NOVO","Resumo dos pedidos por rota, com subtotais e atalho para criar a carga."],
+      ["NOVO","Filtros de cidade e estado, status com multipla escolha e ordenacao por entrega mais antiga."],
+      ["MELHORIA","Distribuicao automatica considera todos os pedidos que passam pelos filtros ativos."],
+      ["CORRECAO","Importacao de transportadoras por planilha corrigida e otimizada para milhares de linhas."]
+    ]},
+    {versao:"1.2.0",data:"05/07/2026",itens:[
+      ["NOVO","Painel executivo com indicadores da operacao e prazos em risco."],
+      ["NOVO","Margem da carga depois do frete real, com alerta quando o frete pago passa da tabela."],
+      ["NOVO","Editar a data de embarque de uma carga fechada, com motivo no historico."],
+      ["MELHORIA","Motivo obrigatorio ao fechar carga abaixo do minimo."]
+    ]},
+    {versao:"1.1.0",data:"30/06/2026",itens:[
+      ["NOVO","Modulo Comunicacao: solicitacoes formais por pedido, com autor, urgencia e horario."]
     ]}
   ];
-  var TAG={add:["NOVO","tag-add"],imp:["MELHORIA","tag-imp"],fix:["CORRECAO","tag-fix"]};
+
+  var KEY="n1fc_nov_seen";
+  var TAG={NOVO:"tag-add",MELHORIA:"tag-imp",CORRECAO:"tag-fix"};
+  function g(id){return document.getElementById(id);}
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-  function latest(){return CHANGELOG[0]?CHANGELOG[0].v:"";}
-  function getSeen(){try{return localStorage.getItem(SEEN_KEY)||"";}catch(e){return "";}}
-  function setSeen(v){try{localStorage.setItem(SEEN_KEY,v);}catch(e){}}
-  function updateDot(){var dot=g("novDot");if(!dot)return;dot.style.display=(getSeen()!==latest())?"block":"none";}
-  function buildBody(){
+  function seen(){try{return localStorage.getItem(KEY)||"";}catch(e){return "";}}
+  function marcar(){try{localStorage.setItem(KEY,APP_VERSION);}catch(e){}}
+  function pendente(){return seen()!==APP_VERSION;}
+  function updateDot(){var d=g("novDot");if(d)d.style.display=pendente()?"block":"none";}
+
+  function build(){
     var host=g("novBody"); if(!host)return;
-    host.innerHTML=CHANGELOG.map(function(rel){
-      return '<div class="nov-rel"><div class="nov-rel-h"><span class="nov-v">'+esc(rel.v)+'</span><span class="nov-d">'+esc(rel.d)+'</span></div>'+
-        rel.items.map(function(it){var tg=TAG[it.t]||TAG.add;return '<div class="nov-i"><span class="nov-tag '+tg[1]+'">'+tg[0]+'</span><span class="nov-s">'+esc(it.s)+'</span></div>';}).join("")+
-        '</div>';
+    host.innerHTML=CHANGELOG.map(function(rel,idx){
+      var atual=(rel.versao===APP_VERSION);
+      return '<div class="nov-rel'+(atual?" atual":" old")+'">'+
+        '<div class="nov-rel-h">'+
+          '<span class="nov-v'+(atual?"":" old")+'">'+esc(rel.versao)+'</span>'+
+          '<span class="nov-d">'+esc(rel.data)+'</span>'+
+          (atual?'<span class="nov-atual">&#10004; Versao atual</span>':'')+
+        '</div>'+
+        rel.itens.map(function(it){
+          var tipo=it[0],txt=it[1];
+          return '<div class="nov-i'+(atual?" atual":"")+'"><span class="nov-tag '+(TAG[tipo]||"tag-add")+'">'+esc(tipo)+'</span><span class="nov-s">'+esc(txt)+'</span></div>';
+        }).join("")+
+      '</div>';
     }).join("");
   }
-  function open(){var o=g("novOverlay");if(!o)return;buildBody();o.classList.add("open");setSeen(latest());updateDot();}
-  function close(){var o=g("novOverlay");if(o)o.classList.remove("open");}
-  var b=g("novBell"); if(b)b.addEventListener("click",open);
-  var c=g("novClose"); if(c)c.addEventListener("click",close);
-  var ov=g("novOverlay"); if(ov)ov.addEventListener("click",function(e){if(e.target===ov)close();});
+  function abrir(){var o=g("novOverlay");if(!o)return;build();o.classList.add("open");}
+  function fechar(){var o=g("novOverlay");if(o)o.classList.remove("open");}
+  function entendido(){marcar();updateDot();fechar();}
+
+  var b;
+  b=g("novBell"); if(b)b.addEventListener("click",abrir);
+  b=g("novClose"); if(b)b.addEventListener("click",fechar);
+  b=g("novOk"); if(b)b.addEventListener("click",entendido);
+  b=g("novOverlay"); if(b)b.addEventListener("click",function(e){if(e.target===b)fechar();});
   updateDot();
+
+  /* auto-abre 1,2s apos o login, na primeira visita de cada versao */
+  var autoDone=false;
+  var iv=setInterval(function(){
+    if(autoDone)return clearInterval(iv);
+    if(typeof CUR!=="undefined"&&CUR&&CUR.user){
+      autoDone=true;clearInterval(iv);
+      if(pendente())setTimeout(function(){abrir();},1200);
+    }
+  },400);
 })();
 </script>
 
