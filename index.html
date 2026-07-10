@@ -8473,12 +8473,20 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.5.0";
+  var APP_VERSION="1.6.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.6.0",data:"10/07/2026",itens:[
+      ["NOVO","Piso ANTT calculado pelo sistema: informe a rota e o veiculo e o piso minimo aparece pronto, pela formula oficial (CCD x distancia + CC)."],
+      ["NOVO","Cadastros > Piso ANTT: cadastre ou importe os coeficientes da portaria SUROC vigente. O sistema avisa quando a tabela ficar velha."],
+      ["NOVO","Retorno vazio obrigatorio e operacoes de alto desempenho ja entram no calculo do piso."],
+      ["NOVO","Aviso de carga lotacao: cargas com mais de um destino podem nao estar sujeitas ao piso minimo. O sistema sinaliza."],
+      ["MELHORIA","Alerta claro quando o frete pago fica abaixo do piso, com a mencao ao risco de multa."],
+      ["CORRECAO","Corrigido erro que impedia a janela de Romaneios de abrir em algumas telas."]
+    ]},
     {versao:"1.5.0",data:"09/07/2026",itens:[
       ["NOVO","Solicitacoes ao desenvolvedor na aba Comunicacao: peca Melhoria, Novidade ou Correcao direto pelo sistema."],
-      ["NOVO","Piso minimo de frete da ANTT em cada carga: dados prontos para a calculadora e comparacao com o frete pago."],
+      ["NOVO","Piso minimo de frete da ANTT em cada carga, com os dados prontos para conferencia."],
       ["NOVO","Romaneios por destino: gere um romaneio para cada cliente/cidade da carga, ou todos de uma vez."],
       ["MELHORIA","Cartao de divulgacao agora mostra todos os pedidos da carga, ajustando a fonte automaticamente."],
       ["MELHORIA","Central de Novidades no padrao dos demais sistemas N1, com data, tipo e alerta no sino."]
