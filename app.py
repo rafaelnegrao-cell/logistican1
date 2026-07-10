@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=None)
 app.config["MAX_CONTENT_LENGTH"] = 30 * 1024 * 1024  # ate 30 MB por requisicao
 
-STORES = ("auth", "app", "audit")
+STORES = ("auth", "app", "audit", "antt")
 
 # Railway expoe normalmente DATABASE_URL; aceitamos variantes por seguranca.
 DB_URL = (os.environ.get("DATABASE_URL") or os.environ.get("DATABASE")
@@ -133,6 +133,7 @@ def ensure_init():
     init_db()
     migrate_from_volume()
     seed_store_if_absent("comms", {"threads": []})
+    seed_store_if_absent("antt", {"portaria": "", "vigencia": "", "atualizado": 0, "coef": []})
     _INIT_DONE = True
 
 

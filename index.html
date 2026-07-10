@@ -6076,6 +6076,24 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .comm-tab.active{background:var(--verde-bg);border-color:var(--verde-2);color:var(--verde)}
   .comm-devhelp{font-size:11.5px;color:var(--cinza);background:#F6F9FF;border:1px solid var(--grade);border-radius:8px;padding:8px 11px}
   .comm-dev{background:#1F6FEB;color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:10px;letter-spacing:.3px}
+  .antt-checks{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:6px 0 12px;font-size:12.5px;color:var(--texto)}
+  .antt-checks label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .antt-checks input{width:15px;height:15px;accent-color:var(--verde)}
+  .antt-tab-lbl{margin-left:auto;background:var(--verde-bg);color:var(--verde);font-weight:800;font-size:11px;padding:3px 10px;border-radius:10px}
+  .antt-piso-box{background:var(--verde-bg);border-radius:10px;padding:12px 14px;margin:10px 0}
+  .antt-piso-box span{display:block;font-size:10.5px;color:var(--cinza);letter-spacing:.3px}
+  .antt-piso-box b{font-size:30px;color:var(--verde);font-weight:800}
+  .antt-det{font-size:11px;color:var(--cinza);margin-top:6px;line-height:1.5}
+  .antt-warn{background:#FFF8E1;border:1px solid #FFE69C;color:#7a5b00;font-size:11.5px;border-radius:8px;padding:9px 11px;margin-bottom:10px;line-height:1.5}
+  .antt-fonte{font-size:10.5px;color:var(--cinza);margin-top:12px;text-align:right}
+  .antt-cad-head{margin-bottom:12px}
+  .antt-cad-head h3{margin:0 0 4px;color:var(--verde);font-size:16px}
+  .antt-hint{font-size:11.5px;color:var(--cinza)}
+  .antt-cad-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+  .antt-cad-form label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:var(--cinza)}
+  .antt-cad-form input,.antt-cad-form select{padding:8px 10px;border:1px solid var(--grade);border-radius:8px;font-family:inherit;font-size:13px}
+  .antt-cad-acts{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .acDel{border:none;background:none;color:var(--risco);font-size:17px;cursor:pointer;line-height:1}
 </style>
 </head>
 <body>
@@ -6234,7 +6252,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
       <div class="panel-head"><h2>Cadastros</h2>
         <div class="subtabs">
           <button class="subtab active" data-sub="transp">Transportadoras</button>
-          <button class="subtab" data-sub="rotas">Rotas &amp; Frete (padrao CIF)</button>
+          <button class="subtab" data-sub="rotas">Rotas &amp; Frete (padrao CIF)</button><button class="subtab" data-sub="antt">Piso ANTT</button>
         </div>
       </div>
       <div class="panel-body">
@@ -6291,7 +6309,12 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
           <div id="cRList"></div>
         </div>
       </div>
-    </section>
+    
+      <div id="cadAntt" class="hidden">
+        <div class="antt-cad-head"><h3>Coeficientes do piso minimo (ANTT)</h3><span class="antt-hint">Fonte: portaria SUROC vigente. Formula: piso = CCD x distancia + CC (Res. ANTT 5.867/2020).</span></div>
+        <div id="anttCadBody"></div>
+      </div>
+</section>
 
     <!-- PANEL LEGENDA -->
     <section class="panel" data-panel="legenda">
@@ -6466,27 +6489,41 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 
 <!-- MODAL DETALHE DO PEDIDO -->
 <div class="overlay" id="anttOverlay">
-  <div class="modal" style="width:620px;max-width:96vw">
+  <div class="modal" style="width:680px;max-width:96vw">
     <div class="modal-head"><h3>&#128200; Piso minimo de frete (ANTT)</h3><button class="modal-x" id="anttClose">&times;</button></div>
-    <div class="modal-body" style="max-height:80vh;overflow:auto">
+    <div class="modal-body" style="max-height:82vh;overflow:auto">
+      <div id="anttAvisos"></div>
       <div class="antt-info">
         <div><span>Origem</span><b id="anttOrigem">-</b></div>
-        <div><span>Destino (rota)</span><b id="anttDestino">-</b></div>
+        <div><span>Rota</span><b id="anttDestino">-</b></div>
         <div><span>Veiculo / peso</span><b id="anttVeic">-</b></div>
         <div><span>Frete pago da carga</span><b id="anttFretePago">-</b></div>
       </div>
       <div class="antt-form">
-        <label>Distancia (km)<input id="anttKm" type="number" min="0" step="1" placeholder="km da rota"></label>
-        <label>Numero de eixos<select id="anttEixos"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>9</option></select></label>
-        <label>Tipo de carga<input type="text" value="Carga Geral" readonly></label>
+        <label>Tipo de carga<select id="anttTipo"></select></label>
+        <label>Numero de eixos<select id="anttEixos"></select></label>
+        <label>Distancia (km)<input id="anttKm" type="number" min="0" step="1"></label>
       </div>
-      <div class="antt-note">A calculadora da ANTT pede <b>tipo de carga, eixos e distancia</b> (nao usa origem/destino) e nao aceita preenchimento por link. Copie os dados abaixo e cole na calculadora. Eixos sugeridos pelo veiculo &mdash; ajuste se a composicao for outra.</div>
-      <div class="antt-acts">
+      <div class="antt-checks">
+        <label><input type="checkbox" id="anttComp" checked> Composicao veicular (ou caminhao simples)</label>
+        <label><input type="checkbox" id="anttAlto"> Alto desempenho</label>
+        <label><input type="checkbox" id="anttRV"> Retorno vazio obrigatorio</label>
+        <span class="antt-tab-lbl" id="anttTabLbl">Tabela A</span>
+      </div>
+      <div id="anttKmRetWrap" class="antt-form" style="display:none">
+        <label>Distancia de retorno (km)<input id="anttKmRet" type="number" min="0" step="1" placeholder="mesma da ida, se vazio"></label>
+      </div>
+      <div class="antt-piso-box">
+        <span>PISO MINIMO CALCULADO</span>
+        <b id="anttPisoAuto">&mdash;</b>
+        <div class="antt-det" id="anttDet"></div>
+      </div>
+      <div class="antt-cmp" id="anttResult"></div>
+      <div class="antt-acts" style="margin-top:12px">
         <button class="btn" id="anttCopiar">&#128203; Copiar dados</button>
-        <button class="btn primary" id="anttAbrir">&#128279; Abrir calculadora da ANTT</button>
+        <button class="btn" id="anttAbrir">&#128279; Conferir na calculadora da ANTT</button>
       </div>
-      <label class="antt-piso">Piso obtido na calculadora (R$)<input id="anttPiso" type="text" placeholder="Ex.: 4.250,00"></label>
-      <div class="antt-cmp" id="anttCmp"></div>
+      <div class="antt-fonte" id="anttFonte"></div>
     </div>
   </div>
 </div>
@@ -7639,7 +7676,7 @@ function editRoute(k){
   const cr=$("#cadRotas");if(cr&&cr.scrollIntoView)cr.scrollIntoView({behavior:"smooth",block:"start"});
   toast("Editando rota \""+r.destino+"\". Altere os campos e salve.","info");
 }
-function setCadSub(sub){state.cadSub=sub;document.querySelectorAll(".subtab").forEach(b=>b.classList.toggle("active",b.dataset.sub===sub));$("#cadTransp").classList.toggle("hidden",sub!=="transp");$("#cadRotas").classList.toggle("hidden",sub!=="rotas");if(sub==="transp")renderCarriers();else renderRoutes();}
+function setCadSub(sub){state.cadSub=sub;document.querySelectorAll(".subtab").forEach(b=>b.classList.toggle("active",b.dataset.sub===sub));$("#cadTransp").classList.toggle("hidden",sub!=="transp");$("#cadRotas").classList.toggle("hidden",sub!=="rotas");var ca=$("#cadAntt");if(ca)ca.classList.toggle("hidden",sub!=="antt");if(sub==="transp")renderCarriers();else if(sub==="antt"){if(window.renderAnttCad)window.renderAnttCad();}else renderRoutes();}
 /* ================= /CADASTROS ================= */
 
 /* ================= PERSISTENCIA (salva no navegador) ================= */
@@ -8554,50 +8591,6 @@ netBoot();
     return ord.map(function(k){return grp[k];});
   }
 
-  /* ---------- PISO ANTT ---------- */
-  window.openAntt=function(t){
-    curT=t; var o=g("anttOverlay"); if(!o)return;
-    var km=kmDaRota(t), eixos=EIXOS[String(t.cap)]||5, fr=loadFreight(t);
-    g("anttOrigem").textContent=origemDe(t);
-    g("anttDestino").textContent=(t.rota||"-")+" ("+destinos(t).length+" destino(s))";
-    g("anttKm").value=km>0?km:"";
-    g("anttEixos").value=String(eixos);
-    g("anttVeic").textContent=(VEHICLES[String(t.cap)]||"")+" \u00b7 "+fmtKg(fr.kg);
-    g("anttFretePago").textContent=fr.pagoTotal>0?fmtMoney(fr.pagoTotal)+" ("+fmtMoney(fr.pagoTon)+"/t)":"nao informado";
-    g("anttPiso").value=t.pisoAntt||"";
-    cmp();
-    o.classList.add("open");
-  };
-  function closeA(){var o=g("anttOverlay");if(o)o.classList.remove("open");}
-  function cmp(){
-    if(!curT)return;
-    var piso=parseFloat(String(g("anttPiso").value).replace(/\./g,"").replace(",","."))||0;
-    var fr=loadFreight(curT), pago=fr.pagoTotal||0, box=g("anttCmp");
-    if(!box)return;
-    if(!piso||!pago){box.className="antt-cmp";box.innerHTML="Informe o piso obtido na calculadora e o frete pago da carga para comparar.";return;}
-    var dif=pago-piso;
-    if(dif>=0){box.className="antt-cmp ok";box.innerHTML="Frete pago <b>"+fmtMoney(pago)+"</b> est&aacute; <b>"+fmtMoney(dif)+"</b> acima do piso ANTT ("+fmtMoney(piso)+").";}
-    else{box.className="antt-cmp bad";box.innerHTML="&#9888; Frete pago <b>"+fmtMoney(pago)+"</b> est&aacute; <b>"+fmtMoney(Math.abs(dif))+"</b> ABAIXO do piso ANTT ("+fmtMoney(piso)+").";}
-  }
-  function dadosTxt(){
-    if(!curT)return "";
-    return "Tipo de carga: Carga Geral\nNumero de eixos: "+g("anttEixos").value+"\nDistancia (km): "+(g("anttKm").value||"-")+
-      "\nComposicao veicular: sim\nRetorno vazio: nao\nAlto desempenho: nao"+
-      "\n\n(Carga "+(curT.numeroCarga||"-")+" | "+(curT.rota||"")+" | "+(VEHICLES[String(curT.cap)]||"")+")";
-  }
-  var b;
-  b=g("anttClose"); if(b)b.addEventListener("click",closeA);
-  b=g("anttOverlay"); if(b)b.addEventListener("click",function(e){if(e.target===b)closeA();});
-  b=g("anttPiso"); if(b)b.addEventListener("input",function(){if(curT)curT.pisoAntt=b.value;cmp();});
-  b=g("anttKm"); if(b)b.addEventListener("input",cmp);
-  b=g("anttAbrir"); if(b)b.addEventListener("click",function(){window.open(ANTT_URL,"_blank","noopener");});
-  b=g("anttCopiar"); if(b)b.addEventListener("click",function(){
-    var txt=dadosTxt();
-    function fb(){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}ta.remove();}
-    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(function(){toast("Dados copiados. Cole na calculadora da ANTT.","ok");},fb);
-    else{fb();toast("Dados copiados.","ok");}
-  });
-
   /* ---------- ROMANEIOS POR DESTINO ---------- */
   function romaneioAoa(t,dest){
     var fr=loadFreight(t);
@@ -8659,8 +8652,240 @@ netBoot();
     if(un){un.onclick=function(){baixa(romaneioAoa(t,null),nomeArq(t,null));toast("Romaneio unico gerado.","ok");};}
     o.classList.add("open");
   };
+  var b;
   b=g("romClose"); if(b)b.addEventListener("click",function(){g("romOverlay").classList.remove("open");});
   b=g("romOverlay"); if(b)b.addEventListener("click",function(e){if(e.target===b)b.classList.remove("open");});
+})();
+</script>
+
+<script>
+/* ===== Piso ANTT: coeficientes oficiais + calculo (Lei 13.703/2018, Res. ANTT 5.867/2020) ===== */
+(function(){
+  "use strict";
+  function g(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  var URL_ANTT="https://calculadorafrete.antt.gov.br/";
+  var TIPOS_CARGA=["Carga Geral","Carga Granel Pressurizada","Conteinerizada","Frigorificada ou Aquecida","Granel liquido","Granel solido","Neogranel","Perigosa (carga geral)","Perigosa (conteinerizada)","Perigosa (Frigorificada ou Aquecida)","Perigosa (granel liquido)","Perigosa (granel solido)"];
+  var EIXOS_LISTA=[2,3,4,5,6,7,9];
+  var TABELAS={A:"A - composicao veicular / caminhao simples",B:"B - somente unidade de tracao",C:"C - alto desempenho (composicao)",D:"D - alto desempenho (so tracao)"};
+  var EIXOS_POR_VEICULO={"15000":3,"22000":4,"33000":6,"40000":7,"49000":9};
+  var RETORNO_VAZIO_FATOR=0.92; /* Res. 5.867/2020, art. 5 par. 6 */
+  var DIAS_ALERTA=200;
+
+  var ANTT={portaria:"",vigencia:"",atualizado:0,coef:[]};
+  var curT=null;
+
+  function num(v){var n=parseFloat(String(v==null?"":v).replace(/\s/g,"").replace(/\./g,"").replace(",","."));return isNaN(n)?0:n;}
+  function numDot(v){var n=parseFloat(String(v==null?"":v).replace(",","."));return isNaN(n)?0:n;}
+  function money(n){return (typeof fmtMoney==="function")?fmtMoney(n):("R$ "+n.toFixed(2));}
+
+  function carregar(){
+    return apiGet("/antt").then(function(d){
+      if(d&&typeof d==="object"){ANTT.portaria=d.portaria||"";ANTT.vigencia=d.vigencia||"";ANTT.atualizado=d.atualizado||0;ANTT.coef=Array.isArray(d.coef)?d.coef:[];}
+      return ANTT;
+    }).catch(function(){return ANTT;});
+  }
+  function salvar(){
+    ANTT.atualizado=Date.now();
+    return apiPut("/antt",{portaria:ANTT.portaria,vigencia:ANTT.vigencia,atualizado:ANTT.atualizado,coef:ANTT.coef});
+  }
+  window.anttCarregar=carregar;
+
+  /* ---- busca do coeficiente, com a regra de eixos do art. 5 par. 5 ---- */
+  function acharCoef(tipo,eixos,tabela){
+    var cands=ANTT.coef.filter(function(c){return c.tipo===tipo&&(c.tabela||"A")===tabela;});
+    if(!cands.length)return null;
+    var exato=cands.filter(function(c){return +c.eixos===+eixos;})[0];
+    if(exato)return {coef:exato,ajuste:null};
+    var menores=cands.filter(function(c){return +c.eixos<+eixos;}).sort(function(a,b){return b.eixos-a.eixos;});
+    if(menores.length)return {coef:menores[0],ajuste:"eixo imediatamente inferior ("+menores[0].eixos+")"};
+    var maiores=cands.filter(function(c){return +c.eixos>+eixos;}).sort(function(a,b){return a.eixos-b.eixos;});
+    if(maiores.length)return {coef:maiores[0],ajuste:"eixo imediatamente superior ("+maiores[0].eixos+")"};
+    return null;
+  }
+  function calcularPiso(tipo,eixos,km,tabela,kmRetorno){
+    var r=acharCoef(tipo,eixos,tabela);
+    if(!r)return null;
+    var ccd=numDot(r.coef.ccd), cc=numDot(r.coef.cc);
+    var base=ccd*km+cc;
+    var retorno=(kmRetorno>0)?(RETORNO_VAZIO_FATOR*ccd*kmRetorno):0;
+    return {ccd:ccd,cc:cc,base:base,retorno:retorno,total:base+retorno,ajuste:r.ajuste};
+  }
+  function desatualizada(){
+    if(!ANTT.atualizado)return false;
+    return (Date.now()-ANTT.atualizado)/86400000 > DIAS_ALERTA;
+  }
+  function temTabela(){return ANTT.coef.length>0;}
+
+  /* ================= MODAL DA CARGA ================= */
+  function pedsOf(t){return (state.pedidos||[]).filter(function(p){return p.assignedTo===t.id;});}
+  function destinos(t){var s={};pedsOf(t).forEach(function(p){s[norm(p.cliente)+"|"+norm(p.cidade)]=1;});return Object.keys(s).length;}
+  function kmDaRota(t){
+    var ps=pedsOf(t);
+    for(var i=0;i<ps.length;i++){if(ps[i].km>0)return ps[i].km;}
+    if(state.freightTable){var ks=Object.keys(state.freightTable);
+      for(var j=0;j<ks.length;j++){var e=state.freightTable[ks[j]];
+        if(ps[0]&&ps[0].rotaCod&&String(e.cod).trim()===String(ps[0].rotaCod).trim()&&e.km>0)return e.km;
+        if(norm(e.destino)===norm(t.rota)&&e.km>0)return e.km;}}
+    return 0;
+  }
+  function tabelaEscolhida(){
+    var comp=g("anttComp")?g("anttComp").checked:true;
+    var alto=g("anttAlto")?g("anttAlto").checked:false;
+    if(alto)return comp?"C":"D";
+    return comp?"A":"B";
+  }
+  function recalc(){
+    if(!curT)return;
+    var box=g("anttResult"); if(!box)return;
+    var tipo=g("anttTipo").value, eixos=+g("anttEixos").value, km=num(g("anttKm").value);
+    var kmRet=g("anttRV").checked?num(g("anttKmRet").value||g("anttKm").value):0;
+    if(g("anttKmRetWrap"))g("anttKmRetWrap").style.display=g("anttRV").checked?"":"none";
+    var tab=tabelaEscolhida();
+    if(g("anttTabLbl"))g("anttTabLbl").textContent="Tabela "+tab;
+    if(!temTabela()){
+      box.className="antt-cmp";
+      box.innerHTML="Nenhuma tabela de coeficientes cadastrada. Va em <b>Cadastros &rsaquo; Piso ANTT</b> para cadastrar a portaria vigente, ou use o botao abaixo para calcular no site da ANTT.";
+      if(g("anttPisoAuto"))g("anttPisoAuto").textContent="\u2014";
+      return;
+    }
+    if(!km){box.className="antt-cmp";box.innerHTML="Informe a distancia (km) da rota.";if(g("anttPisoAuto"))g("anttPisoAuto").textContent="\u2014";return;}
+    var r=calcularPiso(tipo,eixos,km,tab,kmRet);
+    if(!r){box.className="antt-cmp bad";box.innerHTML="Nao ha coeficiente cadastrado para <b>"+esc(tipo)+"</b> com <b>"+eixos+" eixos</b> na Tabela "+tab+". Cadastre em Cadastros &rsaquo; Piso ANTT.";if(g("anttPisoAuto"))g("anttPisoAuto").textContent="\u2014";return;}
+    curT.pisoAntt=r.total;
+    if(g("anttPisoAuto"))g("anttPisoAuto").textContent=money(r.total);
+    var det="Piso = CCD "+money(r.ccd)+"/km x "+km+" km + CC "+money(r.cc);
+    if(r.retorno>0)det+=" + retorno vazio (92% x CCD x "+kmRet+" km) "+money(r.retorno);
+    if(r.ajuste)det+=" &middot; usando "+esc(r.ajuste);
+    if(g("anttDet"))g("anttDet").innerHTML=det;
+
+    var fr=loadFreight(curT), pago=fr.pagoTotal||0;
+    if(!pago){box.className="antt-cmp";box.innerHTML="<b>Piso minimo: "+money(r.total)+"</b><br>Informe o frete pago na carga para comparar.";return;}
+    var dif=pago-r.total;
+    if(dif>=0){box.className="antt-cmp ok";box.innerHTML="Frete pago <b>"+money(pago)+"</b> esta <b>"+money(dif)+"</b> acima do piso minimo ("+money(r.total)+").";}
+    else{box.className="antt-cmp bad";box.innerHTML="&#9888; Frete pago <b>"+money(pago)+"</b> esta <b>"+money(Math.abs(dif))+"</b> ABAIXO do piso minimo ("+money(r.total)+").<br>Contratar abaixo do piso sujeita a empresa a multa de duas vezes a diferenca (Res. ANTT 5.867/2020, art. 9).";}
+  }
+  window.openAntt=function(t){
+    curT=t; var o=g("anttOverlay"); if(!o)return;
+    carregar().then(function(){
+      var km=kmDaRota(t), eixos=EIXOS_POR_VEICULO[String(t.cap)]||5, fr=loadFreight(t), nd=destinos(t);
+      g("anttTipo").innerHTML=TIPOS_CARGA.map(function(x){return '<option'+(x==="Carga Geral"?" selected":"")+'>'+esc(x)+'</option>';}).join("");
+      g("anttEixos").innerHTML=EIXOS_LISTA.map(function(x){return '<option'+(x===eixos?" selected":"")+'>'+x+'</option>';}).join("");
+      g("anttKm").value=km>0?km:"";
+      g("anttComp").checked=true; g("anttAlto").checked=false; g("anttRV").checked=false;
+      g("anttKmRet").value="";
+      g("anttOrigem").textContent=(pedsOf(t)[0]&&typeof plantOf==="function")?plantOf(pedsOf(t)[0].filial).nome:"-";
+      g("anttDestino").textContent=(t.rota||"-");
+      g("anttVeic").textContent=(VEHICLES[String(t.cap)]||"")+" \u00b7 "+fmtKg(fr.kg);
+      g("anttFretePago").textContent=fr.pagoTotal>0?money(fr.pagoTotal):"nao informado";
+      var av=g("anttAvisos"), av2=[];
+      if(nd>1)av2.push('<div class="antt-warn">Esta carga tem <b>'+nd+' destinos</b>. Segundo a ANTT, mesma origem com mais de um destino nao configura <b>carga lotacao</b> &mdash; nesse caso o piso minimo pode nao se aplicar. Confirme com o juridico.</div>');
+      if(!temTabela())av2.push('<div class="antt-warn">Sem tabela de coeficientes cadastrada. O calculo automatico esta desligado.</div>');
+      else if(desatualizada())av2.push('<div class="antt-warn">A tabela cadastrada e de <b>'+esc(ANTT.vigencia||"data nao informada")+'</b>. Verifique se ha portaria SUROC mais recente.</div>');
+      if(av)av.innerHTML=av2.join("");
+      var fonte=g("anttFonte");
+      if(fonte)fonte.innerHTML=temTabela()?("Base: "+esc(ANTT.portaria||"portaria nao informada")+(ANTT.vigencia?(" &middot; vigencia "+esc(ANTT.vigencia)):"")):"Base legal: Lei 13.703/2018 &middot; Res. ANTT 5.867/2020";
+      recalc();
+      o.classList.add("open");
+    });
+  };
+  ["anttTipo","anttEixos","anttKm","anttComp","anttAlto","anttRV","anttKmRet"].forEach(function(id){
+    var e=g(id); if(e)e.addEventListener(e.type==="checkbox"?"change":"input",recalc);
+  });
+  var e;
+  e=g("anttClose"); if(e)e.addEventListener("click",function(){g("anttOverlay").classList.remove("open");});
+  e=g("anttOverlay"); if(e)e.addEventListener("click",function(ev){if(ev.target===e)e.classList.remove("open");});
+  e=g("anttAbrir"); if(e)e.addEventListener("click",function(){window.open(URL_ANTT,"_blank","noopener");});
+  e=g("anttCopiar"); if(e)e.addEventListener("click",function(){
+    var txt="Tipo de carga: "+g("anttTipo").value+"\nNumero de eixos: "+g("anttEixos").value+"\nDistancia (km): "+(g("anttKm").value||"-")+
+      "\nComposicao veicular: "+(g("anttComp").checked?"sim":"nao")+"\nAlto desempenho: "+(g("anttAlto").checked?"sim":"nao")+"\nRetorno vazio: "+(g("anttRV").checked?"sim":"nao");
+    function fb(){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(x){}ta.remove();}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(function(){toast("Dados copiados.","ok");},fb);else{fb();toast("Dados copiados.","ok");}
+  });
+
+  /* ================= CADASTRO DOS COEFICIENTES ================= */
+  window.renderAnttCad=function(){
+    var host=g("anttCadBody"); if(!host)return;
+    carregar().then(function(){
+      var podeEditar=(typeof can==="function")?can("editarCadastros"):true;
+      var av="";
+      if(!temTabela())av='<div class="antt-warn">Nenhum coeficiente cadastrado. Importe a planilha da portaria vigente ou lance manualmente.</div>';
+      else if(desatualizada())av='<div class="antt-warn">Tabela de '+esc(ANTT.vigencia||"data nao informada")+'. Verifique se ha portaria SUROC mais recente no portal da ANTT.</div>';
+      var linhas=ANTT.coef.slice().sort(function(a,b){return (a.tabela||"A").localeCompare(b.tabela||"A")||a.tipo.localeCompare(b.tipo)||a.eixos-b.eixos;});
+      host.innerHTML=av+
+        '<div class="antt-cad-form">'+
+          '<label>Portaria<input id="acPortaria" value="'+esc(ANTT.portaria)+'" placeholder="Ex.: Portaria SUROC no 4/2026"></label>'+
+          '<label>Vigencia<input id="acVigencia" value="'+esc(ANTT.vigencia)+'" placeholder="Ex.: 20/03/2026"></label>'+
+          '<button class="btn" id="acSalvarInfo">Salvar</button>'+
+        '</div>'+
+        '<div class="antt-cad-form">'+
+          '<label>Tabela<select id="acTab">'+Object.keys(TABELAS).map(function(k){return '<option value="'+k+'">'+esc(TABELAS[k])+'</option>';}).join("")+'</select></label>'+
+          '<label>Tipo de carga<select id="acTipo">'+TIPOS_CARGA.map(function(x){return '<option>'+esc(x)+'</option>';}).join("")+'</select></label>'+
+          '<label>Eixos<select id="acEixos">'+EIXOS_LISTA.map(function(x){return '<option>'+x+'</option>';}).join("")+'</select></label>'+
+          '<label>CCD (R$/km)<input id="acCcd" placeholder="Ex.: 5,826"></label>'+
+          '<label>CC (R$)<input id="acCc" placeholder="Ex.: 444,89"></label>'+
+          '<button class="btn primary" id="acAdd">Adicionar</button>'+
+        '</div>'+
+        '<div class="antt-cad-acts"><button class="btn" id="acImport">&#128193; Importar planilha</button><input type="file" id="acFile" accept=".xlsx,.xls,.csv" style="display:none"><span class="antt-hint">Colunas: TABELA, TIPO_CARGA, EIXOS, CCD, CC</span></div>'+
+        '<table class="resumo-tbl"><thead><tr><th>TABELA</th><th>TIPO DE CARGA</th><th class="num">EIXOS</th><th class="num">CCD (R$/km)</th><th class="num">CC (R$)</th><th></th></tr></thead><tbody>'+
+        (linhas.length?linhas.map(function(c,i){
+          return '<tr><td>'+esc(c.tabela||"A")+'</td><td>'+esc(c.tipo)+'</td><td class="num">'+esc(c.eixos)+'</td><td class="num">'+esc(String(c.ccd).replace(".",","))+'</td><td class="num">'+esc(String(c.cc).replace(".",","))+'</td><td><button class="acDel" data-k="'+esc((c.tabela||"A")+"|"+c.tipo+"|"+c.eixos)+'">&times;</button></td></tr>';
+        }).join(""):'<tr><td colspan="6" style="text-align:center;color:var(--cinza);padding:18px">Nenhum coeficiente cadastrado.</td></tr>')+
+        '</tbody></table>';
+      if(!podeEditar){["acSalvarInfo","acAdd","acImport"].forEach(function(id){var b=g(id);if(b)b.disabled=true;});}
+      g("acSalvarInfo").addEventListener("click",function(){
+        ANTT.portaria=g("acPortaria").value.trim();ANTT.vigencia=g("acVigencia").value.trim();
+        salvar().then(function(){toast("Informacoes da portaria salvas.","ok");renderAnttCad();logAction&&logAction("antt_portaria",ANTT.portaria+" "+ANTT.vigencia);});
+      });
+      g("acAdd").addEventListener("click",function(){
+        var ccd=numDot(g("acCcd").value.replace(",",".")), cc=numDot(g("acCc").value.replace(",","."));
+        if(!(ccd>0)||!(cc>0)){toast("Informe CCD e CC.","err");return;}
+        var tab=g("acTab").value, tipo=g("acTipo").value, eixos=+g("acEixos").value;
+        ANTT.coef=ANTT.coef.filter(function(c){return !((c.tabela||"A")===tab&&c.tipo===tipo&&+c.eixos===eixos);});
+        ANTT.coef.push({tabela:tab,tipo:tipo,eixos:eixos,ccd:ccd,cc:cc});
+        salvar().then(function(){toast("Coeficiente salvo.","ok");renderAnttCad();});
+      });
+      Array.prototype.forEach.call(host.querySelectorAll(".acDel"),function(b){
+        b.addEventListener("click",function(){
+          if(!confirm("Remover este coeficiente?"))return;
+          var k=b.getAttribute("data-k");
+          ANTT.coef=ANTT.coef.filter(function(c){return ((c.tabela||"A")+"|"+c.tipo+"|"+c.eixos)!==k;});
+          salvar().then(function(){renderAnttCad();});
+        });
+      });
+      g("acImport").addEventListener("click",function(){g("acFile").click();});
+      g("acFile").addEventListener("change",function(ev){
+        var f=ev.target.files[0]; if(!f)return; ev.target.value="";
+        var rd=new FileReader();
+        rd.onload=function(e2){
+          try{
+            var wb=XLSX.read(e2.target.result,{type:"array"});
+            var ws=wb.Sheets[wb.SheetNames[0]];
+            var aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",blankrows:false});
+            var hi=-1;
+            for(var i=0;i<10&&i<aoa.length;i++){var ns=(aoa[i]||[]).map(function(x){return norm(x);});if(ns.indexOf("ccd")>-1&&ns.indexOf("cc")>-1){hi=i;break;}}
+            if(hi<0){toast("Nao achei as colunas CCD e CC.","err");return;}
+            var H=(aoa[hi]||[]).map(function(x){return norm(x);});
+            var iTab=H.indexOf("tabela"),iTipo=H.indexOf("tipocarga"),iEix=H.indexOf("eixos"),iCcd=H.indexOf("ccd"),iCc=H.indexOf("cc");
+            if(iTipo<0)iTipo=H.indexOf("tipo");
+            var novos=[],n=0;
+            for(var r=hi+1;r<aoa.length;r++){
+              var a=aoa[r]||[]; var tipo=String(a[iTipo]||"").trim(); if(!tipo)continue;
+              var eixos=parseInt(a[iEix],10); if(!eixos)continue;
+              var ccd=numDot(a[iCcd]), cc=numDot(a[iCc]); if(!(ccd>0))continue;
+              var tab=(iTab>-1?String(a[iTab]||"A").trim().toUpperCase():"A"); if(!TABELAS[tab])tab="A";
+              novos.push({tabela:tab,tipo:tipo,eixos:eixos,ccd:ccd,cc:cc}); n++;
+            }
+            if(!n){toast("Nenhuma linha valida na planilha.","err");return;}
+            var keys={};novos.forEach(function(c){keys[c.tabela+"|"+c.tipo+"|"+c.eixos]=1;});
+            ANTT.coef=ANTT.coef.filter(function(c){return !keys[(c.tabela||"A")+"|"+c.tipo+"|"+c.eixos];}).concat(novos);
+            salvar().then(function(){toast(n+" coeficiente(s) importado(s).","ok");renderAnttCad();logAction&&logAction("antt_import",n+" coeficientes");});
+          }catch(err){toast("Erro ao ler a planilha: "+err.message,"err");}
+        };
+        rd.readAsArrayBuffer(f);
+      });
+    });
+  };
 })();
 </script>
 
