@@ -5946,8 +5946,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     .dtable td{display:flex;justify-content:space-between;gap:12px;border:none;padding:4px 0;text-align:right}
     .dtable td::before{content:attr(data-label);font-weight:600;color:var(--cinza);text-align:left;flex:0 0 auto}
     .dtable tfoot td{background:#fafbfc;font-weight:700}
-    .clh{flex-direction:column;align-items:flex-start;gap:8px}
-    .clinfo{flex-wrap:wrap;gap:10px!important}
+    
+    
     .modal{width:94vw}
     #toasts{width:94vw}.toast{max-width:94vw}
     .botnav{display:flex;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(180deg,#024733,#012E20);z-index:40;padding:6px 2px;justify-content:space-around;box-shadow:0 -2px 12px rgba(0,0,0,.25)}
@@ -6135,6 +6135,49 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .ek-s{font-size:10px;color:var(--cinza)}
   .ek.per{justify-content:center;background:var(--verde-bg);border-color:var(--verde-2)}
   .ek-p{font-size:11.5px;color:var(--verde);font-weight:700;line-height:1.4}
+
+  /* ===== ETAPAS: cargas em cartoes (padrao do Formador) ===== */
+  #parcialBody,#fechBody,#contrBody,#embBody{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
+  #embBody .embkpis,#embBody .fob-sec-h,#embBody .fob-grid{grid-column:1/-1}
+  .clcard{margin-bottom:0;display:flex;flex-direction:column;border-radius:14px}
+  .clcard.open{box-shadow:0 4px 18px rgba(0,0,0,.12)}
+  .clh{padding:11px 14px;border-radius:14px 14px 0 0;display:block;cursor:pointer;transition:filter .12s}
+  .clh:hover{filter:brightness(1.08)}
+  .clh-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .clh-tit{min-width:0;flex:1}
+  .clrota{font-size:13.5px;font-weight:700;line-height:1.3}
+  .cltipo{font-size:10.5px;color:#bcd3f5;margin-top:2px}
+  .clh-chev{font-size:12px;opacity:.85;flex:0 0 auto;padding:2px 4px}
+  .clcard .progress-wrap{padding:10px 14px 0}
+  .clinfo2{display:flex;flex-wrap:wrap;gap:10px;padding:9px 14px;background:#f6f9ff;font-size:11px;color:var(--cinza);border-top:1px solid var(--grade)}
+  .clinfo2 b{color:var(--texto)}
+  .cl-warn{padding:7px 14px;font-size:10.5px;color:#8a6d00;background:#FFF8E1;font-weight:600;line-height:1.4}
+  .clactions{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px;border-top:1px solid var(--grade)}
+  .clbtn{background:var(--cinza-bg);border:1px solid var(--grade);color:var(--texto);padding:5px 9px;border-radius:7px;cursor:pointer;font-size:10.5px;font-weight:600;font-family:inherit;white-space:nowrap}
+  .clbtn:hover{background:#e9edf1;border-color:#cdd5db}
+  .clbtn.primary{background:var(--verde);border-color:var(--verde);color:#fff}
+  .clbtn.primary:hover{background:var(--verde-2);border-color:var(--verde-2)}
+  .clbtn.primary[disabled]{background:var(--cinza-bg);border-color:var(--grade);color:var(--cinza);opacity:.6;cursor:not-allowed}
+  .clbtn[disabled]{opacity:.5;cursor:not-allowed}
+  .cl-foot{padding:8px 14px;border-top:1px solid var(--grade);background:#fafbfc;border-radius:0 0 14px 14px;font-size:10.5px;margin-top:auto}
+  .clbody.det-body{border-top:1px solid var(--grade);padding:0}
+  .clcard .clcards{grid-template-columns:1fr;padding:10px 12px;max-height:420px;overflow-y:auto}
+  /* ===== FOB em cartoes ===== */
+  .fob-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+  .fob-alerta{background:var(--vermelho-bg,#fdecec);border:1px solid #f3c2c2;color:#9b2c2c;padding:9px 13px;border-radius:9px;margin-bottom:10px;font-size:12px;font-weight:600}
+  .fob-resumo{display:flex;gap:18px;flex-wrap:wrap;padding:8px 12px;background:var(--verde-bg);border-radius:9px;margin-bottom:12px;font-size:12px;color:var(--cinza)}
+  .fob-resumo b{color:var(--verde);font-size:13.5px}
+  .fob-sec-h{font-size:13px;color:#1454b3;font-weight:700;margin:6px 0 8px}
+  .pcard.fob.semdata{border-left-color:var(--risco);background:#fffbfb}
+  .pc-fobeta{display:flex;align-items:center;gap:6px;margin-top:7px;padding-top:6px;border-top:1px dashed var(--grade)}
+  .fe-lbl{font-size:10px;color:var(--cinza);white-space:nowrap}
+  .pc-fobeta input[type=date]{flex:1;min-width:0;font-size:11px;padding:4px 6px;border:1px solid var(--grade);border-radius:6px;font-family:inherit}
+  .pc-fobeta.semdata input[type=date]{border-color:#e0a0a0;background:#fff7f7}
+  .fe-warn{color:var(--risco);font-weight:700;font-size:12px}
+  .pc-val{color:var(--cinza);font-weight:600;margin-left:6px}
+  .pc-add.ghost{background:#fff;border:1px solid var(--grade);color:var(--cinza)}
+  .pc-add.ghost:hover{border-color:var(--verde);color:var(--verde)}
+  .pcard.fob.emb{opacity:.9}
 </style>
 </head>
 <body>
@@ -7325,6 +7368,46 @@ function fecharParcial(t){
 function pushHist(t,e){t.history=t.history||[];t.history.push({ts:Date.now(),user:(typeof CUR!=="undefined"&&(CUR.nome||CUR.user))||"",tipo:e.tipo||"",de:e.de||"",para:e.para||"",motivo:e.motivo||""});}function cancelarCarga(t){if(!requirePerm("reverterStatus"))return;var rot=(t.numeroCarga?("carga "+(t.filialCarga?t.filialCarga+" ":"")+"No "+t.numeroCarga):"carga");var motivo=(prompt("Motivo do CANCELAMENTO da "+rot+":")||"").trim();if(!motivo){toast("Motivo obrigatorio para cancelar.","err");return;}if(!confirm("Confirmar cancelamento da "+rot+"?\nOs pedidos voltam para o banco. O numero e o historico ficam registrados."))return;var de=t.status;state.pedidos.forEach(function(p){if(p.assignedTo===t.id)p.assignedTo=null;});t.status="cancelada";t.canceladaEm=Date.now();pushHist(t,{tipo:"Cancelamento",de:de,para:"cancelada",motivo:motivo});renderAll();toast("Carga cancelada. Numero e historico preservados.","info");logAction("cancelar_carga",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> cancelada | Motivo: "+motivo);}function reabrirCarga(t){if(!requirePerm("reverterStatus"))return;const motivo=(prompt("Informe o motivo para voltar o status desta carga:")||"").trim();if(!motivo){toast("Motivo obrigatorio para voltar o status.","err");return;}const de=t.status;t.status="montada";t.revertReason=motivo;pushHist(t,{tipo:"Reversao de status",de:de,para:"montagem",motivo:motivo});renderAll();setTab("formador");toast((t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+"reaberta no Formador."+(t.numeroCarga?" Numero preservado.":""),"info");logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> montagem | Motivo: "+motivo);}
 
 /* PAINEL FECHADO PARCIAL */
+function freteFootHtml(t,fr){
+  return '<div class="tf-line"><span>Preco frete (tabela)</span><b>'+fmtMoney(fr.total)+'</b></div>'+
+    '<div class="tf-line"><span>R$/ton efetivo</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+
+    (t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo (preco - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'');
+}
+function stageCard(t,cfg){
+  cfg=cfg||{};
+  const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
+  const fr=loadFreight(t);
+  const load=fr.kg, pct=t.cap?load/t.cap*100:0;
+  const card=el("div","clcard");
+  const prog=(cfg.progressHtml!=null)?cfg.progressHtml
+    :'<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(t.cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(pct>100?"over":(pct>=95?"otim":""))+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+(pct>100?'<div class="bate over">&#128680; Excesso de '+fmtKg(load-t.cap)+'</div>':'')+'</div>';
+  card.innerHTML=
+    '<div class="clh"'+(cfg.headStyle?' style="'+cfg.headStyle+'"':'')+'>'+
+      '<div class="clh-top"><div class="clh-tit">'+
+        '<div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+(cfg.pill||"")+'</div>'+
+        '<div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%'+(cfg.tipoExtra||"")+'</div>'+
+      '</div><span class="clh-chev" title="Ver pedidos desta carga">&#9662;</span></div>'+
+      margemLine(t)+
+    '</div>'+
+    prog+
+    (cfg.infoHtml||"")+
+    (cfg.warnHtml||"")+
+    '<div class="clactions">'+(cfg.actions||"")+'</div>'+
+    '<div class="clbody det-body hidden">'+pedCardsHtml(ps,fr)+histHtml(t)+'</div>'+
+    '<div class="cl-foot">'+freteFootHtml(t,fr)+'</div>';
+  const bodyEl=card.querySelector(".det-body"), chev=card.querySelector(".clh-chev");
+  const toggle=function(){
+    const hid=bodyEl.classList.toggle("hidden");
+    chev.innerHTML=hid?"&#9662;":"&#9652;";
+    card.classList.toggle("open",!hid);
+    const d=card.querySelector(".det");
+    if(d)d.innerHTML=(hid?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";
+  };
+  card.querySelector(".clh").addEventListener("click",function(e){if(e.target.closest("button"))return;toggle();});
+  const d=card.querySelector(".det");
+  if(d)d.addEventListener("click",function(e){e.stopPropagation();toggle();});
+  return {card:card,ps:ps,fr:fr,load:load,pct:pct,toggle:toggle};
+}
 function renderParcial(){
   const cs=state.trucks.filter(t=>t.status==="parcial"&&truckInScope(t));
   setBadge("parcial",cs.length);
@@ -7333,25 +7416,21 @@ function renderParcial(){
   if(!cs.length){body.innerHTML='<div class="empty">Nenhuma carga em fechamento parcial. No Formador, comece uma carga e use "Fechar Parcial" quando ainda faltar volume para atingir '+MIN_CLOSE_PCT+'% da capacidade.</div>';return;}
   body.innerHTML="";
   cs.forEach(t=>{
-    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
-    const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;
-    const min=t.cap*MIN_CLOSE_PCT/100,faltam=Math.max(0,min-load),atinge=load>=min-0.001;
-    const card=el("div","clcard");
-    let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td>'+(p.cidade||"-")+(p.uf?"/"+p.uf:"")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
-    card.innerHTML=
-      '<div class="clh"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+'</div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%</div>'+margemLine(t)+'</div>'+
-      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Reabrir no Formador</button><button class="clbtn fech" '+(atinge?'':'disabled style="opacity:.45;cursor:not-allowed"')+'>&#9989; Fechar Carga</button></div></div>'+
-      '<div class="progress-wrap" style="padding:11px 16px"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(t.cap)+' &middot; minimo '+MIN_CLOSE_PCT+'% = '+fmtKg(min)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(atinge?"otim":"")+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+(atinge?"ok":"norm")+'">'+(atinge?"&#128994; Volume minimo atingido — pronto para fechar":"Faltam "+fmtKg(faltam)+" para atingir "+MIN_CLOSE_PCT+"% (adicione pedidos da regiao com Auto-Preencher ou reabra no Formador)")+'</div></div>'+
-      '<div class="clbody det-body hidden">'+pedCardsHtml(ps,fr)+histHtml(t)+'</div>';
-    card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
+    const load0=truckLoad(t), min=t.cap*MIN_CLOSE_PCT/100, faltam=Math.max(0,min-load0), atinge=load0>=min-0.001;
+    const pct0=t.cap?load0/t.cap*100:0;
+    const prog='<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load0)+' / '+fmtKg(t.cap)+' &middot; min '+MIN_CLOSE_PCT+'% = '+fmtKg(min)+'</span><span>'+pct0.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(atinge?"otim":"")+'" style="width:'+Math.min(pct0,100)+'%"></div></div><div class="bate '+(atinge?"ok":"norm")+'">'+(atinge?"&#128994; Volume minimo atingido — pronto para fechar":"Faltam "+fmtKg(faltam)+" para "+MIN_CLOSE_PCT+"%")+'</div></div>';
+    const acts='<button class="clbtn det">&#9662; Ver pedidos</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
+    const r=stageCard(t,{progressHtml:prog,actions:acts});
+    const card=r.card, faltamTxt=fmtKg(faltam);
+    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#9662; Ver pedidos ("+r.ps.length+")";
     card.querySelector(".auto").addEventListener("click",()=>autoFill(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
-    var _a1=card.querySelector(".anttb");if(_a1)_a1.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
-    var _r1=card.querySelector(".romb");if(_r1)_r1.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
+    const _a=card.querySelector(".anttb");if(_a)_a.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
+    const _r=card.querySelector(".romb");if(_r)_r.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
     card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
     const fb=card.querySelector(".fech");
-    if(atinge) fb.addEventListener("click",()=>fecharCarga(t));
-    else fb.addEventListener("click",()=>toast("Ainda faltam "+fmtKg(faltam)+" para "+MIN_CLOSE_PCT+"%. Adicione pedidos da regiao (Auto-Preencher) ou reabra no Formador.","info",6000));
+    if(atinge)fb.addEventListener("click",()=>fecharCarga(t));
+    else fb.addEventListener("click",()=>toast("Ainda faltam "+faltamTxt+" para "+MIN_CLOSE_PCT+"%. Adicione pedidos da regiao (Auto-Preencher) ou reabra no Formador.","info",6000));
     body.appendChild(card);
   });
 }
@@ -7386,6 +7465,34 @@ function buildFobFilters(){
   fill("fobDlVend",all.map(function(p){return p.vendedor;}));
   fill("fobDlUf",all.map(function(p){return p.uf;}));
 }
+function fobCard(p){
+  const c=el("div","pcard fob "+p.cor+(p.bloqueado?" bloqueado":"")+(p.etaFob?"":" semdata"));
+  c.dataset.id=p.id;
+  const mcCls=p.mcPct<0?"var(--risco)":(p.mcPct>0?"var(--ok)":"var(--cinza)");
+  const lockI=p.bloqueado?' &#128274;':"";
+  const statusTag=p.mcPct<0?'<span class="tag bloq">MC negativa</span>':(p.bloqueado?'<span class="tag bloq">Bloqueado</span>':'<span class="tag lib">Liberado</span>');
+  c.innerHTML=
+    '<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+lockI+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
+    '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div><button class="pc-add fobemb" data-pid="'+p.id+'" title="Marcar como embarcado / retirado">&#128666; Embarcado</button></div></div>'+
+    '<div class="pc-tags">'+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+(p.uf?"/"+p.uf:"")+'</span>':'')+(p.vendedor?'<span class="tag rota">'+p.vendedor+'</span>':'')+statusTag+'</div>'+
+    (p.produtos&&p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
+    '<div class="pc-fobeta'+(p.etaFob?'':' semdata')+'"><span class="fe-lbl">&#128197; Prev. retirada</span><input type="date" class="fobeta" data-pid="'+p.id+'" value="'+(p.etaFob||"")+'">'+(p.etaFob?'':'<span class="fe-warn" title="Sem previsao informada pelo cliente">&#9888;</span>')+'</div>'+
+    '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'% <span class="pc-val">'+fmtMoney0(p.valor)+'</span></div>';
+  c.querySelector(".fobeta").addEventListener("click",e=>e.stopPropagation());
+  c.querySelector(".fobeta").addEventListener("change",function(){
+    const pd=state.pedidos.find(x=>x.id===this.dataset.pid);
+    if(pd){pd.etaFob=this.value||"";saveState();renderFob();toast(pd.etaFob?("Previsao de retirada do #"+pd.pedido+": "+fmtEta(pd.etaFob)):("Previsao de retirada do #"+pd.pedido+" removida."),"ok");}
+  });
+  c.querySelector(".fobemb").addEventListener("click",function(e){
+    e.stopPropagation();
+    if(!requirePerm("embarcar"))return;
+    const pd=state.pedidos.find(x=>x.id===this.dataset.pid); if(!pd)return;
+    pd.embarcado=true;pd.embarcadoAt=Date.now();renderAll();setTab("embarcadas");
+    toast("Pedido FOB #"+pd.pedido+" marcado como embarcado/retirado.","ok");logAction("embarcar_fob","#"+pd.pedido);
+  });
+  c.addEventListener("click",e=>{if(e.target.closest("button")||e.target.closest("input"))return;openPedDetail(p);});
+  return c;
+}
 function renderFob(){
   const all=fobPeds();
   buildFobFilters();
@@ -7396,19 +7503,20 @@ function renderFob(){
   $("#fobMeta").textContent="Cliente agenda a retirada — fora do roteiro N1"+(fobFiltrosAtivos()?" \u00b7 "+fobs.length+" de "+todos.length+" (filtrado)":"");
   const body=$("#fobBody");
   if(!fobs.length){body.innerHTML='<div class="empty">'+(fobFiltrosAtivos()?"Nenhum pedido FOB com os filtros atuais.":(all.length?"Todos os pedidos FOB ja foram embarcados/retirados.":"Sem pedidos FOB."))+'</div>';return;}
-  fobs.sort((a,b)=>((a.etaFob?1:0)-(b.etaFob?1:0))||(b.peso-a.peso)); // sem previsao primeiro
+  fobs.sort((a,b)=>((a.etaFob?1:0)-(b.etaFob?1:0))||(b.peso-a.peso));
   const tot={qtd:fobs.length,peso:fobs.reduce((s,p)=>s+p.peso,0),valor:fobs.reduce((s,p)=>s+p.valor,0)};
-  const alerta=semData?'<div style="background:var(--vermelho-bg);border:1px solid #f3c2c2;color:#9b2c2c;padding:9px 13px;border-radius:9px;margin-bottom:12px;font-size:12.5px;font-weight:600">&#9888; '+semData+' pedido(s) FOB sem previsao de embarque/retirada pelo cliente. Informe a data na coluna "Prev. retirada".</div>':'';
-  let html=alerta+'<table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Cidade</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">MC%</th><th>Financeiro</th><th>Prev. retirada</th><th></th></tr></thead><tbody>';
-  fobs.forEach(p=>{const semd=!p.etaFob;
-    html+='<tr'+(semd?' style="background:#fff7f7"':'')+'><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td>'+(p.cidade||"-")+(p.uf?"/"+p.uf:"")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num" style="color:'+(p.mcPct<0?"var(--risco)":"var(--ok)")+'">'+p.mcPct.toFixed(1)+'%</td><td>'+(p.bloqueado?"Bloqueado":"Liberado")+'</td>'+
-      '<td><input type="date" class="fobeta" data-pid="'+p.id+'" value="'+(p.etaFob||"")+'" style="font-size:11px;padding:3px 6px;border:1px solid '+(semd?"#e0a0a0":"var(--grade)")+';border-radius:6px">'+(semd?' <span title="Sem previsao" style="color:var(--risco);font-weight:700">&#9888;</span>':'')+'</td>'+
-      '<td class="num" style="white-space:nowrap"><button class="btn ghost fobinfo" data-pid="'+p.id+'" style="padding:3px 10px;font-size:11px;margin-right:5px">&#8505; Info</button><button class="btn primary fobemb" data-pid="'+p.id+'" style="padding:3px 10px;font-size:11px">&#128666; Embarcado</button></td></tr>';});
-  html+='</tbody><tfoot><tr><td colspan="3">TOTAL FOB pendente ('+tot.qtd+')</td><td class="num">'+fmtT(tot.peso)+'</td><td class="num">'+fmtMoney0(tot.valor)+'</td><td colspan="4"></td></tr></tfoot></table>';
-  body.innerHTML=html;labelTables();
-  body.querySelectorAll(".fobeta").forEach(inp=>inp.addEventListener("change",()=>{const p=state.pedidos.find(x=>x.id===inp.dataset.pid);if(p){p.etaFob=inp.value||"";saveState();renderFob();}}));
-  body.querySelectorAll(".fobinfo").forEach(b=>b.addEventListener("click",()=>{const p=state.pedidos.find(x=>x.id===b.dataset.pid);if(p)openPedDetail(p);}));
-  body.querySelectorAll(".fobemb").forEach(b=>b.addEventListener("click",()=>{if(!requirePerm("embarcar"))return;const p=state.pedidos.find(x=>x.id===b.dataset.pid);if(!p)return;p.embarcado=true;p.embarcadoAt=Date.now();renderAll();setTab("embarcadas");toast("Pedido FOB #"+p.pedido+" marcado como embarcado/retirado.","ok");logAction("embarcar_fob","#"+p.pedido);}));
+  body.innerHTML="";
+  if(semData){
+    const al=el("div","fob-alerta");
+    al.innerHTML='&#9888; <b>'+semData+'</b> pedido(s) FOB sem previsao de embarque/retirada pelo cliente. Informe a data no campo "Prev. retirada" de cada cartao.';
+    body.appendChild(al);
+  }
+  const res=el("div","fob-resumo");
+  res.innerHTML='<span><b>'+tot.qtd+'</b> pedido(s) FOB pendente(s)</span><span><b>'+fmtT(tot.peso)+'</b></span><span><b>'+fmtMoney0(tot.valor)+'</b></span>';
+  body.appendChild(res);
+  const grid=el("div","fob-grid");
+  fobs.forEach(p=>grid.appendChild(fobCard(p)));
+  body.appendChild(grid);
 }
 
 /* PAINEL CARGAS FECHADAS (aguardando contratacao) */
@@ -7423,24 +7531,28 @@ function renderFechadas(){
   if(!fechadas.length){body.innerHTML='<div class="empty">Nenhuma carga fechada ainda. Monte uma carga e clique em "Fechar Carga".</div>';return;}
   body.innerHTML="";
   fechadas.forEach(t=>{
-    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
-    const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;const ok=transporteCompleto(t);
-    const card=el("div","clcard");
-    let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
-    card.innerHTML=
-      '<div class="clh"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'')+'</div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%</div>'+margemLine(t)+'</div>'+
-      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">Editar transporte</button><button class="clbtn contr" '+(ok?'':'disabled style="opacity:.45;cursor:not-allowed"')+'>&#128667; Contratar veiculo</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button><button class="clbtn reab">Reabrir</button></div></div>'+
-      '<div class="clinfo" style="padding:8px 16px;background:#f6f9ff;display:flex;gap:18px;font-size:11.5px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete: <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b> ('+fmtMoney(fr.rate)+'/ton)</span><span>Frete pago: <b>'+(t.fretePago?fmtMoney(fr.pagoTotal)+" ("+fmtMoney(fr.pagoTon)+"/ton)":"a definir")+'</b></span><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes de embarque: <b>'+t.history.length+'</b></span>':'')+'</div>'+
-      (ok?'':'<div style="padding:0 16px 8px;font-size:11px;color:var(--alerta);font-weight:600">Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque para habilitar a contratacao.</div>')+
-      '<div class="clbody det-body hidden">'+pedCardsHtml(ps,fr)+histHtml(t)+'</div>';
+    const ok=transporteCompleto(t);
+    const pill=(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'');
+    const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes: <b>'+t.history.length+'</b></span>':'')+'</div>';
+    const warn=ok?'':'<div class="cl-warn">Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque para habilitar a contratacao.</div>';
+    const acts='<button class="clbtn det">&#9662; Ver pedidos</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button><button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
+    const r=stageCard(t,{pill:pill,infoHtml:info,warnHtml:warn,actions:acts});
+    const card=r.card;
+    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#9662; Ver pedidos ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
     card.querySelector(".edt").addEventListener("click",()=>openModal(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
-    card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
-    var _eb=card.querySelector(".embd");if(_eb)_eb.addEventListener("click",function(){editarEmbarque(t);});var _db=card.querySelector(".divb");if(_db)_db.addEventListener("click",function(){window.openDivulg&&window.openDivulg(t);});var _a2=card.querySelector(".anttb");if(_a2)_a2.addEventListener("click",function(){window.openAntt&&window.openAntt(t);});var _r2=card.querySelector(".romb");if(_r2)_r2.addEventListener("click",function(){window.openRomaneios&&window.openRomaneios(t);});const cb=card.querySelector(".contr"); if(ok) cb.addEventListener("click",()=>veiculoContratado(t)); else cb.addEventListener("click",()=>toast("Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque (em Editar transporte) para contratar.","info"));
+    const _eb=card.querySelector(".embd");if(_eb)_eb.addEventListener("click",()=>editarEmbarque(t));
+    const _db=card.querySelector(".divb");if(_db)_db.addEventListener("click",()=>window.openDivulg&&window.openDivulg(t));
+    const _a2=card.querySelector(".anttb");if(_a2)_a2.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
+    const _r2=card.querySelector(".romb");if(_r2)_r2.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
+    const cb=card.querySelector(".contr");
+    if(ok)cb.addEventListener("click",()=>veiculoContratado(t));
+    else cb.addEventListener("click",()=>toast("Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque (em Transporte) para contratar.","info"));
     body.appendChild(card);
   });
 }
+
 function veiculoContratado(t){
   if(!requirePerm("contratar"))return;
   if(!transporteCompleto(t)){toast("Dados de transporte / frete pago incompletos.","err");return;}
@@ -7464,19 +7576,23 @@ function renderContratadas(){
   if(!cs.length){body.innerHTML='<div class="empty">'+(periodoAtivo("fContr")?"Nenhuma carga programada no periodo escolhido.":"Nenhum caminhao contratado ainda.")+'</div>';return;}
   body.innerHTML="";
   cs.forEach(t=>{
-    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
-    const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;
-    const card=el("div","clcard");
-    let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
-    card.innerHTML=
-      '<div class="clh" style="background:linear-gradient(135deg,#0a5d44,#008D67)"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+' <span class="pill contr">PROGRAMADA</span></div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'% &middot; '+(t.transp||"-")+' &middot; '+(t.placa||"-")+'</div>'+margemLine(t)+'</div>'+
-      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn emb">&#128666; Embarcado</button><button class="clbtn reab">Voltar p/ Aguardando</button><button class="clbtn canc">Cancelar</button></div></div>'+
-      '<div class="clinfo" style="padding:10px 16px;background:#f1faf6;display:flex;gap:22px;font-size:12px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete (tabela): <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b></span><span>Frete pago: <b>'+fmtMoney(fr.pagoTotal)+'</b></span><span>Saldo: <b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'" style="font-size:14px">'+fmtMoney(fr.saldo)+'</b></span><span>R$/ton tabela <b>'+fmtMoney(fr.rate)+'</b> vs pago <b>'+fmtMoney(fr.pagoTon)+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>'+
-      '<div class="clbody det-body hidden">'+pedCardsHtml(ps,fr)+histHtml(t)+'</div>';
-    card.querySelector(".reab").addEventListener("click",()=>{if(!requirePerm("reverterStatus"))return;var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Programada para Aguardando Contratacao:")||"").trim();if(!m){toast("Motivo obrigatorio.","err");return;}t.status="fechada";pushHist(t,{tipo:"Reversao de status",de:"contratada",para:"fechada",motivo:m});renderAll();setTab("fechadas");toast("Carga retornada para Aguardando Contratacao. Numero preservado.","info");logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": contratada -> fechada | Motivo: "+m);});var _r3=card.querySelector(".romb");if(_r3)_r3.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));var _cc=card.querySelector(".canc");if(_cc)_cc.addEventListener("click",()=>cancelarCarga(t));
+    const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"-")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>';
+    const acts='<button class="clbtn det">&#9662; Ver pedidos</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar</button><button class="clbtn canc">Cancelar</button><button class="clbtn emb primary">&#128666; Embarcado</button>';
+    const r=stageCard(t,{headStyle:"background:linear-gradient(135deg,#0a5d44,#008D67)",pill:' <span class="pill contr">PROGRAMADA</span>',infoHtml:info,actions:acts});
+    const card=r.card;
+    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#9662; Ver pedidos ("+r.ps.length+")";
+    card.querySelector(".reab").addEventListener("click",()=>{
+      if(!requirePerm("reverterStatus"))return;
+      var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Programada para Aguardando Contratacao:")||"").trim();
+      if(!m){toast("Motivo obrigatorio.","err");return;}
+      t.status="fechada";pushHist(t,{tipo:"Reversao de status",de:"contratada",para:"fechada",motivo:m});
+      renderAll();setTab("fechadas");toast("Carga retornada para Aguardando Contratacao. Numero preservado.","info");
+      logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": contratada -> fechada | Motivo: "+m);
+    });
+    const _r3=card.querySelector(".romb");if(_r3)_r3.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
+    const _cc=card.querySelector(".canc");if(_cc)_cc.addEventListener("click",()=>cancelarCarga(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     card.querySelector(".emb").addEventListener("click",()=>embarcarCarga(t));
-    card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
     body.appendChild(card);
   });
 }
@@ -7510,33 +7626,49 @@ function renderEmbarcadas(){
     body.appendChild(d);
   })();
   cs.forEach(t=>{
-    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
-    const fr=loadFreight(t);const load=fr.kg,pct=t.cap?load/t.cap*100:0;
-    const card=el("div","clcard");
-    let rows="";ps.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td class="num">'+p.mcPct.toFixed(1)+'%</td><td class="num b" style="color:#0a3a8a">'+fmtMoney(fr.alloc[p.id]||0)+'</td></tr>';});
-    card.innerHTML=
-      '<div class="clh" style="background:linear-gradient(135deg,#0b3d6e,#1454b3)"><div><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+' <span class="pill" style="background:rgba(255,255,255,.22);color:#fff">EMBARCADA</span></div><div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'% &middot; '+(t.transp||"-")+' &middot; '+(t.placa||"-")+'</div>'+margemLine(t)+'</div>'+
-      '<div class="clactions"><button class="clbtn det">&#9662; Ver pedidos ('+ps.length+')</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn reab">Voltar p/ Programadas</button><button class="clbtn canc">Cancelar</button></div></div>'+
-      '<div class="clinfo" style="padding:10px 16px;background:#eef4fb;display:flex;gap:22px;font-size:12px;flex-wrap:wrap"><span>Peso: <b>'+fmtKg(load)+'</b></span><span>Preco frete (tabela): <b style="color:#0a3a8a">'+fmtMoney(fr.total)+'</b></span><span>Frete pago: <b>'+fmtMoney(fr.pagoTotal)+'</b></span><span>Saldo: <b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'" style="font-size:14px">'+fmtMoney(fr.saldo)+'</b></span><span>Embarque previsto: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>'+
-      '<div class="clbody det-body hidden">'+pedCardsHtml(ps,fr)+histHtml(t)+'</div>';
-    card.querySelector(".reab").addEventListener("click",()=>{if(!requirePerm("reverterStatus"))return;var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Embarcada para Programada:")||"").trim();if(!m){toast("Motivo obrigatorio.","err");return;}t.status="contratada";pushHist(t,{tipo:"Reversao de status",de:"embarcada",para:"contratada",motivo:m});renderAll();setTab("contratadas");toast("Carga retornada para Cargas Programadas. Numero preservado.","info");logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": embarcada -> contratada | Motivo: "+m);});var _cc2=card.querySelector(".canc");if(_cc2)_cc2.addEventListener("click",()=>cancelarCarga(t));
+    const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"-")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>';
+    const acts='<button class="clbtn det">&#9662; Ver pedidos</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar p/ Programadas</button><button class="clbtn canc">Cancelar</button>';
+    const r=stageCard(t,{headStyle:"background:linear-gradient(135deg,#0b3d6e,#1454b3)",pill:' <span class="pill" style="background:rgba(255,255,255,.22);color:#fff">EMBARCADA</span>',infoHtml:info,actions:acts});
+    const card=r.card;
+    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#9662; Ver pedidos ("+r.ps.length+")";
+    card.querySelector(".reab").addEventListener("click",()=>{
+      if(!requirePerm("reverterStatus"))return;
+      var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Embarcada para Programada:")||"").trim();
+      if(!m){toast("Motivo obrigatorio.","err");return;}
+      t.status="contratada";pushHist(t,{tipo:"Reversao de status",de:"embarcada",para:"contratada",motivo:m});
+      renderAll();setTab("contratadas");toast("Carga retornada para Cargas Programadas. Numero preservado.","info");
+      logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": embarcada -> contratada | Motivo: "+m);
+    });
+    const _rr=card.querySelector(".romb");if(_rr)_rr.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
+    const _cc2=card.querySelector(".canc");if(_cc2)_cc2.addEventListener("click",()=>cancelarCarga(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
-    card.querySelector(".det").addEventListener("click",e=>{const b=card.querySelector(".det-body");const open=b.classList.toggle("hidden");e.target.innerHTML=(open?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";labelTables();});
     body.appendChild(card);
   });
   if(fobEmb.length){
     fobEmb.sort((a,b)=>(b.embarcadoAt||0)-(a.embarcadoAt||0));
-    const sec=el("div","");
     const tp=fobEmb.reduce((s,p)=>s+p.peso,0),tv=fobEmb.reduce((s,p)=>s+p.valor,0);
-    let rows="";fobEmb.forEach(p=>{rows+='<tr><td class="b">#'+p.pedido+'</td><td>'+(p.cliente||"-")+'</td><td>'+(p.cidade||"-")+(p.uf?"/"+p.uf:"")+'</td><td class="num">'+fmtKg(p.peso)+'</td><td class="num">'+fmtMoney0(p.valor)+'</td><td>'+(p.etaFob?fmtEta(p.etaFob):"-")+'</td><td class="num"><button class="btn ghost fobback" data-pid="'+p.id+'" style="padding:3px 9px;font-size:11px">Voltar p/ FOB</button></td></tr>';});
-    sec.innerHTML='<h3 style="font-size:13px;color:#1454b3;margin:14px 0 8px">&#128230; Pedidos FOB / Retira embarcados ('+fobEmb.length+')</h3>'+
-      '<table class="dtable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Cidade</th><th class="num">Peso</th><th class="num">Valor</th><th>Prev. retirada</th><th></th></tr></thead><tbody>'+rows+
-      '</tbody><tfoot><tr><td colspan="3">TOTAL FOB embarcado</td><td class="num">'+fmtT(tp)+'</td><td class="num">'+fmtMoney0(tv)+'</td><td colspan="2"></td></tr></tfoot></table>';
-    body.appendChild(sec);
-    sec.querySelectorAll(".fobback").forEach(b=>b.addEventListener("click",()=>{const p=state.pedidos.find(x=>x.id===b.dataset.pid);if(!p)return;p.embarcado=false;renderAll();toast("Pedido #"+p.pedido+" retornou para a aba FOB / Retira.","info");}));
+    const h3=el("div","fob-sec-h");
+    h3.innerHTML='&#128230; Pedidos FOB / Retira embarcados ('+fobEmb.length+') &middot; '+fmtT(tp)+' &middot; '+fmtMoney0(tv);
+    body.appendChild(h3);
+    const grid=el("div","fob-grid");
+    fobEmb.forEach(p=>{
+      const c=el("div","pcard fob emb "+p.cor);
+      c.innerHTML='<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
+        '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div><button class="pc-add ghost fobback" data-pid="'+p.id+'">Voltar p/ FOB</button></div></div>'+
+        '<div class="pc-tags">'+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+(p.uf?"/"+p.uf:"")+'</span>':'')+'<span class="tag lib">Retirado</span></div>'+
+        '<div class="pc-fobeta"><span class="fe-lbl">&#128197; Retirada</span><b style="font-size:11.5px">'+(p.etaFob?fmtEta(p.etaFob):"-")+'</b></div>'+
+        '<div class="pc-mc"><span class="pc-val">'+fmtMoney0(p.valor)+'</span></div>';
+      c.querySelector(".fobback").addEventListener("click",function(){
+        const pd=state.pedidos.find(x=>x.id===this.dataset.pid);if(!pd)return;
+        pd.embarcado=false;renderAll();toast("Pedido #"+pd.pedido+" retornou para a aba FOB / Retira.","info");
+      });
+      grid.appendChild(c);
+    });
+    body.appendChild(grid);
   }
   labelTables();
 }
+
 function buildFreightFilters(){
   const fils=[...new Set(Object.values(state.freightTable).map(r=>r.filial).filter(Boolean))].sort();
   const cur=$("#ffFilial").value;
@@ -8648,9 +8780,15 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.7.0";
+  var APP_VERSION="1.8.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.8.0",data:"17/07/2026",itens:[
+      ["MELHORIA","Fechado Parcial, Aguardando Contratacao, Programadas e Embarcadas agora mostram cada carga como um cartao, no mesmo padrao do Formador: rota, ocupacao, margem e frete num so lugar."],
+      ["NOVO","Clique no cabecalho do cartao da carga para abrir os detalhes de todos os pedidos, com os itens de cada um."],
+      ["MELHORIA","Pedidos FOB / Retira agora aparecem em cartoes, no mesmo padrao do Formador, com a previsao de retirada editavel direto no cartao."],
+      ["MELHORIA","Cartao FOB sem previsao de retirada fica destacado em vermelho, para nao passar batido."]
+    ]},
     {versao:"1.7.0",data:"11/07/2026",itens:[
       ["CORRECAO","Romaneio passa a trazer TODOS os itens de cada pedido, com peso, valor e frete rateado item a item. Antes so aparecia um produto por pedido."],
       ["MELHORIA","Fechado Parcial, Aguardando Contratacao, Programadas e Embarcadas agora mostram os pedidos em cartoes, no mesmo padrao do Formador, ja com a lista de itens."],
