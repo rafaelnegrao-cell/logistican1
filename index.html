@@ -5822,12 +5822,12 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .panel-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px}
 
   /* CARGA FECHADA */
-  .clcard{background:var(--card);border:1px solid var(--grade);border-radius:12px;box-shadow:var(--sombra);margin-bottom:16px;overflow:hidden}
-  .clcard .clh{padding:12px 16px;background:linear-gradient(135deg,#0a2a5e,#0a3a8a);color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .clcard{background:var(--card);border:1px solid var(--grade);border-radius:14px;box-shadow:var(--sombra)}
+  .clcard .clh{padding:11px 14px;background:linear-gradient(135deg,#0a2a5e,#0a3a8a);color:#fff;display:block}
   .clh .clrota{font-size:14px;font-weight:700}.clh .cltipo{font-size:10.5px;color:#bcd3f5}
-  .clh .clinfo{display:flex;gap:16px;font-size:11px;color:#dce8fb;flex-wrap:wrap}
+  
   .clh .clinfo b{color:#fff}
-  .clh .clactions{display:flex;gap:6px}
+  
   body.norevert .clbtn.reab{display:none !important}
   .nbadge:empty{display:none}
   .comm-new{background:var(--card);border:1px solid var(--grade);border-radius:12px;padding:14px 16px;margin-bottom:16px;box-shadow:var(--sombra)}
@@ -6139,15 +6139,15 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   /* ===== ETAPAS: cargas em cartoes (padrao do Formador) ===== */
   #parcialBody,#fechBody,#contrBody,#embBody{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
   #embBody .embkpis,#embBody .fob-sec-h,#embBody .fob-grid{grid-column:1/-1}
-  .clcard{margin-bottom:0;display:flex;flex-direction:column;border-radius:14px}
+  
   .clcard.open{box-shadow:0 4px 18px rgba(0,0,0,.12)}
-  .clh{padding:11px 14px;border-radius:14px 14px 0 0;display:block;cursor:pointer;transition:filter .12s}
+  
   .clh:hover{filter:brightness(1.08)}
-  .clh-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  
   .clh-tit{min-width:0;flex:1}
   .clrota{font-size:13.5px;font-weight:700;line-height:1.3}
   .cltipo{font-size:10.5px;color:#bcd3f5;margin-top:2px}
-  .clh-chev{font-size:12px;opacity:.85;flex:0 0 auto;padding:2px 4px}
+  
   .clcard .progress-wrap{padding:10px 14px 0}
   .clinfo2{display:flex;flex-wrap:wrap;gap:10px;padding:9px 14px;background:#f6f9ff;font-size:11px;color:var(--cinza);border-top:1px solid var(--grade)}
   .clinfo2 b{color:var(--texto)}
@@ -6159,9 +6159,9 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .clbtn.primary:hover{background:var(--verde-2);border-color:var(--verde-2)}
   .clbtn.primary[disabled]{background:var(--cinza-bg);border-color:var(--grade);color:var(--cinza);opacity:.6;cursor:not-allowed}
   .clbtn[disabled]{opacity:.5;cursor:not-allowed}
-  .cl-foot{padding:8px 14px;border-top:1px solid var(--grade);background:#fafbfc;border-radius:0 0 14px 14px;font-size:10.5px;margin-top:auto}
-  .clbody.det-body{border-top:1px solid var(--grade);padding:0}
-  .clcard .clcards{grid-template-columns:1fr;padding:10px 12px;max-height:420px;overflow-y:auto}
+  
+  
+  
   /* ===== FOB em cartoes ===== */
   .fob-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
   .fob-alerta{background:var(--vermelho-bg,#fdecec);border:1px solid #f3c2c2;color:#9b2c2c;padding:9px 13px;border-radius:9px;margin-bottom:10px;font-size:12px;font-weight:600}
@@ -6178,6 +6178,64 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .pc-add.ghost{background:#fff;border:1px solid var(--grade);color:var(--cinza)}
   .pc-add.ghost:hover{border-color:var(--verde);color:var(--verde)}
   .pcard.fob.emb{opacity:.9}
+
+  /* ===== cartoes das etapas (v2: bloco simples, altura pelo conteudo) ===== */
+  #parcialBody,#fechBody,#contrBody,#embBody{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-items:start;align-content:start;grid-auto-rows:auto}
+  #embBody .embkpis,#embBody .fob-sec-h,#embBody .fob-grid{grid-column:1/-1}
+  .clcard{display:block;overflow:visible;min-width:0;height:auto;align-self:start}
+  .clcard .clh{border-radius:14px 14px 0 0;cursor:pointer;transition:filter .12s}
+  .clcard .clh:hover{filter:brightness(1.12)}
+  .clcard .clh-tit{min-width:0}
+  .clrota{font-size:13.5px;font-weight:700;line-height:1.3;word-break:break-word}
+  .cltipo{font-size:10.5px;color:#bcd3f5;margin-top:2px}
+  .clh-hint{font-size:10px;color:#bcd3f5;margin-top:6px;opacity:.9}
+  .clcard .cargamc{margin-top:5px;color:#dce8fb}
+  .clcard .progress-wrap{padding:10px 14px 2px}
+  .clcard .cl-foot{padding:8px 14px;border-top:1px solid var(--grade);background:#fafbfc;border-radius:0 0 14px 14px;font-size:10.5px}
+  .clcard .clactions{display:flex;flex-wrap:wrap;gap:5px;padding:9px 14px;border-top:1px solid var(--grade)}
+  /* ===== janela de detalhes da carga ===== */
+  .cd-st{background:var(--verde-bg);color:var(--verde);font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:10px;margin-left:6px;vertical-align:middle}
+  .cd-ph{display:none;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--verde);padding-bottom:8px;margin-bottom:12px;font-size:11px;color:var(--cinza)}
+  .cd-ph b{display:block;font-size:16px;color:var(--verde)}
+  .cd-sec{margin-bottom:16px}
+  .cd-sec-h{font-size:11px;font-weight:800;color:var(--verde);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--grade);padding-bottom:5px;margin-bottom:9px}
+  .cd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:8px}
+  .cd-i{background:var(--cinza-bg);border-radius:8px;padding:7px 10px}
+  .cd-i span{display:block;font-size:9.5px;color:var(--cinza);text-transform:uppercase;letter-spacing:.3px}
+  .cd-i b{font-size:13px;color:var(--texto)}
+  .cd-i b.pos{color:var(--ok)} .cd-i b.neg{color:var(--risco)} .cd-i b.warn{color:#8a6d00}
+  .cd-alert{margin-top:8px;background:#FBE9EB;color:#b02a37;font-size:11.5px;font-weight:600;padding:7px 10px;border-radius:8px}
+  .cd-tbl{width:100%;border-collapse:collapse;font-size:11px}
+  .cd-tbl th{background:var(--verde);color:#fff;padding:6px 7px;text-align:left;font-weight:700;font-size:10px}
+  .cd-tbl td{padding:5px 7px;border-bottom:1px solid var(--grade);vertical-align:top}
+  .cd-tbl .num{text-align:right}
+  .cd-tbl td.b{font-weight:700}
+  .cd-tbl td.f{color:#0a3a8a;font-weight:600}
+  .cd-tbl td.pos{color:var(--ok);font-weight:700} .cd-tbl td.neg{color:var(--risco);font-weight:700}
+  .cd-tbl tr.cd-sub td{background:#f6f9ff;font-weight:700;font-size:10px;color:var(--cinza)}
+  .cd-tbl tr.cd-tot td{background:var(--verde-bg);font-weight:800;color:var(--verde);border-top:2px solid var(--verde-2)}
+  .cd-est{color:var(--alerta);font-size:9px;font-style:italic}
+  .cd-vazio{color:var(--cinza);font-size:12px;padding:14px;text-align:center}
+  .cd-foot-print{display:none}
+  .cd-print{padding:5px 12px;font-size:11.5px}
+  /* ===== IMPRESSAO: so a janela de detalhes ===== */
+  @media print{
+    @page{margin:11mm}
+    body{display:block!important;height:auto!important;overflow:visible!important;background:#fff!important}
+    body>*{display:none!important}
+    body>#cargaOverlay{display:block!important;position:static!important;inset:auto!important;background:#fff!important;z-index:auto!important}
+    #cargaOverlay .modal{width:100%!important;max-width:100%!important;max-height:none!important;box-shadow:none!important;border-radius:0!important}
+    #cargaOverlay .modal-head{border:none!important;padding:0!important}
+    #cargaOverlay .modal-head h3,#cargaOverlay .cd-print,#cargaOverlay .modal-x{display:none!important}
+    #cargaOverlay .modal-body{max-height:none!important;overflow:visible!important;padding:0!important}
+    .cd-ph{display:flex!important}
+    .cd-foot-print{display:block!important;margin-top:14px;padding-top:8px;border-top:1px solid #ccc;font-size:9px;color:#777;text-align:center}
+    .cd-sec{break-inside:avoid;page-break-inside:avoid}
+    .cd-tbl thead{display:table-header-group}
+    .cd-tbl tr{break-inside:avoid;page-break-inside:avoid}
+    .cd-i{background:#f4f6f8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .cd-tbl th{background:#008D67!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
 </style>
 </head>
 <body>
@@ -6631,6 +6689,12 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <button class="btn primary" id="romTodos">&#11015; Gerar todos por destino</button>
       </div>
     </div>
+  </div>
+</div>
+<div class="overlay" id="cargaOverlay">
+  <div class="modal" style="width:960px;max-width:97vw">
+    <div class="modal-head"><h3 id="cdTitulo">Detalhes da carga</h3><span style="flex:1"></span><button class="btn cd-print" id="cdPrint">&#128424; Imprimir</button><button class="modal-x" id="cdClose">&times;</button></div>
+    <div class="modal-body" id="cdBody" style="max-height:80vh;overflow:auto"></div>
   </div>
 </div>
 <div class="overlay" id="novOverlay">
@@ -7382,32 +7446,26 @@ function stageCard(t,cfg){
   const prog=(cfg.progressHtml!=null)?cfg.progressHtml
     :'<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(t.cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(pct>100?"over":(pct>=95?"otim":""))+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+(pct>100?'<div class="bate over">&#128680; Excesso de '+fmtKg(load-t.cap)+'</div>':'')+'</div>';
   card.innerHTML=
-    '<div class="clh"'+(cfg.headStyle?' style="'+cfg.headStyle+'"':'')+'>'+
-      '<div class="clh-top"><div class="clh-tit">'+
-        '<div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+(cfg.pill||"")+'</div>'+
-        '<div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%'+(cfg.tipoExtra||"")+'</div>'+
-      '</div><span class="clh-chev" title="Ver pedidos desta carga">&#9662;</span></div>'+
+    '<div class="clh"'+(cfg.headStyle?' style="'+cfg.headStyle+'"':'')+' title="Clique para ver todos os detalhes da carga">'+
+      '<div class="clh-tit"><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+(cfg.pill||"")+'</div>'+
+      '<div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%'+(cfg.tipoExtra||"")+'</div></div>'+
       margemLine(t)+
+      '<div class="clh-hint">'+ps.length+' pedido(s) &middot; ver detalhes &rsaquo;</div>'+
     '</div>'+
     prog+
     (cfg.infoHtml||"")+
     (cfg.warnHtml||"")+
     '<div class="clactions">'+(cfg.actions||"")+'</div>'+
-    '<div class="clbody det-body hidden">'+pedCardsHtml(ps,fr)+histHtml(t)+'</div>'+
     '<div class="cl-foot">'+freteFootHtml(t,fr)+'</div>';
-  const bodyEl=card.querySelector(".det-body"), chev=card.querySelector(".clh-chev");
-  const toggle=function(){
-    const hid=bodyEl.classList.toggle("hidden");
-    chev.innerHTML=hid?"&#9662;":"&#9652;";
-    card.classList.toggle("open",!hid);
-    const d=card.querySelector(".det");
-    if(d)d.innerHTML=(hid?"&#9662; Ver":"&#9652; Ocultar")+" pedidos ("+ps.length+")";
-  };
-  card.querySelector(".clh").addEventListener("click",function(e){if(e.target.closest("button"))return;toggle();});
+  card.querySelector(".clh").addEventListener("click",function(e){
+    if(e.target.closest("button"))return;
+    if(window.openCargaDetalhe)window.openCargaDetalhe(t);
+  });
   const d=card.querySelector(".det");
-  if(d)d.addEventListener("click",function(e){e.stopPropagation();toggle();});
-  return {card:card,ps:ps,fr:fr,load:load,pct:pct,toggle:toggle};
+  if(d)d.addEventListener("click",function(e){e.stopPropagation();if(window.openCargaDetalhe)window.openCargaDetalhe(t);});
+  return {card:card,ps:ps,fr:fr,load:load,pct:pct};
 }
+
 function renderParcial(){
   const cs=state.trucks.filter(t=>t.status==="parcial"&&truckInScope(t));
   setBadge("parcial",cs.length);
@@ -7419,10 +7477,10 @@ function renderParcial(){
     const load0=truckLoad(t), min=t.cap*MIN_CLOSE_PCT/100, faltam=Math.max(0,min-load0), atinge=load0>=min-0.001;
     const pct0=t.cap?load0/t.cap*100:0;
     const prog='<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load0)+' / '+fmtKg(t.cap)+' &middot; min '+MIN_CLOSE_PCT+'% = '+fmtKg(min)+'</span><span>'+pct0.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(atinge?"otim":"")+'" style="width:'+Math.min(pct0,100)+'%"></div></div><div class="bate '+(atinge?"ok":"norm")+'">'+(atinge?"&#128994; Volume minimo atingido — pronto para fechar":"Faltam "+fmtKg(faltam)+" para "+MIN_CLOSE_PCT+"%")+'</div></div>';
-    const acts='<button class="clbtn det">&#9662; Ver pedidos</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
+    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
     const r=stageCard(t,{progressHtml:prog,actions:acts});
     const card=r.card, faltamTxt=fmtKg(faltam);
-    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#9662; Ver pedidos ("+r.ps.length+")";
+    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".auto").addEventListener("click",()=>autoFill(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     const _a=card.querySelector(".anttb");if(_a)_a.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
@@ -7535,10 +7593,10 @@ function renderFechadas(){
     const pill=(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'');
     const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes: <b>'+t.history.length+'</b></span>':'')+'</div>';
     const warn=ok?'':'<div class="cl-warn">Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque para habilitar a contratacao.</div>';
-    const acts='<button class="clbtn det">&#9662; Ver pedidos</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button><button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
+    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button><button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
     const r=stageCard(t,{pill:pill,infoHtml:info,warnHtml:warn,actions:acts});
     const card=r.card;
-    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#9662; Ver pedidos ("+r.ps.length+")";
+    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
     card.querySelector(".edt").addEventListener("click",()=>openModal(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
@@ -7577,10 +7635,10 @@ function renderContratadas(){
   body.innerHTML="";
   cs.forEach(t=>{
     const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"-")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>';
-    const acts='<button class="clbtn det">&#9662; Ver pedidos</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar</button><button class="clbtn canc">Cancelar</button><button class="clbtn emb primary">&#128666; Embarcado</button>';
+    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar</button><button class="clbtn canc">Cancelar</button><button class="clbtn emb primary">&#128666; Embarcado</button>';
     const r=stageCard(t,{headStyle:"background:linear-gradient(135deg,#0a5d44,#008D67)",pill:' <span class="pill contr">PROGRAMADA</span>',infoHtml:info,actions:acts});
     const card=r.card;
-    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#9662; Ver pedidos ("+r.ps.length+")";
+    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>{
       if(!requirePerm("reverterStatus"))return;
       var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Programada para Aguardando Contratacao:")||"").trim();
@@ -7627,10 +7685,10 @@ function renderEmbarcadas(){
   })();
   cs.forEach(t=>{
     const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"-")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>';
-    const acts='<button class="clbtn det">&#9662; Ver pedidos</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar p/ Programadas</button><button class="clbtn canc">Cancelar</button>';
+    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar p/ Programadas</button><button class="clbtn canc">Cancelar</button>';
     const r=stageCard(t,{headStyle:"background:linear-gradient(135deg,#0b3d6e,#1454b3)",pill:' <span class="pill" style="background:rgba(255,255,255,.22);color:#fff">EMBARCADA</span>',infoHtml:info,actions:acts});
     const card=r.card;
-    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#9662; Ver pedidos ("+r.ps.length+")";
+    const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>{
       if(!requirePerm("reverterStatus"))return;
       var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Embarcada para Programada:")||"").trim();
@@ -8780,9 +8838,14 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.8.0";
+  var APP_VERSION="1.9.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.9.0",data:"17/07/2026",itens:[
+      ["NOVO","Janela de Detalhes da Carga: clique no cartao e veja tudo num so lugar — carga, transporte, frete, margem, todos os pedidos com seus itens e o historico."],
+      ["NOVO","Botao Imprimir na janela de detalhes: imprime exatamente a visualizacao apresentada, no padrao N1, pronta para anexar ou entregar."],
+      ["CORRECAO","Cartoes das cargas nao ficam mais encavalados: os detalhes saem do cartao e vao para a janela, deixando a tela organizada."]
+    ]},
     {versao:"1.8.0",data:"17/07/2026",itens:[
       ["MELHORIA","Fechado Parcial, Aguardando Contratacao, Programadas e Embarcadas agora mostram cada carga como um cartao, no mesmo padrao do Formador: rota, ocupacao, margem e frete num so lugar."],
       ["NOVO","Clique no cabecalho do cartao da carga para abrir os detalhes de todos os pedidos, com os itens de cada um."],
@@ -9225,6 +9288,89 @@ netBoot();
       });
     });
   };
+})();
+</script>
+
+<script>
+/* ===== Janela de detalhes da carga (com impressao) ===== */
+(function(){
+  "use strict";
+  function g(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  var STATUS={montada:"Em montagem",parcial:"Fechado Parcial",fechada:"Aguardando Contratacao",contratada:"Programada",embarcada:"Embarcada",cancelada:"Cancelada"};
+  function info(l,v,cls){return '<div class="cd-i"><span>'+l+'</span><b'+(cls?' class="'+cls+'"':'')+'>'+v+'</b></div>';}
+  function origemDe(ps){return (ps[0]&&typeof plantOf==="function")?plantOf(ps[0].filial).nome:"-";}
+  function destinosDe(ps){var s={};ps.forEach(function(p){s[norm(p.cliente)+"|"+norm(p.cidade)]=1;});return Object.keys(s).length;}
+
+  window.openCargaDetalhe=function(t){
+    var o=g("cargaOverlay"); if(!o)return;
+    var ps=(state.pedidos||[]).filter(function(p){return p.assignedTo===t.id;}).sort(cmpPedidos);
+    var fr=loadFreight(t), load=fr.kg, pct=t.cap?load/t.cap*100:0, m=cargaMargem(t);
+    var num=t.numeroCarga?((t.filialCarga?t.filialCarga+" \u00b7 ":"")+"Carga "+t.numeroCarga):"(sem numero \u2014 gerado na contratacao)";
+    g("cdTitulo").innerHTML='&#128666; '+esc(t.rota||"Rota nao informada")+' <span class="cd-st">'+esc(STATUS[t.status]||t.status)+'</span>';
+
+    var h='<div class="cd-ph"><div><b>N1 ALIMENTOS</b><span>Detalhes da carga</span></div><div>'+new Date().toLocaleString("pt-BR")+'</div></div>';
+    h+='<div class="cd-sec"><div class="cd-sec-h">Carga</div><div class="cd-grid">'+
+      info("Numero",esc(num))+info("Situacao",esc(STATUS[t.status]||t.status))+info("Rota",esc(t.rota||"-"))+
+      info("Veiculo",esc(VEHICLES[String(t.cap)]||"-")+" ("+fmtKg(t.cap)+")")+
+      info("Peso alocado",fmtKg(load)+" &middot; "+pct.toFixed(0)+"%")+
+      info("Origem",esc(origemDe(ps)))+
+      info("Pedidos",ps.length+" pedido(s)")+
+      info("Destinos",destinosDe(ps)+" destino(s)")+
+      '</div></div>';
+    h+='<div class="cd-sec"><div class="cd-sec-h">Transporte</div><div class="cd-grid">'+
+      info("Transportadora",esc(t.transp||"a contratar"))+info("Placa",esc(t.placa||"-"))+
+      info("Motorista",esc(t.mot||"-"))+info("Embarque previsto",t.eta?fmtEta(t.eta):"a definir")+
+      '</div></div>';
+    var mcCor=function(v){return v<0?"neg":(v<8?"warn":"pos");};
+    h+='<div class="cd-sec"><div class="cd-sec-h">Frete e margem</div><div class="cd-grid">'+
+      info("Preco frete (tabela)",fmtMoney(fr.total))+
+      info("R$/ton efetivo",fr.rate?fmtMoney(fr.rate):"-")+
+      info("Frete pago",t.fretePago?(fmtMoney(fr.pagoTotal)+" ("+fmtMoney(fr.pagoTon)+"/ton)"):"a definir")+
+      info("Saldo (preco - pago)",fmtMoney(fr.saldo),fr.saldo>=0?"pos":"neg")+
+      info("MC da carga",m.vl>0?m.mcPct.toFixed(1)+"%":"-",m.vl>0?mcCor(m.mcPct):"")+
+      info("MC apos frete pago",(m.fretePago!=null&&m.vl>0)?m.mcPctLiq.toFixed(1)+"%":"-",(m.fretePago!=null&&m.vl>0)?mcCor(m.mcPctLiq):"")+
+      '</div>'+(m.acima?'<div class="cd-alert">&#9888; Frete pago esta '+fmtMoney(m.delta)+' acima da tabela.</div>':'')+'</div>';
+
+    var rows="",totP=0,totV=0,totF=0,totI=0;
+    ps.forEach(function(p){
+      var itens=(typeof itensDoPedido==="function")?itensDoPedido(p):[{produto:(p.produtos||[]).join(", "),peso:p.peso,valor:p.valor}];
+      var fPed=fr.alloc[p.id]||0, wPed=p.peso||0, est=itens.some(function(x){return x._est;});
+      itens.forEach(function(it,ix){
+        var fIt=(wPed>0)?(fPed*((it.peso||0)/wPed)):0;
+        rows+='<tr>'+(ix===0?'<td rowspan="'+itens.length+'" class="b">#'+esc(p.pedido)+'</td><td rowspan="'+itens.length+'">'+esc(p.cliente||"-")+'</td><td rowspan="'+itens.length+'">'+esc(p.cidade||"-")+(p.uf?"/"+esc(p.uf):"")+'</td><td rowspan="'+itens.length+'">'+(p.entrega!=null&&!isNaN(p.entrega)?fmtDateBr(p.entrega):"-")+'</td>':'')+
+          '<td class="num">'+(ix+1)+'</td><td>'+esc(it.produto||"-")+(it._est?' <i class="cd-est">estimado</i>':'')+'</td>'+
+          '<td class="num">'+fmtKg(it.peso||0)+'</td><td class="num">'+fmtMoney0(it.valor||0)+'</td><td class="num f">'+fmtMoney(fIt)+'</td>'+
+          (ix===0?'<td rowspan="'+itens.length+'" class="num '+(p.mcPct<0?"neg":"pos")+'">'+p.mcPct.toFixed(1)+'%</td>':'')+'</tr>';
+        totI++;
+      });
+      if(itens.length>1)rows+='<tr class="cd-sub"><td colspan="5">Subtotal do pedido #'+esc(p.pedido)+' ('+itens.length+' itens)</td><td class="num">'+fmtKg(wPed)+'</td><td class="num">'+fmtMoney0(p.valor||0)+'</td><td class="num f">'+fmtMoney(fPed)+'</td><td></td></tr>';
+      totP+=wPed;totV+=(p.valor||0);totF+=fPed;
+    });
+    h+='<div class="cd-sec"><div class="cd-sec-h">Pedidos e itens ('+ps.length+' pedido(s) &middot; '+totI+' item(ns))</div>'+
+      (ps.length?'<table class="cd-tbl"><thead><tr><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Entrega</th><th class="num">Item</th><th>Produto</th><th class="num">Peso</th><th class="num">Valor</th><th class="num">Frete rateado</th><th class="num">MC%</th></tr></thead><tbody>'+rows+
+      '<tr class="cd-tot"><td colspan="6">TOTAL DA CARGA</td><td class="num">'+fmtKg(totP)+'</td><td class="num">'+fmtMoney0(totV)+'</td><td class="num">'+fmtMoney(totF)+'</td><td></td></tr></tbody></table>'
+      :'<div class="cd-vazio">Nenhum pedido nesta carga.</div>')+'</div>';
+
+    if(t.history&&t.history.length){
+      h+='<div class="cd-sec"><div class="cd-sec-h">Historico da carga</div><table class="cd-tbl"><thead><tr><th>Quando</th><th>Quem</th><th>O que</th><th>Motivo</th></tr></thead><tbody>'+
+        t.history.map(function(x){
+          var q=new Date(x.ts).toLocaleDateString("pt-BR")+" "+new Date(x.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+          var oq=x.tipo?esc(x.tipo):("Embarque para "+esc(x.para));
+          if(x.de&&x.para)oq+=" ("+esc(x.de)+" \u2192 "+esc(x.para)+")";
+          return '<tr><td>'+q+'</td><td>'+esc(x.user||"")+'</td><td>'+oq+'</td><td>'+esc(x.motivo||"")+'</td></tr>';
+        }).join("")+'</tbody></table></div>';
+    }
+    h+='<div class="cd-foot-print">N1 Alimentos S/A &middot; Formador de Carga &middot; documento gerado pelo sistema</div>';
+    g("cdBody").innerHTML=h;
+    o.classList.add("open");
+  };
+  function close(){var o=g("cargaOverlay");if(o)o.classList.remove("open");}
+  var b;
+  b=g("cdClose"); if(b)b.addEventListener("click",close);
+  b=g("cargaOverlay"); if(b)b.addEventListener("click",function(e){if(e.target===b)close();});
+  b=g("cdPrint"); if(b)b.addEventListener("click",function(){window.print();});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")close();});
 })();
 </script>
 
