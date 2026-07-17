@@ -6236,6 +6236,14 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     .cd-i{background:#f4f6f8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .cd-tbl th{background:#008D67!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
+
+  /* FOB: MC deixa de ser absoluto (evita sobrepor o campo de data) */
+  .pcard.fob{cursor:default;display:flex;flex-direction:column}
+  .pcard.fob .pc-mc{position:static;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding-top:6px;border-top:1px dashed var(--grade);font-size:11px}
+  .pcard.fob .pc-fobeta{margin-top:7px;padding-top:0;border-top:none}
+  .pcard.fob .pc-val{margin-left:0;color:var(--texto);font-weight:700}
+  .pcard.fob .pc-mix{margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pcard.fob .pc-add{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -7534,8 +7542,8 @@ function fobCard(p){
     '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div><button class="pc-add fobemb" data-pid="'+p.id+'" title="Marcar como embarcado / retirado">&#128666; Embarcado</button></div></div>'+
     '<div class="pc-tags">'+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+(p.uf?"/"+p.uf:"")+'</span>':'')+(p.vendedor?'<span class="tag rota">'+p.vendedor+'</span>':'')+statusTag+'</div>'+
     (p.produtos&&p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
-    '<div class="pc-fobeta'+(p.etaFob?'':' semdata')+'"><span class="fe-lbl">&#128197; Prev. retirada</span><input type="date" class="fobeta" data-pid="'+p.id+'" value="'+(p.etaFob||"")+'">'+(p.etaFob?'':'<span class="fe-warn" title="Sem previsao informada pelo cliente">&#9888;</span>')+'</div>'+
-    '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'% <span class="pc-val">'+fmtMoney0(p.valor)+'</span></div>';
+    '<div class="pc-mc" style="color:'+mcCls+'"><span>MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</span><span class="pc-val">'+fmtMoney0(p.valor)+'</span></div>'+
+    '<div class="pc-fobeta'+(p.etaFob?'':' semdata')+'"><span class="fe-lbl">&#128197; Prev. retirada</span><input type="date" class="fobeta" data-pid="'+p.id+'" value="'+(p.etaFob||"")+'">'+(p.etaFob?'':'<span class="fe-warn" title="Sem previsao informada pelo cliente">&#9888;</span>')+'</div>';
   c.querySelector(".fobeta").addEventListener("click",e=>e.stopPropagation());
   c.querySelector(".fobeta").addEventListener("change",function(){
     const pd=state.pedidos.find(x=>x.id===this.dataset.pid);
@@ -7714,8 +7722,8 @@ function renderEmbarcadas(){
       c.innerHTML='<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
         '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div><button class="pc-add ghost fobback" data-pid="'+p.id+'">Voltar p/ FOB</button></div></div>'+
         '<div class="pc-tags">'+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+(p.uf?"/"+p.uf:"")+'</span>':'')+'<span class="tag lib">Retirado</span></div>'+
-        '<div class="pc-fobeta"><span class="fe-lbl">&#128197; Retirada</span><b style="font-size:11.5px">'+(p.etaFob?fmtEta(p.etaFob):"-")+'</b></div>'+
-        '<div class="pc-mc"><span class="pc-val">'+fmtMoney0(p.valor)+'</span></div>';
+        '<div class="pc-mc"><span>Retirado</span><span class="pc-val">'+fmtMoney0(p.valor)+'</span></div>'+
+        '<div class="pc-fobeta"><span class="fe-lbl">&#128197; Retirada</span><b style="font-size:11.5px">'+(p.etaFob?fmtEta(p.etaFob):"-")+'</b></div>';
       c.querySelector(".fobback").addEventListener("click",function(){
         const pd=state.pedidos.find(x=>x.id===this.dataset.pid);if(!pd)return;
         pd.embarcado=false;renderAll();toast("Pedido #"+pd.pedido+" retornou para a aba FOB / Retira.","info");
@@ -8844,7 +8852,8 @@ netBoot();
     {versao:"1.9.0",data:"17/07/2026",itens:[
       ["NOVO","Janela de Detalhes da Carga: clique no cartao e veja tudo num so lugar — carga, transporte, frete, margem, todos os pedidos com seus itens e o historico."],
       ["NOVO","Botao Imprimir na janela de detalhes: imprime exatamente a visualizacao apresentada, no padrao N1, pronta para anexar ou entregar."],
-      ["CORRECAO","Cartoes das cargas nao ficam mais encavalados: os detalhes saem do cartao e vao para a janela, deixando a tela organizada."]
+      ["CORRECAO","Cartoes das cargas nao ficam mais encavalados: os detalhes saem do cartao e vao para a janela, deixando a tela organizada."],
+      ["CORRECAO","Cartao FOB: a margem nao fica mais sobreposta ao campo de previsao de retirada."]
     ]},
     {versao:"1.8.0",data:"17/07/2026",itens:[
       ["MELHORIA","Fechado Parcial, Aguardando Contratacao, Programadas e Embarcadas agora mostram cada carga como um cartao, no mesmo padrao do Formador: rota, ocupacao, margem e frete num so lugar."],
