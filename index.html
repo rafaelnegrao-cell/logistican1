@@ -7022,7 +7022,7 @@ function ingest(rows){
     const cor = prio?"verde":(mcPct<0?"vermelho":"azul");
     const freteRate=(g.frete&&g.frete>0)?g.frete:((g.custoFreteTot>0&&peso>0)?(g.custoFreteTot/(peso/1000)):0); // tarifa do arquivo OU custo total / toneladas
     peds.push({id:"P"+peds.length,pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
-      rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),canal:String(g.canal||"").trim(),peso,valor:g.valor,mcRs:g.mcRs,mcPct,vl:g.pesoMc,
+      rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),canal:String(g.canal||"").trim(),peso,valor:g.valor,mcRs:g.mcRs,mcPct,vl:vl,
       prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,itens:(g.itens||[]),entrega:g.entrega,emissao:(g.emissao!=null?g.emissao:null),contaFrete:(g.contaFrete||(isFOB(g.tipo)?"Destinatario":"Emitente")),assignedTo:null,score:0});
   });
   // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
@@ -8846,9 +8846,12 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.9.0";
+  var APP_VERSION="1.9.1";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.9.1",data:"20/07/2026",itens:[
+      ["CORRECAO","MC da carga (na visualizacao e no cartao) agora usa a Venda Liquida (Valor - ICMS) como base, conforme a regra da N1. Antes o percentual saia distorcido porque usava o peso no lugar da venda liquida."]
+    ]},
     {versao:"1.9.0",data:"17/07/2026",itens:[
       ["NOVO","Janela de Detalhes da Carga: clique no cartao e veja tudo num so lugar — carga, transporte, frete, margem, todos os pedidos com seus itens e o historico."],
       ["NOVO","Botao Imprimir na janela de detalhes: imprime exatamente a visualizacao apresentada, no padrao N1, pronta para anexar ou entregar."],
