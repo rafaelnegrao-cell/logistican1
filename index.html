@@ -8849,8 +8849,8 @@ netBoot();
   var APP_VERSION="1.9.1";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
-    {versao:"1.9.1",data:"20/07/2026",itens:[
-      ["CORRECAO","MC da carga (na visualizacao e no cartao) agora usa a Venda Liquida (Valor - ICMS) como base, conforme a regra da N1. Antes o percentual saia distorcido porque usava o peso no lugar da venda liquida."]
+    {versao:"1.9.1",data:"21/07/2026",itens:[
+      ["CORRECAO","MC da carga corrigida: a margem da carga voltava um percentual errado (dividia a MC em reais pelo peso, e nao pela venda liquida). Agora a MC% da carga usa a venda liquida (Valor - ICMS), batendo com o MC% dos pedidos que a compoem, tanto no cartao quanto na janela de detalhes."]
     ]},
     {versao:"1.9.0",data:"17/07/2026",itens:[
       ["NOVO","Janela de Detalhes da Carga: clique no cartao e veja tudo num so lugar — carga, transporte, frete, margem, todos os pedidos com seus itens e o historico."],
