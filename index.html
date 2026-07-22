@@ -6521,7 +6521,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
             <li><b>+1.000</b> se priorizado &mdash; garante que priorizados precedem todos os demais.</li>
             <li><b>MC% &times; 0,4</b> &mdash; premia a margem percentual (eficiencia por quilo).</li>
             <li><b>MC R$ relativo &times; 60</b> &mdash; premia o valor absoluto de margem (pedidos grandes de boa margem nao sao preteridos).</li>
-            <li>O <b>MC%</b> do pedido e a <b>media ponderada pelo peso</b> das linhas: (&Sigma; MC%linha &times; peso) &divide; &Sigma; peso.</li>
+            <li>O <b>MC%</b> do pedido é <b>MC R$ &divide; Valor bruto</b> &mdash; a mesma base do arquivo <b>Pedidos a Faturar</b>, para que os percentuais batam entre o arquivo e o sistema. Conceitualmente o correto seria dividir pela venda líquida (Valor &minus; ICMS); trata-se de uma adequação de exceção para conciliação com a fonte.</li>
+            <li>Quando o arquivo não traz a MC em R$, o sistema usa a <b>média ponderada pelo peso</b> das linhas: (&Sigma; MC%linha &times; peso) &divide; &Sigma; peso.</li>
           </ul>
         </div>
 
@@ -6832,7 +6833,7 @@ async function netBoot(){
   try{ok=await netInit();}catch(e){ok=false;}
   try{bootAuth();}catch(e){bootMsg("Falha ao iniciar: "+(e&&e.message?e.message:"erro"));}
   if(ok){bootMsg("");}
-  else{bootMsg("Sem conexao com o servidor. Trabalhando com os dados salvos neste navegador — nao importe pedidos ate a conexao voltar.");}
+  else{bootMsg("Sem conexão com o servidor. Trabalhando com os dados salvos neste navegador — não importe pedidos até a conexão voltar.");}
   if(NET.on&&!_pollTimer)_pollTimer=setInterval(netPoll,7000);
 }
 async function netPoll(){
@@ -6856,6 +6857,28 @@ function fmtT(n){return (n/1000).toLocaleString("pt-BR",{maximumFractionDigits:1
 function fmtMoney(n){return "R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtMoney0(n){return "R$ "+n.toLocaleString("pt-BR",{maximumFractionDigits:0});}
 function toast(msg,type="info",ms=4600){const t=el("div","toast "+type);const ic=type==="err"?"&#9888;":type==="ok"?"&#9989;":"&#8505;";t.innerHTML='<span class="tic">'+ic+'</span><span>'+msg+'</span>';$("#toasts").appendChild(t);setTimeout(()=>{t.style.transition=".3s";t.style.opacity="0";setTimeout(()=>t.remove(),300);},ms);}
+
+/* ===== BASE DE CALCULO DA MC% =====================================
+   Decisao de negocio (v1.9.3, Negrao):
+   O sistema passa a dividir a MC em R$ pelo VALOR BRUTO, para que o MC%
+   exibido bata exatamente com o do arquivo "Pedidos a Faturar" do ERP.
+   Fica registrado que, conceitualmente, o correto e dividir pela venda
+   liquida (Valor - ICMS); esta e uma adequacao de excecao para
+   conciliacao com a fonte.
+   Para reverter o sistema inteiro, basta trocar MC_BASE para "liquida".
+   ================================================================== */
+var MC_BASE="bruto"; // "bruto" = MC$ / Valor  |  "liquida" = MC$ / (Valor - ICMS)
+function mcDen(valor,icms){var v=+valor||0;return (MC_BASE==="liquida")?(v-(+icms||0)):v;}
+function mcBaseLabel(){return MC_BASE==="liquida"?"venda liquida (Valor - ICMS)":"valor bruto (conforme arquivo de Pedidos a Faturar)";}
+/* recalcula a MC% na base vigente — indispensavel para pedidos restaurados
+   do servidor, que foram gravados com a base anterior */
+function normalizaMcBase(){
+  (state.pedidos||[]).forEach(function(p){
+    if(MC_BASE==="liquida"&&p.icms==null)return; // sem ICMS gravado nao da para refazer a liquida
+    var den=mcDen(p.valor,p.icms);
+    if(den>0){p.vl=den;p.mcPct=(p.mcRs||0)/den*100;}
+  });
+}
 
 /* column detection */
 function detectCols(headers){
@@ -7040,8 +7063,9 @@ function ingest(rows){
   Object.values(G).forEach(g=>{
     if(g.revenda){nRevenda++;return;} // ignora pedidos de revenda: nao sao envasados em casa, nao formam carga
     const peso=g.pesos.reduce((a,b)=>a+b,0);
-    const vl=g.valor-g.icms; // Venda Liquida = Valor - ICMS
-    const mcPct=(cols.mcRs&&vl>0)?(g.mcRs/vl*100):(g.pesoMc>0?(g.mcW/g.pesoMc):0); // MC% institucional = MC$ / VL
+    const vl=g.valor-g.icms; // Venda Liquida = Valor - ICMS (referencia contabil)
+    const mcDenom=mcDen(g.valor,g.icms); // denominador da MC% conforme MC_BASE
+    const mcPct=(cols.mcRs&&mcDenom>0)?(g.mcRs/mcDenom*100):(g.pesoMc>0?(g.mcW/g.pesoMc):0); // MC% = MC$ / base vigente
     const fob=isFOB(g.tipo);
     const bloq=isBloqueado(g.finRaw);
     const prioFile=g.prio;
@@ -7052,7 +7076,7 @@ function ingest(rows){
     const cor = prio?"verde":(mcPct<0?"vermelho":"azul");
     const freteRate=(g.frete&&g.frete>0)?g.frete:((g.custoFreteTot>0&&peso>0)?(g.custoFreteTot/(peso/1000)):0); // tarifa do arquivo OU custo total / toneladas
     peds.push({id:"P"+peds.length,pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
-      rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),canal:String(g.canal||"").trim(),peso,valor:g.valor,mcRs:g.mcRs,mcPct,vl:vl,
+      rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),canal:String(g.canal||"").trim(),peso,valor:g.valor,icms:g.icms,vlLiq:vl,mcRs:g.mcRs,mcPct,vl:mcDenom,
       prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,itens:(g.itens||[]),entrega:g.entrega,emissao:(g.emissao!=null?g.emissao:null),contaFrete:(g.contaFrete||(isFOB(g.tipo)?"Destinatario":"Emitente")),assignedTo:null,score:0});
   });
   // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
@@ -7092,6 +7116,7 @@ function mergePedidos(old,fresh){
 
 /* (re)aplica prioridade (coluna do arquivo + lista de priorizados salva) e recalcula apto/cor/score */
 function applyPrioToState(){
+  normalizaMcBase(); // garante que apto/cor/score usem a MC% na base vigente
   state.prioMap={};state.prioFileName="";state.prioUpdatedAt=""; // prioridade vem apenas da coluna do arquivo de pedidos
   state.pedidos.forEach(p=>{
     const override=OVERRIDES.indexOf(p.pedido)>-1;
@@ -8097,6 +8122,7 @@ function applyAppData(d){
   if(!d||!Array.isArray(d.pedidos))return false;
   _restoring=true;
   state.pedidos=d.pedidos;
+  normalizaMcBase(); // pedidos salvos podem ter vindo com a base anterior
   state.trucks=Array.isArray(d.trucks)?d.trucks:[];
   state.carriers=Array.isArray(d.carriers)?d.carriers:[];
   state.freightTable=d.freightTable&&typeof d.freightTable==="object"?d.freightTable:{};
@@ -8876,9 +8902,14 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.9.2";
+  var APP_VERSION="1.9.3";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.9.3",data:"22/07/2026",itens:[
+      ["MELHORIA","MC% agora bate com o arquivo de Pedidos a Faturar: o sistema passou a dividir a MC em R$ pelo VALOR BRUTO, a mesma base do arquivo. Antes dividia pela venda líquida (Valor menos ICMS) e os percentuais não conferiam entre o arquivo e a tela."],
+      ["MELHORIA","A mudança vale para TODOS os lugares onde aparece MC%: cartão do pedido, cartão e janela de detalhes da carga, MC após frete pago, MC% médio da carteira no Painel, romaneios, exportações e o score de priorização."],
+      ["MELHORIA","Pedidos já salvos no servidor são reconvertidos automaticamente para a nova base ao abrir o sistema — não é preciso reimportar a carteira."]
+    ]},
     {versao:"1.9.2",data:"22/07/2026",itens:[
       ["CORRECAO","Sistema nao abria mais, ficando preso na tela de carregamento: quando o servidor demorava para responder, a tela de entrada nunca aparecia. Agora a conexao tem tempo limite e tenta de novo automaticamente, e o sistema sempre abre."],
       ["MELHORIA","A tela de entrada passa a mostrar o que esta acontecendo (Conectando ao servidor, nova tentativa, ou aviso de falta de conexao), em vez de ficar parada em branco."]
