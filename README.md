@@ -1,55 +1,39 @@
-# N1 Alimentos — Formador de Carga (Flask + PostgreSQL)
+# N1 APS/PCP
 
-Backend migrado de Node para **Flask + PostgreSQL**. O frontend (`index.html`) e as regras
-de negocio **nao mudaram** — apenas a camada de dados, que agora vive no PostgreSQL
-(duravel, compartilhado entre todos os usuarios e a prova de deploy).
+Planejamento de Producao com login, perfis, persistencia compartilhada e log de auditoria.
 
-## Arquivos do projeto
-- `index.html` — o app (frontend), inalterado.
-- `app.py` — servidor Flask: serve o app e expoe a API de dados no Postgres.
-- `requirements.txt` — dependencias Python.
-- `Procfile` — comando de start (gunicorn).
-- `.gitignore`
+## Arquivos
+- `app.py` — backend Flask (login, 4 perfis, API de estado, log, gestao de usuarios)
+- `index.html` — app original + camada de sincronizacao/perfis/log
+- `requirements.txt` — dependencias
+- `Procfile` — comando de inicializacao (gunicorn)
 
-## API (identica a versao Node)
-- `GET /api/ping` -> `{ok:true}`
-- `GET /api/all` -> `{auth:{rev,updatedAt,data}, app:{...}, audit:{...}}`
-- `GET /api/rev` -> revisoes atuais
-- `GET /api/<auth|app|audit>` -> `{rev, updatedAt, data}`
-- `PUT /api/<auth|app|audit>` body `{data:...}` -> grava e incrementa `rev`
+## Setup no Railway (uma vez)
+1. Suba todos os arquivos na RAIZ do repositorio.
+2. Adicione o servico **PostgreSQL** (cria `DATABASE_URL` automaticamente).
+3. Em Variables defina `SECRET_KEY` (string longa). Opcional: `N1_MASTER_USER`, `N1_MASTER_PASS`.
+4. Railway faz deploy via `Procfile` -> `gunicorn app:app`.
 
-## Passos para subir no Railway (servico logistican1)
+> IMPORTANTE: a pagina deve ser servida pela rota `/` do Flask (gunicorn). Abrir o
+> `index.html` diretamente NAO substitui o usuario e a app cai em modo "consulta".
 
-1. **No repositorio do GitHub, REMOVA os arquivos do Node:**
-   - `server.js`
-   - `package.json`
-   - `package-lock.json`
-   - `node_modules/` (se existir)
+## Login inicial
+Usuario: `rafael` — Senha: `n1master2026` (troque depois em **Usuarios**).
 
-   E **ADICIONE** os arquivos novos: `app.py`, `requirements.txt`, `Procfile`, `.gitignore`.
-   Mantenha o `index.html`. (Isso e essencial: enquanto houver `package.json`, o Railway
-   tenta buildar como Node em vez de Python.)
+## Perfis
+- master: tudo + Usuarios + Log
+- gerente: tudo operacional (sem usuarios/log)
+- operador: apontamento de OP e OP avulsa (pos-congelamento)
+- consulta: somente leitura
 
-2. **Variavel de banco:** confirme que `DATABASE_URL` esta definida no servico do app
-   (referencia ao Postgres). O `app.py` tambem aceita `DATABASE`, `POSTGRES_URL` ou `PG_URL`.
-
-3. **Primeiro deploy — migracao automatica dos dados:** mantenha o **Volume atual ainda anexado**
-   neste primeiro deploy. No boot, o `app.py` le `auth.json` / `app.json` / `audit.json` do Volume
-   (via `DATA_DIR` ou `RAILWAY_VOLUME_MOUNT_PATH`) e importa **uma unica vez** para o Postgres,
-   sem sobrescrever nada que ja exista no banco. Assim nenhum dado se perde.
-
-4. O Railway detecta `requirements.txt` (Python) e inicia pelo `Procfile` (gunicorn).
-
-5. **Verificacao:** abra `https://logistican1-production.up.railway.app/api/ping` (deve responder
-   `{"ok":true}`). Abra o app, faca login e confirme que os dados aparecem. Faça um pequeno deploy
-   de teste depois e confirme que os dados continuam (agora vem do Postgres).
-
-6. Depois de confirmar que os dados migraram, o Volume passa a ser opcional (a verdade dos dados
-   esta no Postgres). Nao apague o Volume antes de confirmar a migracao.
-
-## Rodar localmente (opcional)
-```
-pip install -r requirements.txt
-export DATABASE_URL=postgresql://usuario:senha@localhost:5432/n1log
-python app.py
-```
+## Notas de seguranca / robustez
+- **SECRET_KEY**: se nao definida em Variables, o app gera uma chave aleatoria e a
+  persiste no banco (sessoes estaveis e nao-forjaveis). Ainda assim, o recomendado e
+  definir `SECRET_KEY` manualmente em producao.
+- **Cookie de sessao**: `Secure` + `HttpOnly` + `SameSite=Lax` por padrao. Para testar
+  localmente em http (sem HTTPS), defina `N1_INSECURE_COOKIE=1`.
+- **Gravacoes concorrentes**: estado do plano, solicitacoes (comms), log e atividade usam
+  escrita atomica (transacao com trava no Postgres). Duas acoes simultaneas nao se
+  sobrescrevem.
+- **Login**: apos 6 tentativas falhas em 5 min, o usuario fica bloqueado por 5 min.
+- **Limpar log**: agora e uma acao POST (o antigo link GET `?clear=1` nao apaga mais).
