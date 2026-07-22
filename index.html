@@ -6251,6 +6251,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 <div id="authGate" class="authgate">
   <div class="authcard">
     <div class="authlogo"><div class="logo">N1</div><div><h1>N1 Alimentos</h1><small>Formador de Carga — acesso restrito</small></div></div>
+    <div id="bootMsg" class="authmsg">Conectando ao servidor…</div>
     <div id="authSetup" class="hidden">
       <h3>Primeiro acesso — criar conta MASTER</h3>
       <div class="afld"><label>Nome</label><input id="suNome" autocomplete="off"></div>
@@ -6793,9 +6794,31 @@ let _appT=null,_appPend=null,_authT=null,_audT=null;
 function pushApp(data){if(!NET.on)return;_appPend=data;if(_appT)return;_appT=setTimeout(()=>{_appT=null;const d=_appPend;_appPend=null;apiPut("/app",d).then(r=>{NET.appRev=r.rev;}).catch(()=>{});},700);}
 function pushAuth(){if(!NET.on)return;if(_authT)return;_authT=setTimeout(()=>{_authT=null;apiPut("/auth",auth).then(r=>{NET.authRev=r.rev;}).catch(()=>{});},350);}
 function pushAudit(){if(!NET.on)return;if(_audT)return;_audT=setTimeout(()=>{_audT=null;apiPut("/audit",AUD).then(r=>{NET.audRev=r.rev;}).catch(()=>{});},900);}
+/* status visivel durante o boot: a tela de entrada nunca fica em branco */
+function bootMsg(txt){var e=document.getElementById("bootMsg");if(!e)return;if(txt==null||txt===""){e.style.display="none";e.textContent="";}else{e.style.display="block";e.textContent=txt;}}
+/* GET com tempo limite: sem isso, um servidor que nao responde trava o boot para sempre */
+function apiGetTimeout(p,ms){
+  if(typeof AbortController==="undefined")return apiGet(p);
+  var ac=new AbortController();
+  var t=setTimeout(function(){try{ac.abort();}catch(e){}},ms);
+  return fetch("/api"+p,{cache:"no-store",signal:ac.signal})
+    .then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json();})
+    .then(function(j){clearTimeout(t);return j;},function(err){clearTimeout(t);throw err;});
+}
+/* carga inicial com retentativas (cobre cold start do Railway) */
+async function netAll(){
+  var esperas=[12000,12000,20000],ultimo=null;
+  for(var i=0;i<esperas.length;i++){
+    try{
+      bootMsg(i===0?"Conectando ao servidor…":"Servidor demorando a responder. Tentativa "+(i+1)+" de "+esperas.length+"…");
+      return await apiGetTimeout("/all",esperas[i]);
+    }catch(e){ultimo=e;}
+  }
+  throw ultimo||new Error("sem resposta do servidor");
+}
 async function netInit(){
   try{
-    const all=await apiGet("/all");NET.on=true;
+    const all=await netAll();NET.on=true;
     if(all.auth&&all.auth.data&&typeof all.auth.data==="object")auth=all.auth.data;
     auth.users=auth.users||[];auth.profiles=auth.profiles||[];NET.authRev=all.auth?all.auth.rev:0;
     NET.appData=all.app&&all.app.data?all.app.data:null;NET.appRev=all.app?all.app.rev:0;
@@ -6804,7 +6827,14 @@ async function netInit(){
   }catch(e){NET.on=false;try{const r=localStorage.getItem(AUDKEY);if(r){AUD=JSON.parse(r);AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];}}catch(_){}return false;}
 }
 let _pollTimer=null;
-async function netBoot(){await netInit();bootAuth();if(NET.on&&!_pollTimer)_pollTimer=setInterval(netPoll,7000);}
+async function netBoot(){
+  var ok=false;
+  try{ok=await netInit();}catch(e){ok=false;}
+  try{bootAuth();}catch(e){bootMsg("Falha ao iniciar: "+(e&&e.message?e.message:"erro"));}
+  if(ok){bootMsg("");}
+  else{bootMsg("Sem conexao com o servidor. Trabalhando com os dados salvos neste navegador — nao importe pedidos ate a conexao voltar.");}
+  if(NET.on&&!_pollTimer)_pollTimer=setInterval(netPoll,7000);
+}
 async function netPoll(){
   if(!NET.on||!CUR.user)return;
   if(document.querySelector(".overlay.open"))return; // nao sobrescreve enquanto um modal esta aberto
@@ -8846,9 +8876,13 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.9.1";
+  var APP_VERSION="1.9.2";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.9.2",data:"22/07/2026",itens:[
+      ["CORRECAO","Sistema nao abria mais, ficando preso na tela de carregamento: quando o servidor demorava para responder, a tela de entrada nunca aparecia. Agora a conexao tem tempo limite e tenta de novo automaticamente, e o sistema sempre abre."],
+      ["MELHORIA","A tela de entrada passa a mostrar o que esta acontecendo (Conectando ao servidor, nova tentativa, ou aviso de falta de conexao), em vez de ficar parada em branco."]
+    ]},
     {versao:"1.9.1",data:"21/07/2026",itens:[
       ["CORRECAO","MC da carga corrigida: a margem da carga voltava um percentual errado (dividia a MC em reais pelo peso, e nao pela venda liquida). Agora a MC% da carga usa a venda liquida (Valor - ICMS), batendo com o MC% dos pedidos que a compoem, tanto no cartao quanto na janela de detalhes."]
     ]},
