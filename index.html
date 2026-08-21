@@ -6244,6 +6244,17 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .pcard.fob .pc-val{margin-left:0;color:var(--texto);font-weight:700}
   .pcard.fob .pc-mix{margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pcard.fob .pc-add{white-space:nowrap}
+
+  /* ===== LIBERACAO P/ PRODUCAO (PCP) + PALETIZACAO ===== */
+  .pill.prod{background:var(--verde-bg);color:#0a5d44}
+  .truck-lib{padding:0 15px 10px;display:flex}
+  .btn-lib{flex:1;padding:8px;border:1px solid var(--verde-2);border-radius:9px;cursor:pointer;font-weight:700;font-size:11.5px;font-family:inherit;background:#fff;color:#0a5d44;transition:.15s}
+  .btn-lib:hover{background:var(--verde-bg)}
+  .btn-lib.on,.clbtn.libprod.on{background:var(--verde-bg);border-color:var(--verde);color:var(--verde)}
+  .th-prod{display:inline-block;margin-top:6px;font-size:10px;font-weight:800;letter-spacing:.3px;background:rgba(65,192,151,.22);color:#dff3ea;padding:2px 8px;border-radius:10px}
+  .pal-st{font-size:12px;font-weight:700;padding:8px 11px;border-radius:8px;background:var(--cinza-bg);color:var(--cinza)}
+  .pal-st.on{background:var(--verde-bg);color:var(--verde)}
+  .pal-hint{font-size:11.5px;color:var(--cinza);line-height:1.5;background:#F6F9FF;border:1px solid var(--grade);border-radius:8px;padding:9px 11px}
 </style>
 </head>
 <body>
@@ -6318,7 +6329,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <span class="meta" id="savedInfo" title="O sistema salva automaticamente no proprio navegador (pedidos, tabela de frete e cargas)."></span>
         <span class="spacer"></span>
         <div class="top-actions">
-          <button class="btn" id="btnResumo">&#128203; Resumo por rota</button><button class="btn" id="btnExport" disabled>&#11015; Exportar Romaneio</button>
+          <button class="btn" id="btnResumo">&#128203; Resumo por rota</button><button class="btn" id="btnExport" disabled>&#11015; Exportar Romaneio</button><button class="btn" id="btnExportPCP">&#127981; Exportar p/ PCP</button>
           <button class="btn primary" id="btnNovaCarga">+ Criar Nova Carga</button>
         </div>
       </div>
@@ -6747,6 +6758,24 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     <div class="modal-head"><h3 id="pedTitle">Resumo do Pedido</h3><button class="x" id="pedClose">&times;</button></div>
     <div class="modal-body" id="pedDetail" style="padding:16px 18px"></div>
     <div class="modal-foot"><button class="btn primary" id="pedCloseBtn">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL LIBERACAO P/ PRODUCAO + PALETIZACAO -->
+<div class="overlay" id="palOverlay">
+  <div class="modal" style="width:520px;max-width:94vw">
+    <div class="modal-head"><h3>&#127981; Liberar carga p/ Producao</h3><button class="modal-x" id="palClose">&times;</button></div>
+    <div class="modal-body">
+      <div class="pal-st" id="palStatus"></div>
+      <div class="fld-grid">
+        <div class="fld"><label>Palete &mdash; unidades por camada</label><input id="palCamada" type="number" min="0" step="1" placeholder="vazio = PADRAO"></div>
+        <div class="fld"><label>Palete &mdash; altura (n&ordm; de camadas)</label><input id="palAltura" type="number" min="0" step="1" placeholder="vazio = PADRAO"></div>
+      </div>
+      <div class="fld"><label>Chapatex</label><select id="palChapatex"><option value="">Padrao (nao informado)</option><option value="sim">Sim</option><option value="nao">Nao</option></select></div>
+      <div class="fld"><label>Outras observacoes de paletizacao</label><input id="palObs" placeholder="opcional"></div>
+      <div class="pal-hint">Campos em branco saem como <b>PADRAO</b> no arquivo do PCP. O bloqueio efetivo da producao acontece no PCP &mdash; aqui a carga apenas e marcada, o perfil de paletizacao e informado e o arquivo e exportado.</div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost hidden" id="palRetirar">Retirar liberacao</button><button class="btn ghost" id="palCancel">Cancelar</button><button class="btn primary" id="palSave">Liberar p/ Producao</button></div>
   </div>
 </div>
 
@@ -7389,11 +7418,12 @@ function truckCard(t){
   const assigned=state.pedidos.filter(p=>p.assignedTo===t.id);
   const fr=loadFreight(t);
   card.innerHTML=
-    '<div class="truck-head"><div class="th-top"><div><div class="th-rota">'+(t.rota||"Rota nao informada")+'</div><div class="th-tipo">'+VEHICLES[String(cap)]+' &middot; '+fmtKg(cap)+'</div></div><div class="th-actions"><button class="icobtn mapb" title="Mapa dos destinos">&#128506;</button><button class="icobtn antt" title="Piso minimo ANTT">&#128200;</button><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div>'+
+    '<div class="truck-head"><div class="th-top"><div><div class="th-rota">'+(t.rota||"Rota nao informada")+'</div><div class="th-tipo">'+VEHICLES[String(cap)]+' &middot; '+fmtKg(cap)+'</div>'+(t.liberadaProducao?'<div class="th-prod">&#127981; Liberada p/ Producao</div>':'')+'</div><div class="th-actions"><button class="icobtn mapb" title="Mapa dos destinos">&#128506;</button><button class="icobtn antt" title="Piso minimo ANTT">&#128200;</button><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div>'+
     margemLine(t)+'<div class="th-info"><span>Transp: <b>'+(t.transp||"Nao informado")+'</b></span><span>Placa: <b>'+(t.placa||"Nao informado")+'</b></span><span>Motorista: <b>'+(t.mot||"Nao informado")+'</b></span></div></div>'+
     (routeMismatch(t)?'<div class="route-warn" style="background:#FFF3CD;color:#8a6d3b;border:1px solid #FFE08A;border-radius:8px;padding:7px 10px;margin:8px 0 0;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px"><span>&#9888; Pedidos de rotas diferentes nesta carga. Defina a rota manualmente.</span><button class="rw-edit btn ghost" style="padding:3px 9px;font-size:11px;white-space:nowrap">Definir rota</button></div>':'')+
     '<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+fillCls+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+bateCls+'">'+bate+'</div></div>'+
     '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button><button class="btn-parcial" '+(assigned.length?'':'disabled')+' title="Fechar parcial: aguarda mais pedidos da regiao ate atingir 90%">&#9201; Fechar Parcial</button><button class="btn-close" '+(assigned.length?'':'disabled')+' title="Fechar carga (minimo 90% da capacidade)">&#9989; Fechar Carga</button></div>'+
+    '<div class="truck-lib"><button class="btn-lib libprod'+(t.liberadaProducao?' on':'')+'">&#127981; '+(t.liberadaProducao?'Liberada p/ Producao':'Liberar p/ Producao')+'</button></div>'+
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="body-'+t.id+'">'+(assigned.length?'':'Arraste pedidos aqui ou use o Auto-Preencher')+'</div>'+
     '<div class="truck-foot"><div class="tf-line"><span>Preco frete (tabela do pedido)</span><b>'+fmtMoney(fr.total)+'</b></div><div class="tf-line"><span>R$/ton efetivo (proporcional)</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+(t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo (preco - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'')+'</div>';
   const body=card.querySelector("#body-"+t.id);
@@ -7404,6 +7434,7 @@ function truckCard(t){
   var _at=card.querySelector(".antt");if(_at)_at.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
     card.querySelector(".del").addEventListener("click",()=>{if(t.numeroCarga){cancelarCarga(t);return;}if(confirm("Excluir esta carga? Os pedidos voltam para o banco.")){state.pedidos.forEach(p=>{if(p.assignedTo===t.id)p.assignedTo=null;});state.trucks=state.trucks.filter(x=>x.id!==t.id);renderAll();}});
   card.querySelector(".btn-auto").addEventListener("click",()=>autoFill(t));
+  wireLibProd(card,t);
   card.querySelector(".btn-parcial").addEventListener("click",()=>fecharParcial(t));
   card.querySelector(".btn-close").addEventListener("click",()=>fecharCarga(t));
   card.addEventListener("dragover",e=>{e.preventDefault();card.classList.add("over");});
@@ -7494,6 +7525,67 @@ function fecharParcial(t){
 }
 function pushHist(t,e){t.history=t.history||[];t.history.push({ts:Date.now(),user:(typeof CUR!=="undefined"&&(CUR.nome||CUR.user))||"",tipo:e.tipo||"",de:e.de||"",para:e.para||"",motivo:e.motivo||""});}function cancelarCarga(t){if(!requirePerm("reverterStatus"))return;var rot=(t.numeroCarga?("carga "+(t.filialCarga?t.filialCarga+" ":"")+"No "+t.numeroCarga):"carga");var motivo=(prompt("Motivo do CANCELAMENTO da "+rot+":")||"").trim();if(!motivo){toast("Motivo obrigatorio para cancelar.","err");return;}if(!confirm("Confirmar cancelamento da "+rot+"?\nOs pedidos voltam para o banco. O numero e o historico ficam registrados."))return;var de=t.status;state.pedidos.forEach(function(p){if(p.assignedTo===t.id)p.assignedTo=null;});t.status="cancelada";t.canceladaEm=Date.now();pushHist(t,{tipo:"Cancelamento",de:de,para:"cancelada",motivo:motivo});renderAll();toast("Carga cancelada. Numero e historico preservados.","info");logAction("cancelar_carga",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> cancelada | Motivo: "+motivo);}function reabrirCarga(t){if(!requirePerm("reverterStatus"))return;const motivo=(prompt("Informe o motivo para voltar o status desta carga:")||"").trim();if(!motivo){toast("Motivo obrigatorio para voltar o status.","err");return;}const de=t.status;t.status="montada";t.revertReason=motivo;pushHist(t,{tipo:"Reversao de status",de:de,para:"montagem",motivo:motivo});renderAll();setTab("formador");toast((t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+"reaberta no Formador."+(t.numeroCarga?" Numero preservado.":""),"info");logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> montagem | Motivo: "+motivo);}
 
+/* ===== LIBERACAO P/ PRODUCAO (PCP) + PERFIL DE PALETIZACAO =====
+   O bloqueio efetivo da producao acontece no PCP. Aqui a carga apenas e marcada,
+   o perfil de paletizacao e informado e o arquivo e exportado. Nada disso interfere
+   nos gates de fechamento, contratacao ou embarque. */
+const PAL_ETAPAS=["montada","parcial","fechada"]; // etapas onde a liberacao pode ser alternada
+let _palTruck=null;
+function seloProdHtml(t){return (t&&t.liberadaProducao)?' <span class="pill prod">Liberada p/ Producao</span>':"";}
+function libProdBtnHtml(t){return '<button class="clbtn libprod'+(t.liberadaProducao?' on':'')+'">&#127981; '+(t.liberadaProducao?'Liberada p/ Producao':'Liberar p/ Producao')+'</button>';}
+function wireLibProd(card,t){const b=card.querySelector(".libprod");if(b)b.addEventListener("click",e=>{e.stopPropagation();openPaletizacao(t);});}
+function palValor(v){const n=parseNum(v);return n>0?n:null;} // vazio ou zero = PADRAO no PCP
+function palResumo(t){return "camada "+(t.palCamada!=null?t.palCamada:"PADRAO")+" / altura "+(t.palAltura!=null?t.palAltura:"PADRAO")+" / chapatex "+(t.palChapatex===true?"SIM":(t.palChapatex===false?"NAO":"PADRAO"))+(t.palObs?" / obs: "+t.palObs:"");}
+function openPaletizacao(t){
+  if(!requirePerm("liberarProducao"))return;
+  _palTruck=t;
+  $("#palCamada").value=(t.palCamada!=null)?t.palCamada:"";
+  $("#palAltura").value=(t.palAltura!=null)?t.palAltura:"";
+  $("#palChapatex").value=(t.palChapatex===true)?"sim":(t.palChapatex===false?"nao":"");
+  $("#palObs").value=t.palObs||"";
+  const st=$("#palStatus");
+  st.className="pal-st"+(t.liberadaProducao?" on":"");
+  st.innerHTML=t.liberadaProducao
+    ?'&#9989; Liberada p/ Producao em '+fmtDateBr(t.liberadaProducaoAt)+(t.liberadaProducaoBy?' por '+_hesc(t.liberadaProducaoBy):'')
+    :'Esta carga ainda nao esta liberada para producao.';
+  $("#palSave").textContent=t.liberadaProducao?"Salvar alteracoes":"Liberar p/ Producao";
+  $("#palRetirar").classList.toggle("hidden",!t.liberadaProducao);
+  $("#palOverlay").classList.add("open");
+}
+function closePaletizacao(){$("#palOverlay").classList.remove("open");_palTruck=null;}
+function salvarPaletizacao(){
+  if(!requirePerm("liberarProducao"))return;
+  const t=_palTruck;if(!t)return;
+  const jaLiberada=!!t.liberadaProducao;
+  t.palCamada=palValor($("#palCamada").value);
+  t.palAltura=palValor($("#palAltura").value);
+  const ch=$("#palChapatex").value;
+  t.palChapatex=(ch==="sim")?true:(ch==="nao"?false:undefined);
+  t.palObs=$("#palObs").value.trim();
+  if(!jaLiberada){
+    t.liberadaProducao=true;
+    t.liberadaProducaoBy=(typeof CUR!=="undefined"&&(CUR.nome||CUR.user))||"";
+    t.liberadaProducaoAt=Date.now();
+    pushHist(t,{tipo:"Liberada p/ Producao",motivo:palResumo(t)});
+    logAction("liberar_producao",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+" | "+palResumo(t));
+  }else{
+    pushHist(t,{tipo:"Paletizacao atualizada",motivo:palResumo(t)});
+    logAction("paletizacao",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+" | "+palResumo(t));
+  }
+  closePaletizacao();renderAll();
+  toast(jaLiberada?"Paletizacao atualizada.":"Carga liberada para producao.","ok");
+}
+function retirarLiberacaoProducao(){
+  if(!requirePerm("liberarProducao"))return;
+  const t=_palTruck;if(!t)return;
+  if(!confirm("Retirar a liberacao para producao desta carga?\nO perfil de paletizacao informado e mantido."))return;
+  t.liberadaProducao=false;
+  pushHist(t,{tipo:"Liberacao p/ Producao retirada",de:"liberada",para:"nao liberada"});
+  logAction("retirar_liberacao_producao",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||""));
+  closePaletizacao();renderAll();
+  toast("Liberacao para producao retirada.","info");
+}
+
 /* PAINEL FECHADO PARCIAL */
 function freteFootHtml(t,fr){
   return '<div class="tf-line"><span>Preco frete (tabela)</span><b>'+fmtMoney(fr.total)+'</b></div>'+
@@ -7540,8 +7632,8 @@ function renderParcial(){
     const load0=truckLoad(t), min=t.cap*MIN_CLOSE_PCT/100, faltam=Math.max(0,min-load0), atinge=load0>=min-0.001;
     const pct0=t.cap?load0/t.cap*100:0;
     const prog='<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load0)+' / '+fmtKg(t.cap)+' &middot; min '+MIN_CLOSE_PCT+'% = '+fmtKg(min)+'</span><span>'+pct0.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(atinge?"otim":"")+'" style="width:'+Math.min(pct0,100)+'%"></div></div><div class="bate '+(atinge?"ok":"norm")+'">'+(atinge?"&#128994; Volume minimo atingido — pronto para fechar":"Faltam "+fmtKg(faltam)+" para "+MIN_CLOSE_PCT+"%")+'</div></div>';
-    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
-    const r=stageCard(t,{progressHtml:prog,actions:acts});
+    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
+    const r=stageCard(t,{progressHtml:prog,pill:seloProdHtml(t),actions:acts});
     const card=r.card, faltamTxt=fmtKg(faltam);
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".auto").addEventListener("click",()=>autoFill(t));
@@ -7549,6 +7641,7 @@ function renderParcial(){
     const _a=card.querySelector(".anttb");if(_a)_a.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
     const _r=card.querySelector(".romb");if(_r)_r.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
     card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
+    wireLibProd(card,t);
     const fb=card.querySelector(".fech");
     if(atinge)fb.addEventListener("click",()=>fecharCarga(t));
     else fb.addEventListener("click",()=>toast("Ainda faltam "+faltamTxt+" para "+MIN_CLOSE_PCT+"%. Adicione pedidos da regiao (Auto-Preencher) ou reabra no Formador.","info",6000));
@@ -7656,11 +7749,12 @@ function renderFechadas(){
     const pill=(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'');
     const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes: <b>'+t.history.length+'</b></span>':'')+'</div>';
     const warn=ok?'':'<div class="cl-warn">Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque para habilitar a contratacao.</div>';
-    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button><button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
-    const r=stageCard(t,{pill:pill,infoHtml:info,warnHtml:warn,actions:acts});
+    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
+    const r=stageCard(t,{pill:pill+seloProdHtml(t),infoHtml:info,warnHtml:warn,actions:acts});
     const card=r.card;
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
+    wireLibProd(card,t);
     card.querySelector(".edt").addEventListener("click",()=>openModal(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     const _eb=card.querySelector(".embd");if(_eb)_eb.addEventListener("click",()=>editarEmbarque(t));
@@ -7921,6 +8015,36 @@ function exportRomaneio(filter){
   toast("Exportado.","ok");
 }
 
+/* ===== EXPORTACAO PARA O PCP (cargas liberadas para producao) =====
+   Uma linha por pedido; cada pedido herda a paletizacao da sua carga.
+   Cargas ja embarcadas ficam de fora: o arquivo serve para o PCP PROGRAMAR
+   producao, e carga embarcada ja foi produzida e despachada. */
+const PCP_COLS=["PEDIDO","APTO","PALETE_CAMADA","PALETE_ALTURA","CHAPATEX","OBS_PALETIZACAO","CARGA","DATA_LIBERACAO"];
+function pcpNum(v){return (v==null||v==="")?"PADRAO":String(v);}
+function pcpChapatex(v){return v===true?"SIM":(v===false?"NAO":"PADRAO");}
+function cargasLiberadasPCP(){return state.trucks.filter(t=>t.liberadaProducao===true&&t.status!=="embarcada");}
+function exportarPCP(){
+  if(!requirePerm("liberarProducao"))return;
+  const trucks=cargasLiberadasPCP();
+  const rows=[PCP_COLS.slice()];
+  let nPed=0;
+  trucks.forEach(t=>{
+    const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
+    ps.forEach(p=>{
+      rows.push([p.pedido,"SIM",pcpNum(t.palCamada),pcpNum(t.palAltura),pcpChapatex(t.palChapatex),
+        (t.palObs||""),(t.numeroCarga!=null?t.numeroCarga:""),(t.liberadaProducaoAt?fmtDateBr(t.liberadaProducaoAt):"")]);
+      nPed++;
+    });
+  });
+  if(!nPed){toast(trucks.length?"As cargas liberadas para producao nao tem pedidos. Nada a exportar.":"Nenhuma carga liberada para producao. Libere ao menos uma carga antes de exportar.","info",6500);return;}
+  const csv="\ufeff"+rows.map(r=>r.map(csvEsc).join(";")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);
+  const d=new Date(),fn="N1_PCP_Cargas_"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+".csv";
+  const link=document.createElement("a");link.href=url;link.download=fn;document.body.appendChild(link);link.click();document.body.removeChild(link);setTimeout(()=>URL.revokeObjectURL(url),60000);
+  toast(nPed+" pedido(s) de "+trucks.length+" carga(s) exportados para o PCP.","ok");
+  logAction("export_pcp",trucks.length+" carga(s) / "+nPed+" pedido(s)");
+}
+
 /* file */
 function readFile(file){state.fileName=file.name;$("#fileMeta").textContent=file.name;const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:"array"});const ws=wb.Sheets[wb.SheetNames[0]];const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true,blankrows:false});const hi=findHeaderRow(aoa);if(hi<0){toast("Nao localizei a linha de cabecalho.","err");return;}const headers=aoa[hi].map(h=>String(h).trim());const rows=[];for(let i=hi+1;i<aoa.length;i++){const arr=aoa[i]||[];if(!arr.some(c=>c!==""&&c!=null))continue;const o={};headers.forEach((h,j)=>{if(h)o[h]=arr[j]!==undefined?arr[j]:"";});rows.push(o);}ingest(rows);}catch(err){toast("Erro ao ler arquivo: "+err.message,"err");console.error(err);}};reader.readAsArrayBuffer(file);}
 
@@ -8178,7 +8302,7 @@ const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
 const INACT_MS=24*60*60*1000;
 let _lastActTs=0;
 const TABS_DEF=[["formador","Formador de Cargas"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["frete","Tabela de Frete"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
-const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["comResolver","Responder / resolver solicitacoes"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["gerenciar","Gerenciar usuarios e perfis"]];
+const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["comResolver","Responder / resolver solicitacoes"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["liberarProducao","Liberar carga p/ produção e exportar PCP"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
 let session=null;
 const CUR={user:null,nome:"",profile:null};
@@ -8284,6 +8408,7 @@ function applyPermissions(){
   const setBtn=(sel,a)=>{const e=$(sel);if(e)e.classList.toggle("hidden",!can(a));};
   setBtn("#btnImport","importPed");setBtn("#btnNovaCarga","criarCarga");setBtn("#btnImportFrete","importFrete");
   ["#btnExport","#btnExportFech","#btnExportContr","#btnExportEmb"].forEach(s=>setBtn(s,"exportar"));
+  setBtn("#btnExportPCP","liberarProducao");
   const lbl=$("#curUser");if(lbl)lbl.textContent=CUR.user?(CUR.nome||CUR.user)+(CUR.profile?" - "+CUR.profile.nome:""):"";
   document.body.classList.toggle("norevert",!can("reverterStatus"));
   if(CUR.profile&&!canSee(state.tab)){const first=TABS_DEF.map(t=>t[0]).find(canSee);if(first)setTab(first,true);}
@@ -8426,7 +8551,7 @@ function importAuthConfig(file){
 /* ===== MONITORIA ===== */
 function fmtDur(sec){sec=Math.max(0,Math.round(sec||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h?h+"h ":"")+(m||h?m+"min ":"")+s+"s";}
 function fmtDT(ts){const d=new Date(ts);const p=n=>n<10?"0"+n:n;return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());}
-function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",reverter_status:"Voltou/reabriu status de carga",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",export_auditoria:"Exportou registro de auditoria",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",reverter_status:"Voltou/reabriu status de carga",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",liberar_producao:"Liberou carga p/ producao",paletizacao:"Atualizou paletizacao da carga",retirar_liberacao_producao:"Retirou liberacao de producao",export_pcp:"Exportou arquivo p/ o PCP",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",export_auditoria:"Exportou registro de auditoria",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
 function csvEsc(s){s=String(s==null?"":s);return /[";\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
 function exportAudit(){
   const a=loadAudit();
@@ -8481,6 +8606,12 @@ $("#fEmbClr")&&$("#fEmbClr").addEventListener("click",()=>limparPeriodo("fEmb",r
 $("#fobFClr")&&$("#fobFClr").addEventListener("click",()=>{["#fobFPed","#fobFCli","#fobFFil","#fobFVend","#fobFUf"].forEach(s=>{if($(s))$(s).value="";});renderFob();});
 $("#btnExportContr").addEventListener("click",()=>exportRomaneio("contratada"));
 $("#btnExportEmb").addEventListener("click",()=>exportRomaneio("embarcada"));
+$("#btnExportPCP")&&$("#btnExportPCP").addEventListener("click",exportarPCP);
+$("#palClose")&&$("#palClose").addEventListener("click",closePaletizacao);
+$("#palCancel")&&$("#palCancel").addEventListener("click",closePaletizacao);
+$("#palSave")&&$("#palSave").addEventListener("click",salvarPaletizacao);
+$("#palRetirar")&&$("#palRetirar").addEventListener("click",retirarLiberacaoProducao);
+$("#palOverlay")&&$("#palOverlay").addEventListener("click",e=>{if(e.target.id==="palOverlay")closePaletizacao();});
 $("#btnImportFrete").addEventListener("click",()=>$("#freteFileInput").click());
 $("#freteFileInput").addEventListener("change",e=>{if(e.target.files[0])importFreightTable(e.target.files[0]);e.target.value="";});
 $("#ffFilial").addEventListener("change",renderFreteTab);
@@ -8902,9 +9033,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.9.3";
+  var APP_VERSION="1.10.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.10.0",data:"21/08/2026",itens:[
+      ["NOVO","Liberação de carga para produção: no cartão da carga — em montagem, fechado parcial ou aguardando contratação — o botão Liberar p/ Produção marca a carga como liberada e passa a exibir o selo Liberada p/ Produção. O bloqueio efetivo continua acontecendo no PCP; aqui a carga é apenas sinalizada."],
+      ["NOVO","Perfil de paletização por carga: unidades por camada, altura (número de camadas), chapatex (Padrão / Sim / Não) e observações livres. O que ficar em branco é enviado ao PCP como PADRÃO."],
+      ["NOVO","Exportar p/ PCP: gera um arquivo CSV com uma linha por pedido das cargas liberadas, já com a paletização de cada carga, pronto para importação no sistema do PCP. Cargas já embarcadas não entram no arquivo, porque a produção delas já aconteceu."],
+      ["MELHORIA","Toda liberação, alteração de paletização e retirada de liberação fica registrada no histórico da carga e na Monitoria, com autor e data."],
+      ["MELHORIA","Nova permissão Liberar carga p/ produção e exportar PCP em Configurações. Por padrão somente o master libera e exporta, até que a permissão seja marcada no perfil desejado."]
+    ]},
     {versao:"1.9.3",data:"22/07/2026",itens:[
       ["MELHORIA","MC% agora bate com o arquivo de Pedidos a Faturar: o sistema passou a dividir a MC em R$ pelo VALOR BRUTO, a mesma base do arquivo. Antes dividia pela venda líquida (Valor menos ICMS) e os percentuais não conferiam entre o arquivo e a tela."],
       ["MELHORIA","A mudança vale para TODOS os lugares onde aparece MC%: cartão do pedido, cartão e janela de detalhes da carga, MC após frete pago, MC% médio da carteira no Painel, romaneios, exportações e o score de priorização."],
