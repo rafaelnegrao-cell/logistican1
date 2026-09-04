@@ -6152,6 +6152,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .clinfo2{display:flex;flex-wrap:wrap;gap:10px;padding:9px 14px;background:#f6f9ff;font-size:11px;color:var(--cinza);border-top:1px solid var(--grade)}
   .clinfo2 b{color:var(--texto)}
   .cl-warn{padding:7px 14px;font-size:10.5px;color:#8a6d00;background:#FFF8E1;font-weight:600;line-height:1.4}
+  .cl-note{padding:7px 14px;font-size:10.5px;color:#0a5d44;background:#EAF7F1;font-weight:600;line-height:1.4}
   .cl-eta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 14px;background:#fbfdff;border-top:1px solid var(--grade);font-size:11px;color:var(--cinza)}
   .cl-eta label{font-weight:700;color:var(--texto)}
   .cl-eta input[type=date]{font:inherit;font-size:11.5px;padding:4px 7px;border:1px solid var(--grade);border-radius:7px;color:var(--texto);background:#fff}
@@ -6638,8 +6639,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
       </div>
       <div class="fld"><label>Rota Destino</label><input id="mRota" list="rotaList" placeholder="Ex: Curitiba E Regiao..."><datalist id="rotaList"></datalist></div>
       <div class="fld-grid">
-        <div class="fld"><label>Transportadora (cadastrada)</label><input id="mTransp" list="carrierList" placeholder="busque/escolha uma cadastrada"><datalist id="carrierList"></datalist></div>
-        <div class="fld"><label>Placa</label><input id="mPlaca" placeholder="Nao informado"></div>
+        <div class="fld"><label>Transportadora (cadastrada) <span style="color:var(--cinza);font-weight:400">(opcional)</span></label><input id="mTransp" list="carrierList" placeholder="busque/escolha uma cadastrada"><datalist id="carrierList"></datalist></div>
+        <div class="fld"><label>Placa <span style="color:var(--cinza);font-weight:400">(opcional)</span></label><input id="mPlaca" placeholder="Nao informado"></div>
       </div>
       <div id="mTranspAdd" class="hidden" style="margin-top:-4px;border:1px solid var(--grade);border-radius:10px;padding:11px;background:#f8fafb">
         <div style="font-size:11.5px;font-weight:700;color:var(--verde);margin-bottom:8px">Nova transportadora</div>
@@ -6657,12 +6658,12 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         </div>
       </div>
       <button class="btn ghost" id="mTranspToggle" type="button" style="align-self:flex-start;font-size:11.5px;padding:4px 8px">+ Cadastrar nova transportadora</button>
-      <div class="fld"><label>Motorista</label><input id="mMot" placeholder="Nao informado"></div>
+      <div class="fld"><label>Motorista <span style="color:var(--cinza);font-weight:400">(opcional)</span></label><input id="mMot" placeholder="Nao informado"></div>
       <div class="fld-grid">
         <div class="fld"><label>Preco Frete / Ton (tabela do pedido)</label><input id="mFrete" class="ro-fld" readonly placeholder="calculado dos pedidos"></div>
-        <div class="fld"><label>Frete / Ton Pago (R$)</label><input id="mFretePago" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="fld"><label>Frete / Ton Pago (R$) <span style="color:var(--cinza);font-weight:400">(opcional)</span></label><input id="mFretePago" type="number" step="0.01" placeholder="0,00"></div>
       </div>
-      <div class="fld"><label>Data prevista de embarque <span style="color:var(--risco)">(obrigatoria p/ contratar)</span></label><input id="mEta" type="date"></div>
+      <div class="fld"><label>Data prevista de embarque <span style="color:var(--risco)">(unico campo obrigatorio p/ programar)</span></label><input id="mEta" type="date"></div>
     </div>
     <div class="modal-foot"><button class="btn ghost" id="modalCancel">Cancelar</button><button class="btn primary" id="modalSave">Salvar Carga</button></div>
   </div>
@@ -7813,6 +7814,21 @@ function renderFob(){
 
 /* PAINEL CARGAS FECHADAS (aguardando contratacao) */
 function transporteCompleto(t){return !!(t.transp&&t.transp.trim()&&isRegisteredCarrier(t.transp)&&t.placa&&t.placa.trim()&&t.mot&&t.mot.trim()&&t.fretePago>0&&t.eta&&String(t.eta).trim());}
+/* ===== O QUE E OBRIGATORIO PARA PROGRAMAR A CARGA =====
+   A partir da 1.14.0 o UNICO campo obrigatorio para passar de fechada para programada
+   e a data prevista de embarque. Transportadora, placa, motorista e frete/ton pago
+   continuam no formulario e podem ser preenchidos a qualquer momento, mas nao travam
+   mais a programacao. transporteCompleto continua existindo, intacta, agora so como
+   informacao (mostrar o que ainda falta), nunca como trava. */
+function podeProgramar(t){return !!(t&&t.eta&&String(t.eta).trim());}
+function faltamOpcionais(t){
+  const f=[];
+  if(!(t.transp&&t.transp.trim()))f.push("transportadora");
+  if(!(t.placa&&t.placa.trim()))f.push("placa");
+  if(!(t.mot&&t.mot.trim()))f.push("motorista");
+  if(!(t.fretePago>0))f.push("frete/ton pago");
+  return f;
+}
 function fmtEta(s){if(!s)return "";const p=String(s).split("-");return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:String(s);}
 /* ===== PREVISAO DE EMBARQUE NA CARGA FECHADA =====
    O operador informa a data ainda na etapa fechada, no MESMO campo t.eta usado na
@@ -7859,10 +7875,13 @@ function renderFechadas(){
   if(!fechadas.length){body.innerHTML='<div class="empty">Nenhuma carga fechada ainda. Monte uma carga e clique em "Fechar Carga".</div>';return;}
   body.innerHTML="";
   fechadas.forEach(t=>{
-    const ok=transporteCompleto(t);
+    const ok=podeProgramar(t);          // 1.14.0: so a data prevista de embarque trava
     const pill=(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'');
     const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes: <b>'+t.history.length+'</b></span>':'')+'</div>'+etaFechadaHtml(t);
-    const warn=ok?'':'<div class="cl-warn">Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque para habilitar a contratacao.</div>';
+    const _falta=faltamOpcionais(t);
+    const warn=!ok
+      ?'<div class="cl-warn">&#9888; Informe a <b>data prevista de embarque</b> para programar esta carga. Ela e o <b>unico campo obrigatorio</b> &mdash; transportadora, placa, motorista e frete/ton pago sao <b>opcionais</b> e podem ser preenchidos depois.</div>'
+      :(_falta.length?'<div class="cl-note">&#10003; Pronta para programar (a data ja esta definida). Ainda em branco, e <b>opcional</b>: '+_falta.join(", ")+'. Pode preencher agora ou depois de programar.</div>':'');
     const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
     const r=stageCard(t,{pill:pill+seloProdHtml(t),infoHtml:info,warnHtml:warn,actions:acts});
     const card=r.card;
@@ -7878,7 +7897,7 @@ function renderFechadas(){
     const _r2=card.querySelector(".romb");if(_r2)_r2.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
     const cb=card.querySelector(".contr");
     if(ok)cb.addEventListener("click",()=>veiculoContratado(t));
-    else cb.addEventListener("click",()=>toast("Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque (em Transporte) para contratar.","info"));
+    else cb.addEventListener("click",()=>toast("Falta apenas a data prevista de embarque: informe no campo Previsao de embarque do proprio cartao (ou em Transporte) para programar. Transportadora, placa, motorista e frete/ton pago sao opcionais.","info",8000));
     body.appendChild(card);
   });
 }
@@ -7886,7 +7905,7 @@ function renderFechadas(){
 function veiculoContratado(t){
   if(!requirePerm("contratar"))return;
   if(!requireScope(t))return;
-  if(!transporteCompleto(t)){toast("Dados de transporte / frete pago incompletos.","err");return;}
+  if(!podeProgramar(t)){toast("Informe a data prevista de embarque para programar esta carga. Ela e o unico campo obrigatorio: transportadora, placa, motorista e frete/ton pago sao opcionais.","err",8000);return;}
   if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date()),_fk=truckFilial(t),_key=_fk+"|"+_wk;state.cargaSeq[_key]=(state.cargaSeq[_key]||0)+1;t.numeroCarga=state.cargaSeq[_key];t.semana=_wk;t.filialCarga=_fk;pushHist(t,{tipo:"Numero de carga gerado",de:"fechada",para:"contratada",motivo:"Carga "+_fk+" No "+t.numeroCarga});}t.status="contratada";t.contractedAt=new Date();renderAll();setTab("contratadas");
   toast("Veiculo contratado para \""+(t.rota||"-")+"\". Movido para Cargas Programadas.","ok");logAction("contratar",(t.rota||"")+" - "+(t.transp||""));
 }
@@ -8051,7 +8070,7 @@ function renderKpis(){
   if($("#kContr"))$("#kContr").textContent=contr.length;
   const emb=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
   if($("#kEmb"))$("#kEmb").textContent=emb.length;
-  const saldo=contr.concat(emb).filter(truckInScope).reduce((s,t)=>s+loadFreight(t).saldo,0);
+  const saldo=contr.concat(emb).filter(truckInScope).filter(t=>t.fretePago>0).reduce((s,t)=>s+loadFreight(t).saldo,0); // carga sem frete pago nao entra: saldo dela seria o preco de tabela inteiro
   const ks=$("#kSaldo");ks.textContent=(saldo>=0?"":"-")+"R$ "+Math.abs(saldo).toLocaleString("pt-BR",{maximumFractionDigits:0});
   const ksc=$("#kSaldoCard");if(ksc){ksc.classList.toggle("green",saldo>=0);ksc.classList.toggle("alert",saldo<0);ksc.classList.toggle("neutral",false);}
   $("#kAloc").textContent=fmtT(aloc);
@@ -9176,9 +9195,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.13.0";
+  var APP_VERSION="1.14.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.14.0",data:"03/09/2026",itens:[
+      ["MELHORIA","Programar a carga ficou mais simples: agora o único campo obrigatório é a data prevista de embarque. Transportadora, placa, motorista e frete/ton pago continuam no formulário e podem ser preenchidos a qualquer momento, mas não travam mais a programação da carga."],
+      ["MELHORIA","O cartão da carga passa a dizer exatamente o que falta. Sem a data: aviso amarelo explicando que ela é o único campo obrigatório. Com a data preenchida: nota verde de Pronta para programar, listando o que ainda está em branco e deixando claro que é opcional. Os rótulos do formulário também passaram a marcar (opcional) nesses quatro campos."],
+      ["CORRECAO","Indicador Saldo frete deixou de somar cargas sem frete pago informado. Como o saldo é preço de tabela menos pago, uma carga sem nada pago entrava com o preço inteiro e inflava o indicador. Agora só entram as cargas que têm frete pago lançado."],
+      ["CORRECAO","Na janela de detalhes, o Saldo de uma carga sem frete pago agora aparece como a definir, em vez de mostrar o preço de tabela como se fosse saldo positivo — antes ficava contraditório com o Frete pago logo acima, que já dizia a definir."],
+      ["MELHORIA","As regras de geração do número da carga, de status e de embarque não mudaram. A carga programada sem frete pago simplesmente omite as linhas de frete pago e de MC após frete pago, como já fazia."]
+    ]},
     {versao:"1.13.0",data:"03/09/2026",itens:[
       ["NOVO","Cargas de outra planta: ver, sim; mexer, não. Uma carga da N1 é sempre de uma única planta (Sertanópolis ou Itaju), e quem a administra é a planta. Agora o operador continua enxergando as cargas exatamente como antes, mas só executa ações nas cargas da planta que está no escopo de filial do perfil dele."],
       ["NOVO","O cartão de uma carga de outra planta passa a exibir o selo “Fora do seu escopo — somente consulta” e tem os botões de ação desabilitados. Os botões de consulta continuam liberados: ver detalhes, mapa, romaneios, piso ANTT e divulgação."],
@@ -9705,7 +9731,7 @@ netBoot();
       info("Preco frete (tabela)",fmtMoney(fr.total))+
       info("R$/ton efetivo",fr.rate?fmtMoney(fr.rate):"-")+
       info("Frete pago",t.fretePago?(fmtMoney(fr.pagoTotal)+" ("+fmtMoney(fr.pagoTon)+"/ton)"):"a definir")+
-      info("Saldo (preco - pago)",fmtMoney(fr.saldo),fr.saldo>=0?"pos":"neg")+
+      info("Saldo (preco - pago)",t.fretePago?fmtMoney(fr.saldo):"a definir",t.fretePago?(fr.saldo>=0?"pos":"neg"):"")+
       info("MC da carga",m.vl>0?m.mcPct.toFixed(1)+"%":"-",m.vl>0?mcCor(m.mcPct):"")+
       info("MC apos frete pago",(m.fretePago!=null&&m.vl>0)?m.mcPctLiq.toFixed(1)+"%":"-",(m.fretePago!=null&&m.vl>0)?mcCor(m.mcPctLiq):"")+
       '</div>'+(m.acima?'<div class="cd-alert">&#9888; Frete pago esta '+fmtMoney(m.delta)+' acima da tabela.</div>':'')+'</div>';
