@@ -6156,6 +6156,16 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .cl-eta label{font-weight:700;color:var(--texto)}
   .cl-eta input[type=date]{font:inherit;font-size:11.5px;padding:4px 7px;border:1px solid var(--grade);border-radius:7px;color:var(--texto);background:#fff}
   .cl-eta .cl-eta-info{color:var(--cinza)}
+  .cl-peds{padding:8px 14px;border-top:1px solid var(--grade);background:#fcfdfe}
+  .cl-peds .cp-tit{font-size:10px;font-weight:700;color:var(--cinza);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+  .cl-peds .cp{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px;font-size:11px;line-height:1.5;color:var(--cinza)}
+  .cl-peds .cp+.cp{border-top:1px dotted var(--grade);padding-top:3px;margin-top:3px}
+  .cl-peds .cp-num{font-weight:700;color:var(--texto);white-space:nowrap}
+  .cl-peds .cp-cli{color:var(--texto);flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cl-peds .cp-cid{white-space:nowrap}
+  .cl-peds .cp-mais{margin-top:5px;font-size:10.5px;font-weight:700;color:var(--cinza)}
+  .clbtn.delv{color:#b02a37;border:1px solid #f1c2c7;background:#fff}
+  .clbtn.delv:hover{background:#fbe9eb;border-color:#e0a6ac}
   .clactions{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px;border-top:1px solid var(--grade)}
   .clbtn{background:var(--cinza-bg);border:1px solid var(--grade);color:var(--texto);padding:5px 9px;border-radius:7px;cursor:pointer;font-size:10.5px;font-weight:600;font-family:inherit;white-space:nowrap}
   .clbtn:hover{background:#e9edf1;border-color:#cdd5db}
@@ -7596,6 +7606,42 @@ function freteFootHtml(t,fr){
     '<div class="tf-line"><span>R$/ton efetivo</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+
     (t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo (preco - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'');
 }
+/* ===== LISTA ENXUTA DOS PEDIDOS NO CARD =====
+   So exibicao. Recebe o "ps" que o stageCard ja montou (state.pedidos por assignedTo,
+   ordenado por cmpPedidos) — nada e recalculado nem reordenado aqui. */
+const CARD_PEDS_MAX=6; // acima disso o card trunca e mostra "+N mais"
+function pedidosResumoHtml(ps){
+  if(!ps||!ps.length)return "";
+  const vis=ps.slice(0,CARD_PEDS_MAX);
+  const linhas=vis.map(p=>'<div class="cp"><span class="cp-num">#'+_hesc(p.pedido)+'</span>'+
+    '<span class="cp-cli">'+_hesc(p.cliente||"-")+'</span>'+
+    (p.cidade?'<span class="cp-cid">&#128205; '+_hesc(p.cidade)+(p.uf?"/"+_hesc(p.uf):"")+'</span>':'')+'</div>').join("");
+  const resto=ps.length-vis.length;
+  return '<div class="cl-peds"><div class="cp-tit">Pedidos da carga ('+ps.length+')</div>'+linhas+
+    (resto>0?'<div class="cp-mais">+'+resto+' mais &middot; abra os detalhes para ver todos</div>':'')+'</div>';
+}
+
+/* ===== EXCLUIR CARGA VAZIA =====
+   Só aparece quando a carga esta sem nenhum pedido alocado, e mesmo assim reconta os
+   pedidos no momento do clique antes de excluir. Nao mexe em status, merge nem escopo. */
+function excluirVaziaBtnHtml(ps){
+  return (ps&&ps.length)?"":'<button class="clbtn delv" title="Excluir esta carga (ela esta sem pedidos)">&#128465; Excluir carga vazia</button>';
+}
+function excluirCargaVazia(t){
+  if(!requirePerm("excluirCargaVazia"))return;
+  const n=state.pedidos.filter(p=>p.assignedTo===t.id).length; // recontagem no clique
+  if(n){toast("Esta carga tem "+n+" pedido(s) alocado(s). Remova os pedidos antes de excluir.","err",6000);renderAll();return;}
+  const rot=(t.numeroCarga?("carga "+(t.filialCarga?t.filialCarga+" ":"")+"No "+t.numeroCarga):(t.rota||"carga sem rota"));
+  if(!confirm("Excluir definitivamente a "+rot+"?\nEla esta sem pedidos. Esta acao nao pode ser desfeita."))return;
+  state.trucks=state.trucks.filter(x=>x.id!==t.id);
+  logAction("excluir_carga_vazia",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+" ("+(t.status||"")+")");
+  renderAll();
+  toast("Carga vazia excluida.","ok");
+}
+function wireExcluirVazia(card,t){
+  const b=card.querySelector(".delv");if(!b)return;
+  b.addEventListener("click",e=>{e.stopPropagation();excluirCargaVazia(t);});
+}
 function stageCard(t,cfg){
   cfg=cfg||{};
   const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
@@ -7614,7 +7660,8 @@ function stageCard(t,cfg){
     prog+
     (cfg.infoHtml||"")+
     (cfg.warnHtml||"")+
-    '<div class="clactions">'+(cfg.actions||"")+'</div>'+
+    pedidosResumoHtml(ps)+
+    '<div class="clactions">'+(cfg.actions||"")+excluirVaziaBtnHtml(ps)+'</div>'+
     '<div class="cl-foot">'+freteFootHtml(t,fr)+'</div>';
   card.querySelector(".clh").addEventListener("click",function(e){
     if(e.target.closest("button"))return;
@@ -7622,6 +7669,7 @@ function stageCard(t,cfg){
   });
   const d=card.querySelector(".det");
   if(d)d.addEventListener("click",function(e){e.stopPropagation();if(window.openCargaDetalhe)window.openCargaDetalhe(t);});
+  wireExcluirVazia(card,t);
   return {card:card,ps:ps,fr:fr,load:load,pct:pct};
 }
 
@@ -8342,7 +8390,7 @@ const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
 const INACT_MS=24*60*60*1000;
 let _lastActTs=0;
 const TABS_DEF=[["formador","Formador de Cargas"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["frete","Tabela de Frete"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
-const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["comResolver","Responder / resolver solicitacoes"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["liberarProducao","Liberar carga p/ produção e exportar PCP"],["gerenciar","Gerenciar usuarios e perfis"]];
+const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["excluirCargaVazia","Excluir carga vazia"],["comResolver","Responder / resolver solicitacoes"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["liberarProducao","Liberar carga p/ produção e exportar PCP"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
 let session=null;
 const CUR={user:null,nome:"",profile:null};
@@ -9073,9 +9121,15 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.11.0";
+  var APP_VERSION="1.12.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.12.0",data:"03/09/2026",itens:[
+      ["NOVO","Pedidos visíveis direto no cartão da carga: nas etapas de fechamento parcial, aguardando contratação, programada e embarcada, o cartão passa a listar os pedidos da carga com número, cliente e cidade, sem precisar abrir a janela de detalhes. O cartão da carga em montagem já mostrava essa informação e continua igual."],
+      ["MELHORIA","A lista é compacta e mostra até 6 pedidos; havendo mais, o cartão indica “+N mais” e os demais continuam na janela de detalhes. É apenas exibição — não muda nenhum cálculo, regra ou ordenação."],
+      ["NOVO","Botão Excluir carga vazia: aparece somente no cartão de uma carga que esteja sem nenhum pedido alocado, pede confirmação e remove a carga de vez. Se algum pedido tiver sido alocado nesse meio-tempo, a exclusão é recusada com aviso."],
+      ["MELHORIA","Nova permissão Excluir carga vazia em Configurações. Por padrão somente o master exclui, até que a permissão seja marcada no perfil desejado. Toda exclusão fica registrada na Monitoria, com autor e data."]
+    ]},
     {versao:"1.11.0",data:"03/09/2026",itens:[
       ["NOVO","Previsão de embarque na carga fechada: no cartão da carga que aguarda contratação passa a existir um campo de data editável. A produção usa essa data para se planejar, sem precisar esperar a contratação do veículo. É o mesmo campo de embarque já usado na contratação — não existe data paralela."],
       ["NOVO","Ao lado do campo, apenas como informação de apoio, aparecem a previsão de entrega mais próxima e a mais distante entre os pedidos daquela carga. É só exibição: não avisa, não bloqueia e não muda nenhuma regra. Carga sem data de entrega nos pedidos mostra um traço."],
