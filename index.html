@@ -6152,6 +6152,10 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .clinfo2{display:flex;flex-wrap:wrap;gap:10px;padding:9px 14px;background:#f6f9ff;font-size:11px;color:var(--cinza);border-top:1px solid var(--grade)}
   .clinfo2 b{color:var(--texto)}
   .cl-warn{padding:7px 14px;font-size:10.5px;color:#8a6d00;background:#FFF8E1;font-weight:600;line-height:1.4}
+  .cl-eta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 14px;background:#fbfdff;border-top:1px solid var(--grade);font-size:11px;color:var(--cinza)}
+  .cl-eta label{font-weight:700;color:var(--texto)}
+  .cl-eta input[type=date]{font:inherit;font-size:11.5px;padding:4px 7px;border:1px solid var(--grade);border-radius:7px;color:var(--texto);background:#fff}
+  .cl-eta .cl-eta-info{color:var(--cinza)}
   .clactions{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px;border-top:1px solid var(--grade)}
   .clbtn{background:var(--cinza-bg);border:1px solid var(--grade);color:var(--texto);padding:5px 9px;border-radius:7px;cursor:pointer;font-size:10.5px;font-weight:600;font-family:inherit;white-space:nowrap}
   .clbtn:hover{background:#e9edf1;border-color:#cdd5db}
@@ -7736,6 +7740,41 @@ function renderFob(){
 /* PAINEL CARGAS FECHADAS (aguardando contratacao) */
 function transporteCompleto(t){return !!(t.transp&&t.transp.trim()&&isRegisteredCarrier(t.transp)&&t.placa&&t.placa.trim()&&t.mot&&t.mot.trim()&&t.fretePago>0&&t.eta&&String(t.eta).trim());}
 function fmtEta(s){if(!s)return "";const p=String(s).split("-");return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:String(s);}
+/* ===== PREVISAO DE EMBARQUE NA CARGA FECHADA =====
+   O operador informa a data ainda na etapa fechada, no MESMO campo t.eta usado na
+   contratacao (nao existe campo paralelo). Ao lado, so como apoio, aparecem a previsao
+   de entrega mais proxima e a mais distante dos pedidos da carga. Nada aqui altera
+   regra de status, de contratacao ou de embarque. */
+function entregaRangeCarga(t){
+  const ds=state.pedidos.filter(p=>p.assignedTo===t.id).map(p=>p.entrega).filter(v=>v!=null&&!isNaN(v));
+  if(!ds.length)return null;
+  return {min:Math.min.apply(null,ds),max:Math.max.apply(null,ds)};
+}
+function entregaRangeTexto(t){
+  const r=entregaRangeCarga(t);
+  if(!r)return "&mdash;";
+  return "mais proxima "+fmtDateBr(r.min)+" &middot; mais distante "+fmtDateBr(r.max);
+}
+function etaFechadaHtml(t){
+  return '<div class="cl-eta"><label for="eta_'+t.id+'">&#128197; Previsao de embarque</label>'+
+    '<input type="date" class="etainp" id="eta_'+t.id+'" value="'+_hesc(t.eta||"")+'">'+
+    '<span class="cl-eta-info">Entrega dos pedidos: '+entregaRangeTexto(t)+'</span></div>';
+}
+function definirPrevisaoEmbarque(t,iso){
+  iso=String(iso==null?"":iso).trim();
+  if(!iso||t.eta===iso)return;
+  const de=t.eta?fmtEta(t.eta):"-";
+  t.eta=iso;
+  pushHist(t,{tipo:"Previsao de embarque",de:de,para:fmtEta(iso),motivo:"Definida na carga fechada"});
+  renderAll();
+  toast("Previsao de embarque definida para "+fmtEta(iso)+".","ok");
+  logAction("previsao_embarque",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> "+fmtEta(iso));
+}
+function wireEtaFechada(card,t){
+  const i=card.querySelector(".etainp");if(!i)return;
+  i.addEventListener("click",e=>e.stopPropagation());
+  i.addEventListener("change",e=>{e.stopPropagation();definirPrevisaoEmbarque(t,i.value);});
+}
 function renderFechadas(){
   const fechadas=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t));
   setBadge("fech",fechadas.length);
@@ -7747,7 +7786,7 @@ function renderFechadas(){
   fechadas.forEach(t=>{
     const ok=transporteCompleto(t);
     const pill=(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'');
-    const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes: <b>'+t.history.length+'</b></span>':'')+'</div>';
+    const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes: <b>'+t.history.length+'</b></span>':'')+'</div>'+etaFechadaHtml(t);
     const warn=ok?'':'<div class="cl-warn">Preencha transportadora, placa, motorista, frete/ton pago e data prevista de embarque para habilitar a contratacao.</div>';
     const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
     const r=stageCard(t,{pill:pill+seloProdHtml(t),infoHtml:info,warnHtml:warn,actions:acts});
@@ -7755,6 +7794,7 @@ function renderFechadas(){
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
     wireLibProd(card,t);
+    wireEtaFechada(card,t);
     card.querySelector(".edt").addEventListener("click",()=>openModal(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     const _eb=card.querySelector(".embd");if(_eb)_eb.addEventListener("click",()=>editarEmbarque(t));
@@ -8019,7 +8059,7 @@ function exportRomaneio(filter){
    Uma linha por pedido; cada pedido herda a paletizacao da sua carga.
    Cargas ja embarcadas ficam de fora: o arquivo serve para o PCP PROGRAMAR
    producao, e carga embarcada ja foi produzida e despachada. */
-const PCP_COLS=["PEDIDO","APTO","PALETE_CAMADA","PALETE_ALTURA","CHAPATEX","OBS_PALETIZACAO","CARGA","DATA_LIBERACAO"];
+const PCP_COLS=["PEDIDO","APTO","PALETE_CAMADA","PALETE_ALTURA","CHAPATEX","OBS_PALETIZACAO","CARGA","DATA_LIBERACAO","PREVISAO_EMBARQUE"];
 function pcpNum(v){return (v==null||v==="")?"PADRAO":String(v);}
 function pcpChapatex(v){return v===true?"SIM":(v===false?"NAO":"PADRAO");}
 function cargasLiberadasPCP(){return state.trucks.filter(t=>t.liberadaProducao===true&&t.status!=="embarcada");}
@@ -8032,7 +8072,7 @@ function exportarPCP(){
     const ps=state.pedidos.filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
     ps.forEach(p=>{
       rows.push([p.pedido,"SIM",pcpNum(t.palCamada),pcpNum(t.palAltura),pcpChapatex(t.palChapatex),
-        (t.palObs||""),(t.numeroCarga!=null?t.numeroCarga:""),(t.liberadaProducaoAt?fmtDateBr(t.liberadaProducaoAt):"")]);
+        (t.palObs||""),(t.numeroCarga!=null?t.numeroCarga:""),(t.liberadaProducaoAt?fmtDateBr(t.liberadaProducaoAt):""),(t.eta?fmtEta(t.eta):"PADRAO")]);
       nPed++;
     });
   });
@@ -9033,9 +9073,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.10.0";
+  var APP_VERSION="1.11.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.11.0",data:"03/09/2026",itens:[
+      ["NOVO","Previsão de embarque na carga fechada: no cartão da carga que aguarda contratação passa a existir um campo de data editável. A produção usa essa data para se planejar, sem precisar esperar a contratação do veículo. É o mesmo campo de embarque já usado na contratação — não existe data paralela."],
+      ["NOVO","Ao lado do campo, apenas como informação de apoio, aparecem a previsão de entrega mais próxima e a mais distante entre os pedidos daquela carga. É só exibição: não avisa, não bloqueia e não muda nenhuma regra. Carga sem data de entrega nos pedidos mostra um traço."],
+      ["MELHORIA","A contratação do veículo aproveita a data: se a previsão de embarque já foi definida na carga fechada, ela vem preenchida no campo de embarque da janela de Transporte, em vez de ser pedida do zero."],
+      ["MELHORIA","Exportar p/ PCP: o arquivo ganhou a coluna PREVISAO_EMBARQUE no fim, depois de DATA_LIBERACAO, com a data no formato dd/mm/aaaa. Carga sem data definida sai como PADRAO, igual aos campos de paletização."],
+      ["MELHORIA","Toda definição ou alteração da previsão de embarque feita na carga fechada fica registrada no histórico da carga e na Monitoria, com autor e data."]
+    ]},
     {versao:"1.10.0",data:"21/08/2026",itens:[
       ["NOVO","Liberação de carga para produção: no cartão da carga — em montagem, fechado parcial ou aguardando contratação — o botão Liberar p/ Produção marca a carga como liberada e passa a exibir o selo Liberada p/ Produção. O bloqueio efetivo continua acontecendo no PCP; aqui a carga é apenas sinalizada."],
       ["NOVO","Perfil de paletização por carga: unidades por camada, altura (número de camadas), chapatex (Padrão / Sim / Não) e observações livres. O que ficar em branco é enviado ao PCP como PADRÃO."],
