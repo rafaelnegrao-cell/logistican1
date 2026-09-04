@@ -6153,6 +6153,22 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .clinfo2 b{color:var(--texto)}
   .cl-warn{padding:7px 14px;font-size:10.5px;color:#8a6d00;background:#FFF8E1;font-weight:600;line-height:1.4}
   .cl-note{padding:7px 14px;font-size:10.5px;color:#0a5d44;background:#EAF7F1;font-weight:600;line-height:1.4}
+  .cl-fora{padding:7px 14px;font-size:10.5px;color:#8a4b00;background:#FFF1E0;font-weight:600;line-height:1.4;border-top:1px solid var(--grade)}
+  .tag.fora{background:#FFE0C2;color:#8a4b00;font-weight:700}
+  .tc-fora{margin-top:4px;font-size:10px;font-weight:700;color:#8a4b00;background:#FFF1E0;border-radius:6px;padding:3px 6px}
+  .cp-fora{color:#8a4b00;font-weight:700}
+  .imp-alerta{margin:0 0 12px;border:1px solid #f0c9a0;background:#FFF8F0;border-radius:11px;padding:13px 15px;position:relative}
+  .imp-alerta .imp-x{position:absolute;top:8px;right:10px;border:none;background:transparent;font-size:19px;line-height:1;cursor:pointer;color:var(--cinza)}
+  .imp-alerta .imp-x:hover{color:var(--texto)}
+  .imp-sec+.imp-sec{margin-top:11px;padding-top:11px;border-top:1px solid #f0dcc6}
+  .imp-t{font-size:12.5px;font-weight:800;color:#8a4b00;margin-bottom:3px;padding-right:22px}
+  .imp-sec.info .imp-t{color:#0b3d6e}.imp-sec.ok .imp-t{color:var(--cinza)}
+  .imp-sub{font-size:11px;color:var(--cinza);line-height:1.5;margin-bottom:6px}
+  .imp-list{display:flex;flex-direction:column;gap:3px;max-height:210px;overflow:auto}
+  .imp-i{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;font-size:11px;background:#fff;border:1px solid var(--grade);border-radius:7px;padding:4px 8px}
+  .imp-p{font-weight:800;color:var(--texto);white-space:nowrap}
+  .imp-c{color:var(--texto);flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .imp-g{color:#8a4b00;font-weight:700;white-space:nowrap}
   .cl-eta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 14px;background:#fbfdff;border-top:1px solid var(--grade);font-size:11px;color:var(--cinza)}
   .cl-eta label{font-weight:700;color:var(--texto)}
   .cl-eta input[type=date]{font:inherit;font-size:11.5px;padding:4px 7px;border:1px solid var(--grade);border-radius:7px;color:var(--texto);background:#fff}
@@ -6351,6 +6367,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
           <button class="btn primary" id="btnNovaCarga">+ Criar Nova Carga</button>
         </div>
       </div>
+      <div class="imp-alerta hidden" id="impAlerta"></div>
       <div class="workspace" id="workspace">
         <section class="col col-pedidos">
           <div class="col-head">
@@ -7057,6 +7074,44 @@ function findHeaderRow(aoa){
 }
 
 /* ingest */
+/* ===== ALERTA PERSISTENTE DA IMPORTACAO =====
+   Separa "sumiu da planilha e estava em carga" (precisa de atencao, lista completa) de
+   "sumiu e estava so no banco" (normal, so a contagem), e avisa quando um pedido antes
+   marcado volta a aparecer. Fica na tela ate o operador fechar. So exibicao. */
+function snapPedFora(p){
+  const t=state.trucks.filter(x=>x.id===p.assignedTo)[0];
+  return {pedido:String(p.pedido),cliente:p.cliente||"",
+    carga:t?((t.numeroCarga?((t.filialCarga?t.filialCarga+" ":"")+"Carga "+t.numeroCarga+" · "):"")+(t.rota||"sem rota")+" · "+etapaDaCarga(t.status)):""};
+}
+function _impLista(arr){
+  return '<div class="imp-list">'+arr.map(function(x){
+    return '<div class="imp-i"><span class="imp-p">#'+_hesc(x.pedido)+'</span><span class="imp-c">'+_hesc(x.cliente||"-")+'</span>'+
+      (x.carga?'<span class="imp-g">'+_hesc(x.carga)+'</span>':'')+'</div>';
+  }).join("")+'</div>';
+}
+function fecharImportAlerta(){const h=document.getElementById("impAlerta");if(h){h.className="imp-alerta hidden";h.innerHTML="";}}
+function renderImportAlerta(info){
+  const host=document.getElementById("impAlerta");if(!host)return;
+  info=info||{};
+  const emC=info.emCarga||[],volt=info.voltaram||[],nb=info.noBanco||0;
+  if(!emC.length&&!volt.length&&!nb){fecharImportAlerta();return;}
+  let h='<button class="imp-x" title="Fechar aviso">&times;</button>';
+  if(emC.length){
+    h+='<div class="imp-sec crit"><div class="imp-t">&#9888; '+emC.length+' pedido(s) sairam da planilha mas continuam dentro de cargas</div>'+
+      '<div class="imp-sub">Eles foram <b>mantidos na carga</b> com todos os dados e marcados com o selo "Saiu da planilha". Confira com o faturamento: se ja foram faturados, embarque a carga; se nao, cancele a carga ou remova o pedido dela. Nada foi bloqueado.</div>'+
+      _impLista(emC)+'</div>';
+  }
+  if(volt.length){
+    h+='<div class="imp-sec info"><div class="imp-t">&#8635; '+volt.length+' pedido(s) que estavam marcados voltaram a aparecer na planilha</div>'+
+      '<div class="imp-sub">O selo "Saiu da planilha" foi removido: voltaram ao normal.</div>'+_impLista(volt)+'</div>';
+  }
+  if(nb){
+    h+='<div class="imp-sec ok"><div class="imp-t">'+nb+' pedido(s) sairam da planilha e estavam apenas no banco</div>'+
+      '<div class="imp-sub">Removidos normalmente &mdash; e o comportamento esperado para pedido faturado ou cancelado que nao estava em nenhuma carga.</div></div>';
+  }
+  host.innerHTML=h;host.className="imp-alerta";
+  const x=host.querySelector(".imp-x");if(x)x.addEventListener("click",fecharImportAlerta);
+}
 function ingest(rows){
   if(!requirePerm("importPed"))return;
   if(!rows.length){toast("Planilha vazia.","err");return;}
@@ -7133,32 +7188,54 @@ function ingest(rows){
   const freshNums={};peds.forEach(p=>freshNums[String(p.pedido)]=true);
   let nNew=0,nUpd=0;peds.forEach(p=>{if(oldNums[String(p.pedido)])nUpd++;else nNew++;});
   const nEmb=state.pedidos.filter(isEmb).length;
-  const nDrop=state.pedidos.filter(p=>!isEmb(p)&&!freshNums[String(p.pedido)]).length;
-  state.pedidos=mergePedidos(state.pedidos,peds);
+  /* 1.15.0 — separa os dois casos de "saiu da planilha". fileNums cobre TODO o arquivo
+     (inclusive revenda), entao pedido que continua no arquivo nao conta como sumido. */
+  const _vivosIds=new Set(state.trucks.filter(t=>t.status!=="embarcada"&&t.status!=="cancelada").map(t=>t.id));
+  const _emCargaViva=p=>p.assignedTo!=null&&_vivosIds.has(p.assignedTo);
+  const _sumiram=state.pedidos.filter(p=>!isEmb(p)&&!freshNums[String(p.pedido)]&&!fileNums[String(p.pedido)]);
+  const _sumEmCarga=_sumiram.filter(_emCargaViva).map(snapPedFora);   // problema real: precisam de atencao
+  const _voltaram=state.pedidos.filter(p=>p.foraDaPlanilha&&freshNums[String(p.pedido)]).map(snapPedFora);
+  const nDrop=_sumiram.filter(p=>!_emCargaViva(p)).length;            // normais: estavam so no banco
+  state.pedidos=mergePedidos(state.pedidos,peds,fileNums);
   state.pedidos.forEach((p,i)=>p.id="P"+i);
   applyPrioToState();
   buildFreightTableFromPeds();
   buildFilters(); renderAll();
+  renderImportAlerta({emCarga:_sumEmCarga,noBanco:nDrop,voltaram:_voltaram});
   logAction("import_pedidos",peds.length+" p/ carga / "+nNew+" novos / "+nUpd+" atualizados / "+nEmb+" embarcados historico / "+nDrop+" removidos / "+nRevenda+" revenda ignorados / arquivo: "+(state.fileName||"-"));
   const aptos=state.pedidos.filter(p=>p.apto),nf=peds.filter(p=>p.fob).length;
   toast(peds.length+" pedidos para carga: "+nNew+" novos, "+nUpd+" atualizados &middot; "+nEmb+" embarcados mantidos no historico"+(nDrop?" &middot; "+nDrop+" removidos (sairam do arquivo)":"")+(nRevenda?" &middot; "+nRevenda+" revenda ignorados":"")+".","ok",8500);
 }
 
 /* merge: novo arquivo = pedidos a trabalhar; embarcados ficam salvos como historico (gestao) */
-function mergePedidos(old,fresh){
+function mergePedidos(old,fresh,fileNums){
   old=old||[];
   const embTruck=new Set(state.trucks.filter(t=>t.status==="embarcada").map(t=>t.id));
   const isEmb=p=>p.embarcado===true||(p.assignedTo!=null&&embTruck.has(p.assignedTo));
   const hist=old.filter(isEmb);                                  // historico embarcado, preservado integralmente
   const histNums=new Set(hist.map(p=>String(p.pedido)));
   const byNum={};old.forEach(p=>{byNum[String(p.pedido)]=p;});
-  const result=hist.slice();
+  /* NOVO 1.15.0 — PEDIDO PRESO EM CARGA NAO EMBARCADA NAO E MAIS DESCARTADO.
+     Espelho do embTruck acima: cargas em andamento (tudo que nao embarcou nem foi cancelado).
+     Um pedido alocado numa dessas cargas sobrevive a reimportacao mesmo ausente do arquivo novo,
+     com todos os seus dados intactos. Ele so sai do sistema quando a carga embarca (vira historico)
+     ou quando volta ao banco por cancelamento/remocao manual. */
+  fileNums=fileNums||{};
+  const vivaTruck=new Set(state.trucks.filter(t=>t.status!=="embarcada"&&t.status!=="cancelada").map(t=>t.id));
+  const emCargaViva=p=>!isEmb(p)&&p.assignedTo!=null&&vivaTruck.has(p.assignedTo);
+  const freshNums=new Set(fresh.map(p=>String(p.pedido)));
+  const presos=old.filter(p=>emCargaViva(p)&&!freshNums.has(String(p.pedido)));
+  presos.forEach(p=>{
+    if(fileNums[String(p.pedido)]){delete p.foraDaPlanilha;delete p.foraDaPlanilhaEm;} // esta no arquivo (ex.: virou revenda): nao sumiu
+    else if(!p.foraDaPlanilha){p.foraDaPlanilha=true;p.foraDaPlanilhaEm=Date.now();}   // sumiu mesmo: marca sem reescrever a data
+  });
+  const result=hist.concat(presos);
   fresh.forEach(np=>{const key=String(np.pedido);
     if(histNums.has(key))return;                                 // ja embarcado: nao sobrescreve o historico
     const ex=byNum[key];
     if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;} // preserva carga em andamento
     result.push(np);});
-  return result;                                                 // descarta antigos NAO embarcados ausentes do novo arquivo
+  return result;                                                 // descarta so os antigos NAO embarcados, FORA de carga, ausentes do novo arquivo
 }
 
 /* (re)aplica prioridade (coluna do arquivo + lista de priorizados salva) e recalcula apto/cor/score */
@@ -7272,6 +7349,14 @@ function entregaTag(p){
   return '<span class="tag" style="background:'+bg+';color:'+fg+';font-weight:700">&#128197; Entrega '+fmtDateBr(p.entrega)+sfx+'</span>';
 }
 
+/* Selo do pedido preservado (estava em carga e sumiu da planilha). So exibicao. */
+function foraDaPlanilhaTag(p){return (p&&p.foraDaPlanilha)?'<span class="tag fora">&#9888; Saiu da planilha</span>':"";}
+function foraDaPlanilhaLinha(p){return (p&&p.foraDaPlanilha)?'<div class="tc-fora">&#9888; Saiu da planilha</div>':"";}
+function foraDaPlanilhaAvisoHtml(ps){
+  const n=(ps||[]).filter(p=>p&&p.foraDaPlanilha).length;
+  if(!n)return "";
+  return '<div class="cl-fora">&#9888; '+n+' pedido(s) desta carga nao vieram na ultima planilha importada e foram mantidos aqui. Confira com o faturamento: se ja foram faturados, embarque a carga; se nao, cancele a carga ou remova o pedido. Isto e apenas um aviso &mdash; nada esta bloqueado.</div>';
+}
 function pedidoCard(p,inTruck){
   const c=el("div",(inTruck?"tcard ":"pcard ")+p.cor+(p.bloqueado?" bloqueado":"")+(!inTruck&&!p.apto?" naoapto":""));
   c.draggable=true;c.dataset.id=p.id;
@@ -7279,7 +7364,7 @@ function pedidoCard(p,inTruck){
     const fr=c.dataset.frete||0;
     c.innerHTML='<button class="tc-rem" title="Remover">&times;</button>'+
       '<div class="tc-top"><div><span class="tc-ped">#'+p.pedido+(p.bloqueado?' &#128274;':'')+'</span><div class="tc-cli">'+(p.cliente||"-")+'</div>'+(p.cidade?'<div class="tc-cid">&#128205; '+p.cidade+(p.uf?'/'+p.uf:'')+'</div>':'')+(p.entrega!=null&&!isNaN(p.entrega)?'<div class="tc-cid">&#128197; Entrega '+fmtDateBr(p.entrega)+'</div>':'')+'</div><span class="tc-peso">'+fmtKg(p.peso)+'</span></div>'+
-      '<div class="tc-frete" data-frete>Frete rateado: --</div>';
+      foraDaPlanilhaLinha(p)+'<div class="tc-frete" data-frete>Frete rateado: --</div>';
     c.querySelector(".tc-rem").addEventListener("click",e=>{e.stopPropagation();unassign(p);});
   } else {
     const mcCls=p.mcPct<0?"var(--risco)":(p.mcPct>0?"var(--ok)":"var(--cinza)");
@@ -7288,7 +7373,7 @@ function pedidoCard(p,inTruck){
     c.innerHTML=
       '<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+lockI+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
       '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div><button class="pc-add" title="Adicionar a uma carga">+ Carga</button></div></div>'+
-      '<div class="pc-tags">'+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
+      '<div class="pc-tags">'+foraDaPlanilhaTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
       (p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
       '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>';
     c.querySelector(".pc-add").addEventListener("click",e=>{e.stopPropagation();quickAssign(p);});
@@ -7442,6 +7527,7 @@ function truckCard(t){
     '<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+fillCls+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+bateCls+'">'+bate+'</div></div>'+
     '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button><button class="btn-parcial" '+(assigned.length?'':'disabled')+' title="Fechar parcial: aguarda mais pedidos da regiao ate atingir 90%">&#9201; Fechar Parcial</button><button class="btn-close" '+(assigned.length?'':'disabled')+' title="Fechar carga (minimo 90% da capacidade)">&#9989; Fechar Carga</button></div>'+
     '<div class="truck-lib"><button class="btn-lib libprod'+(t.liberadaProducao?' on':'')+'">&#127981; '+(t.liberadaProducao?'Liberada p/ Producao':'Liberar p/ Producao')+'</button></div>'+
+    foraDaPlanilhaAvisoHtml(assigned)+
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="body-'+t.id+'">'+(assigned.length?'':'Arraste pedidos aqui ou use o Auto-Preencher')+'</div>'+
     '<div class="truck-foot"><div class="tf-line"><span>Preco frete (tabela do pedido)</span><b>'+fmtMoney(fr.total)+'</b></div><div class="tf-line"><span>R$/ton efetivo (proporcional)</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+(t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo (preco - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'')+'</div>';
   const body=card.querySelector("#body-"+t.id);
@@ -7624,7 +7710,7 @@ const CARD_PEDS_MAX=6; // acima disso o card trunca e mostra "+N mais"
 function pedidosResumoHtml(ps){
   if(!ps||!ps.length)return "";
   const vis=ps.slice(0,CARD_PEDS_MAX);
-  const linhas=vis.map(p=>'<div class="cp"><span class="cp-num">#'+_hesc(p.pedido)+'</span>'+
+  const linhas=vis.map(p=>'<div class="cp">'+(p.foraDaPlanilha?'<span class="cp-fora" title="Saiu da planilha">&#9888;</span>':'')+'<span class="cp-num">#'+_hesc(p.pedido)+'</span>'+
     '<span class="cp-cli">'+_hesc(p.cliente||"-")+'</span>'+
     (p.cidade?'<span class="cp-cid">&#128205; '+_hesc(p.cidade)+(p.uf?"/"+_hesc(p.uf):"")+'</span>':'')+'</div>').join("");
   const resto=ps.length-vis.length;
@@ -7686,6 +7772,7 @@ function stageCard(t,cfg){
     prog+
     (cfg.infoHtml||"")+
     (cfg.warnHtml||"")+
+    foraDaPlanilhaAvisoHtml(ps)+
     pedidosResumoHtml(ps)+
     '<div class="clactions">'+(cfg.actions||"")+excluirVaziaBtnHtml(ps)+'</div>'+
     '<div class="cl-foot">'+freteFootHtml(t,fr)+'</div>';
@@ -9195,9 +9282,17 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.14.0";
+  var APP_VERSION="1.15.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.15.0",data:"04/09/2026",itens:[
+      ["CORRECAO","Pedido dentro de carga não se perde mais na reimportação da carteira. Até agora, quando a planilha de Pedidos a Faturar era reimportada e um pedido não vinha nela, ele sumia da carga mesmo que a carga ainda não tivesse embarcado, e o operador precisava remontar na mão. Agora todo pedido alocado numa carga em montagem, fechada parcial, aguardando contratação ou programada é mantido, com todos os seus dados."],
+      ["NOVO","O pedido mantido nessa situação recebe o selo Saiu da planilha, no cartão dele e na lista de pedidos da carga. A carga que contém um pedido assim mostra um aviso sugerindo confirmar com o faturamento e, se for o caso, embarcar ou cancelar. É apenas orientação: nada fica bloqueado."],
+      ["NOVO","A importação passa a exibir um aviso que fica na tela até você fechar, separando os dois casos que antes vinham juntos num número só: os pedidos que saíram da planilha e estavam em cargas aparecem em lista, com número, cliente e a carga de cada um; os que saíram e estavam apenas no banco aparecem só como contagem, porque esse é o comportamento normal."],
+      ["MELHORIA","Se um pedido marcado voltar a aparecer numa importação seguinte, o selo é removido automaticamente e o aviso informa quais voltaram."],
+      ["CORRECAO","Pedido que continua na planilha mas passou a vir como revenda não é mais tratado como se tivesse sumido. Antes ele era descartado e contado junto com os removidos; agora o sistema distingue quem realmente saiu do arquivo de quem apenas mudou de classificação."],
+      ["MELHORIA","O comportamento dos pedidos já embarcados não mudou: continuam preservados como histórico, exatamente como antes. Um pedido mantido volta ao banco, ainda com o selo, se a carga dele for cancelada, e sai do sistema na importação seguinte."]
+    ]},
     {versao:"1.14.0",data:"03/09/2026",itens:[
       ["MELHORIA","Programar a carga ficou mais simples: agora o único campo obrigatório é a data prevista de embarque. Transportadora, placa, motorista e frete/ton pago continuam no formulário e podem ser preenchidos a qualquer momento, mas não travam mais a programação da carga."],
       ["MELHORIA","O cartão da carga passa a dizer exatamente o que falta. Sem a data: aviso amarelo explicando que ela é o único campo obrigatório. Com a data preenchida: nota verde de Pronta para programar, listando o que ainda está em branco e deixando claro que é opcional. Os rótulos do formulário também passaram a marcar (opcional) nesses quatro campos."],
