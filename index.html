@@ -6152,6 +6152,8 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .clinfo2{display:flex;flex-wrap:wrap;gap:10px;padding:9px 14px;background:#f6f9ff;font-size:11px;color:var(--cinza);border-top:1px solid var(--grade)}
   .clinfo2 b{color:var(--texto)}
   .cl-warn{padding:7px 14px;font-size:10.5px;color:#8a6d00;background:#FFF8E1;font-weight:600;line-height:1.4}
+  .tabfilters{padding:10px 14px 0;gap:7px}
+  .tabfilters input{min-width:0}
   .cl-note{padding:7px 14px;font-size:10.5px;color:#0a5d44;background:#EAF7F1;font-weight:600;line-height:1.4}
   .cl-fora{padding:7px 14px;font-size:10.5px;color:#8a4b00;background:#FFF1E0;font-weight:600;line-height:1.4;border-top:1px solid var(--grade)}
   .tag.fora{background:#FFE0C2;color:#8a4b00;font-weight:700}
@@ -6331,7 +6333,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     <button class="navbtn" data-tab="fob"><span>&#128230; Pedidos FOB / Retira</span><span class="nbadge" data-badge="fob">0</span></button>
     <button class="navbtn" data-tab="parcial"><span>&#9201; Fechado Parcial</span><span class="nbadge" data-badge="parcial">0</span></button>
     <button class="navbtn" data-tab="fechadas"><span>&#9203; Aguardando Contratacao</span><span class="nbadge" data-badge="fech">0</span></button>
-    <button class="navbtn" data-tab="contratadas"><span>&#128467; Cargas Programadas</span><span class="nbadge" data-badge="contr">0</span></button>
+    <button class="navbtn" data-tab="contratadas"><span>&#128467; Cargas Contratadas</span><span class="nbadge" data-badge="contr">0</span></button>
     <button class="navbtn" data-tab="embarcadas"><span>&#128666; Cargas Embarcadas</span><span class="nbadge" data-badge="emb">0</span></button>
     <button class="navbtn" data-tab="frete">&#128202; Tabela de Frete</button>
     <button class="navbtn" data-tab="cadastros">&#128221; Cadastros</button>
@@ -6423,6 +6425,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <input id="fobFCli" placeholder="Cliente" autocomplete="off">
         <input id="fobFFil" list="fobDlFil" placeholder="Filial" autocomplete="off"><datalist id="fobDlFil"></datalist>
         <input id="fobFVend" list="fobDlVend" placeholder="Vendedor" autocomplete="off"><datalist id="fobDlVend"></datalist>
+        <input id="fobFCid" list="fobDlCid" placeholder="Cidade" autocomplete="off"><datalist id="fobDlCid"></datalist>
         <input id="fobFUf" list="fobDlUf" placeholder="UF" autocomplete="off" style="max-width:80px"><datalist id="fobDlUf"></datalist>
         <button class="clear-f" id="fobFClr">Limpar</button>
       </div>
@@ -6432,23 +6435,59 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     <!-- PANEL FECHADAS (Aguardando Contratacao) -->
     <section class="panel" data-panel="parcial">
       <div class="panel-head"><h2>Fechado Parcial</h2><span class="meta" id="parcialMeta">0 cargas</span></div>
+      <div class="filters tabfilters">
+        <input id="fParFilial" list="fParDlFilial" placeholder="Filial (busca)" autocomplete="off"><datalist id="fParDlFilial"></datalist>
+        <input id="fParRota" list="fParDlRota" placeholder="Rota (busca)" autocomplete="off"><datalist id="fParDlRota"></datalist>
+        <input id="fParCidade" list="fParDlCidade" placeholder="Cidade (busca)" autocomplete="off"><datalist id="fParDlCidade"></datalist>
+        <input id="fParUf" list="fParDlUf" placeholder="UF" autocomplete="off" style="width:64px"><datalist id="fParDlUf"></datalist>
+        <input id="fParVend" list="fParDlVend" placeholder="Vendedor (busca)" autocomplete="off"><datalist id="fParDlVend"></datalist>
+        <input id="fParBusca" type="search" placeholder="Buscar pedido, cliente ou no da carga..." autocomplete="off">
+        <button class="clear-f" id="fParClr">Limpar filtros</button>
+      </div>
       <div class="panel-body" id="parcialBody"><div class="empty">Nenhuma carga em fechamento parcial.</div></div>
     </section>
 
     <section class="panel" data-panel="fechadas">
       <div class="panel-head"><h2>Aguardando Contratacao</h2><span class="meta" id="fechMeta">0 cargas</span><span class="spacer" style="flex:1"></span><button class="btn" id="btnExportFech" disabled>&#11015; Exportar</button></div>
+      <div class="filters tabfilters">
+        <input id="fFecFilial" list="fFecDlFilial" placeholder="Filial (busca)" autocomplete="off"><datalist id="fFecDlFilial"></datalist>
+        <input id="fFecRota" list="fFecDlRota" placeholder="Rota (busca)" autocomplete="off"><datalist id="fFecDlRota"></datalist>
+        <input id="fFecCidade" list="fFecDlCidade" placeholder="Cidade (busca)" autocomplete="off"><datalist id="fFecDlCidade"></datalist>
+        <input id="fFecUf" list="fFecDlUf" placeholder="UF" autocomplete="off" style="width:64px"><datalist id="fFecDlUf"></datalist>
+        <input id="fFecVend" list="fFecDlVend" placeholder="Vendedor (busca)" autocomplete="off"><datalist id="fFecDlVend"></datalist>
+        <input id="fFecBusca" type="search" placeholder="Buscar pedido, cliente ou no da carga..." autocomplete="off">
+        <button class="clear-f" id="fFecClr">Limpar filtros</button>
+      </div>
       <div class="panel-body" id="fechBody"><div class="empty">Nenhuma carga aguardando contratacao. Monte uma carga e clique em "Fechar Carga".</div></div>
     </section>
 
-    <!-- PANEL CONTRATADAS (Cargas Programadas) -->
+    <!-- PANEL CONTRATADAS (Cargas Contratadas) -->
     <section class="panel" data-panel="contratadas">
-      <div class="panel-head"><h2>Cargas Programadas</h2><span class="meta" id="contrMeta">0 cargas</span><span class="spacer" style="flex:1"></span><div class="dtfilter"><span class="dtf-lbl">Embarque previsto</span><input type="date" id="fContrDe" title="De"><span class="dtf-sep">ate</span><input type="date" id="fContrAte" title="Ate"><button class="dtf-clr" id="fContrClr" title="Limpar periodo">&times;</button></div><button class="btn" id="btnExportContr" disabled>&#11015; Exportar</button></div>
+      <div class="panel-head"><h2>Cargas Contratadas</h2><span class="meta" id="contrMeta">0 cargas</span><span class="spacer" style="flex:1"></span><div class="dtfilter"><span class="dtf-lbl">Embarque previsto</span><input type="date" id="fContrDe" title="De"><span class="dtf-sep">ate</span><input type="date" id="fContrAte" title="Ate"><button class="dtf-clr" id="fContrClr" title="Limpar periodo">&times;</button></div><button class="btn" id="btnExportContr" disabled>&#11015; Exportar</button></div>
+      <div class="filters tabfilters">
+        <input id="fConFilial" list="fConDlFilial" placeholder="Filial (busca)" autocomplete="off"><datalist id="fConDlFilial"></datalist>
+        <input id="fConRota" list="fConDlRota" placeholder="Rota (busca)" autocomplete="off"><datalist id="fConDlRota"></datalist>
+        <input id="fConCidade" list="fConDlCidade" placeholder="Cidade (busca)" autocomplete="off"><datalist id="fConDlCidade"></datalist>
+        <input id="fConUf" list="fConDlUf" placeholder="UF" autocomplete="off" style="width:64px"><datalist id="fConDlUf"></datalist>
+        <input id="fConVend" list="fConDlVend" placeholder="Vendedor (busca)" autocomplete="off"><datalist id="fConDlVend"></datalist>
+        <input id="fConBusca" type="search" placeholder="Buscar pedido, cliente ou no da carga..." autocomplete="off">
+        <button class="clear-f" id="fConClr">Limpar filtros</button>
+      </div>
       <div class="panel-body" id="contrBody"><div class="empty">Nenhuma carga programada ainda.</div></div>
     </section>
 
     <!-- PANEL EMBARCADAS -->
     <section class="panel" data-panel="embarcadas">
       <div class="panel-head"><h2>Cargas Embarcadas</h2><span class="meta" id="embMeta">0 cargas</span><span class="spacer" style="flex:1"></span><div class="dtfilter"><span class="dtf-lbl">Data do embarque</span><input type="date" id="fEmbDe" title="De"><span class="dtf-sep">ate</span><input type="date" id="fEmbAte" title="Ate"><button class="dtf-clr" id="fEmbClr" title="Limpar periodo">&times;</button></div><button class="btn" id="btnExportEmb" disabled>&#11015; Exportar</button></div>
+      <div class="filters tabfilters">
+        <input id="fEmbFilial" list="fEmbDlFilial" placeholder="Filial (busca)" autocomplete="off"><datalist id="fEmbDlFilial"></datalist>
+        <input id="fEmbRota" list="fEmbDlRota" placeholder="Rota (busca)" autocomplete="off"><datalist id="fEmbDlRota"></datalist>
+        <input id="fEmbCidade" list="fEmbDlCidade" placeholder="Cidade (busca)" autocomplete="off"><datalist id="fEmbDlCidade"></datalist>
+        <input id="fEmbUf" list="fEmbDlUf" placeholder="UF" autocomplete="off" style="width:64px"><datalist id="fEmbDlUf"></datalist>
+        <input id="fEmbVend" list="fEmbDlVend" placeholder="Vendedor (busca)" autocomplete="off"><datalist id="fEmbDlVend"></datalist>
+        <input id="fEmbBusca" type="search" placeholder="Buscar pedido, cliente ou no da carga..." autocomplete="off">
+        <button class="clear-f" id="fEmbClr">Limpar filtros</button>
+      </div>
       <div class="panel-body" id="embBody"><div class="empty">Nenhuma carga embarcada ainda.</div></div>
     </section>
 
@@ -6607,7 +6646,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
             <span style="color:var(--cinza)">&mdash;[Fechar Carga &ge;90%]&rarr;</span>
             <span class="tag" style="background:#eef0f2">Aguardando Contratacao</span>
             <span style="color:var(--cinza)">&mdash;[Contratar veiculo]&rarr;</span>
-            <span class="tag" style="background:var(--verde-bg);color:#0a5d44;border-color:#bfe6cf">Cargas Programadas</span>
+            <span class="tag" style="background:var(--verde-bg);color:#0a5d44;border-color:#bfe6cf">Cargas Contratadas</span>
             <span style="color:var(--cinza)">&mdash;[Embarcado]&rarr;</span>
             <span class="tag" style="background:#eaf1fe;color:#1454b3;border-color:#cfe0fb">Cargas Embarcadas</span>
           </div>
@@ -6820,7 +6859,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   <button data-tab="fob"><span class="bi">&#128230;</span>FOB<span class="nbadge" data-badge="fob">0</span></button>
   <button data-tab="parcial"><span class="bi">&#9201;</span>Parcial<span class="nbadge" data-badge="parcial">0</span></button>
   <button data-tab="fechadas"><span class="bi">&#9203;</span>Aguard.<span class="nbadge" data-badge="fech">0</span></button>
-  <button data-tab="contratadas"><span class="bi">&#128467;</span>Program.<span class="nbadge" data-badge="contr">0</span></button>
+  <button data-tab="contratadas"><span class="bi">&#128467;</span>Contrat.<span class="nbadge" data-badge="contr">0</span></button>
   <button data-tab="embarcadas"><span class="bi">&#128666;</span>Embarc.<span class="nbadge" data-badge="emb">0</span></button>
   <button data-tab="frete"><span class="bi">&#128202;</span>Frete</button>
   <button data-tab="cadastros"><span class="bi">&#128221;</span>Cadastros</button>
@@ -7308,29 +7347,89 @@ function buildFilters(){
   const selC=$("#fCanal");if(selC){if(canais.length){selC.style.display="";fillDL("dlCanal",canais);}else{selC.style.display="none";selC.value="";}}
   $("#rotaList").innerHTML=[...new Set(bp.map(p=>p.rota).filter(Boolean))].sort().map(r=>'<option value="'+esc(r)+'"></option>').join("");
 }
+/* ===== MATCH DE PEDIDO: implementacao unica =====
+   O Formador (filterPred) e os filtros das abas de status usam esta mesma funcao.
+   "f" e um objeto simples de valores ja normalizados (minusculas, sem espaco nas pontas).
+   Leitura de cada campo do pedido fica em PEDF, para os dois caminhos lerem igual. */
+function _fInc(v,q){return String(v==null?"":v).toLowerCase().includes(q);}
+const PEDF={
+  filial:p=>p.filial, rota:p=>p.rota, cidade:p=>p.cidade, uf:p=>p.uf,
+  vend:p=>p.vendedor, busca:p=>String(p.pedido)+" "+(p.cliente||"")
+};
+function pedMatchF(p,f){
+  f=f||{};
+  if(f.cidade&&!_fInc(PEDF.cidade(p),f.cidade))return false;
+  if(f.uf&&!_fInc(PEDF.uf(p),f.uf))return false;
+  if(f.filial&&!_fInc(PEDF.filial(p),f.filial))return false;
+  if(f.rota&&!_fInc(PEDF.rota(p),f.rota))return false;
+  if(f.produto&&!p.produtos.some(x=>_fInc(x,f.produto)))return false;
+  if(f.vend&&!_fInc(PEDF.vend(p),f.vend))return false;
+  if(f.canal&&!_fInc(p.canal,f.canal))return false;
+  if(f.status&&f.status.length){var _okS=false;if(f.status.indexOf("Apto")>-1&&p.apto)_okS=true;if(f.status.indexOf("Bloqueado")>-1&&p.bloqueado)_okS=true;if(f.status.indexOf("MC negativa")>-1&&p.mcPct<0)_okS=true;if(!_okS)return false;}
+  if(f.pmin!=null&&(p.peso||0)<f.pmin)return false;
+  if(f.pmax!=null&&(p.peso||0)>f.pmax)return false;
+  if(f.busca&&PEDF.busca(p).toLowerCase().indexOf(f.busca)===-1)return false;
+  return true;
+}
 function filterPred(){
-  const ff=$("#fFilial").value.trim().toLowerCase(),fr=$("#fRota").value.trim().toLowerCase(),fp=$("#fProduto").value.trim().toLowerCase(),finChk=[].map.call(document.querySelectorAll(".fFinChk:checked"),function(c){return c.value;}),fb=($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase();
-  const fv=$("#fVendedor")?$("#fVendedor").value.trim().toLowerCase():"";
-  const fc=$("#fCanal")?$("#fCanal").value.trim().toLowerCase():"";
-  const fcd=$("#fCidade")?$("#fCidade").value.trim().toLowerCase():"";
-  const fuf=$("#fUf")?$("#fUf").value.trim().toLowerCase():"";
-  const pminV=$("#fPesoMin")?parseFloat($("#fPesoMin").value):NaN, pmaxV=$("#fPesoMax")?parseFloat($("#fPesoMax").value):NaN;
-  const pmin=isNaN(pminV)?null:pminV, pmax=isNaN(pmaxV)?null:pmaxV;
-  const inc=(v,q)=>String(v==null?"":v).toLowerCase().includes(q);
-  return p=>{
-    if(fcd&&!inc(p.cidade,fcd))return false;
-    if(fuf&&!inc(p.uf,fuf))return false;
-    if(ff&&!inc(p.filial,ff))return false;
-    if(fr&&!inc(p.rota,fr))return false;
-    if(fp&&!p.produtos.some(x=>inc(x,fp)))return false;
-    if(fv&&!inc(p.vendedor,fv))return false;
-    if(fc&&!inc(p.canal,fc))return false;
-    if(finChk.length){var _okS=false;if(finChk.indexOf("Apto")>-1&&p.apto)_okS=true;if(finChk.indexOf("Bloqueado")>-1&&p.bloqueado)_okS=true;if(finChk.indexOf("MC negativa")>-1&&p.mcPct<0)_okS=true;if(!_okS)return false;}
-    if(pmin!=null&&(p.peso||0)<pmin)return false;
-    if(pmax!=null&&(p.peso||0)>pmax)return false;
-    if(fb){const hay=(String(p.pedido)+" "+(p.cliente||"")).toLowerCase();if(hay.indexOf(fb)===-1)return false;}
-    return true;
+  const f={
+    filial:$("#fFilial").value.trim().toLowerCase(),
+    rota:$("#fRota").value.trim().toLowerCase(),
+    produto:$("#fProduto").value.trim().toLowerCase(),
+    status:[].map.call(document.querySelectorAll(".fFinChk:checked"),function(c){return c.value;}),
+    busca:($("#fBusca")?$("#fBusca").value:"").trim().toLowerCase(),
+    vend:$("#fVendedor")?$("#fVendedor").value.trim().toLowerCase():"",
+    canal:$("#fCanal")?$("#fCanal").value.trim().toLowerCase():"",
+    cidade:$("#fCidade")?$("#fCidade").value.trim().toLowerCase():"",
+    uf:$("#fUf")?$("#fUf").value.trim().toLowerCase():""
   };
+  const pminV=$("#fPesoMin")?parseFloat($("#fPesoMin").value):NaN, pmaxV=$("#fPesoMax")?parseFloat($("#fPesoMax").value):NaN;
+  f.pmin=isNaN(pminV)?null:pminV; f.pmax=isNaN(pmaxV)?null:pmaxV;
+  return p=>pedMatchF(p,f);
+}
+
+/* ===== FILTROS DAS ABAS DE STATUS =====
+   Regra: cada filtro preenchido RESTRINGE (E entre filtros) e, dentro de cada filtro,
+   vale a propria carga OU algum pedido dela. Assim carga mista nunca some da lista. */
+const TABF_CAMPOS=["Filial","Rota","Cidade","Uf","Vend","Busca"];
+function tabFiltroVals(pref){
+  const g=s=>{const e=$("#"+pref+s);return e?e.value.trim().toLowerCase():"";};
+  return {filial:g("Filial"),rota:g("Rota"),cidade:g("Cidade"),uf:g("Uf"),vend:g("Vend"),busca:g("Busca")};
+}
+function tabFiltrosAtivos(pref){const f=tabFiltroVals(pref);return !!(f.filial||f.rota||f.cidade||f.uf||f.vend||f.busca);}
+function cargaMatch(t,ps,f){
+  f=f||{};
+  ps=ps||[];
+  const algum=(get,q)=>ps.some(p=>_fInc(get(p),q));
+  if(f.filial&&!(_fInc(t.filialCarga,f.filial)||algum(PEDF.filial,f.filial)))return false;
+  if(f.rota&&!(_fInc(t.rota,f.rota)||algum(PEDF.rota,f.rota)))return false;
+  if(f.cidade&&!algum(PEDF.cidade,f.cidade))return false;
+  if(f.uf&&!algum(PEDF.uf,f.uf))return false;
+  if(f.vend&&!algum(PEDF.vend,f.vend))return false;
+  if(f.busca&&!(_fInc(t.numeroCarga,f.busca)||algum(PEDF.busca,f.busca)))return false;
+  return true;
+}
+function filtraCargas(trucks,pref){
+  const f=tabFiltroVals(pref);
+  if(!(f.filial||f.rota||f.cidade||f.uf||f.vend||f.busca))return trucks;
+  return trucks.filter(t=>cargaMatch(t,state.pedidos.filter(p=>p.assignedTo===t.id),f));
+}
+function buildTabFilters(pref,trucks){
+  const esc=s=>String(s).replace(/"/g,"&quot;");
+  const ids={};(trucks||[]).forEach(t=>{ids[t.id]=1;});
+  const ps=state.pedidos.filter(p=>ids[p.assignedTo]);
+  const fill=(sfx,vals)=>{const dl=$("#"+pref+"Dl"+sfx);if(!dl)return;
+    dl.innerHTML=[...new Set(vals.filter(v=>v!=null&&String(v).trim()!==""))].sort().map(v=>'<option value="'+esc(v)+'"></option>').join("");};
+  fill("Filial",ps.map(p=>p.filial));
+  fill("Rota",(trucks||[]).map(t=>t.rota).concat(ps.map(p=>p.rota)));
+  fill("Cidade",ps.map(p=>p.cidade));
+  fill("Uf",ps.map(p=>p.uf));
+  fill("Vend",ps.map(p=>p.vendedor));
+}
+function wireTabFilters(pref,render){
+  TABF_CAMPOS.forEach(s=>{const e=$("#"+pref+s);if(e)e.addEventListener("input",render);});
+  const b=$("#"+pref+"Clr");
+  if(b)b.addEventListener("click",()=>{TABF_CAMPOS.forEach(s=>{const e=$("#"+pref+s);if(e)e.value="";});render();});
 }
 function applyFilters(list){return list.filter(filterPred());}
 
@@ -7410,7 +7509,7 @@ function pedidoCard(p,inTruck){
   return c;
 }
 
-function etapaDaCarga(st){var m={montada:"Em montagem",parcial:"Fechado Parcial",fechada:"Aguardando Contratacao",contratada:"Cargas Programadas",embarcada:"Cargas Embarcadas",cancelada:"Carga cancelada"};return m[st]||st;}
+function etapaDaCarga(st){var m={montada:"Em montagem",parcial:"Fechado Parcial",fechada:"Aguardando Contratacao",contratada:"Cargas Contratadas",embarcada:"Cargas Embarcadas",cancelada:"Carga cancelada"};return m[st]||st;}
 function tabDaCarga(st){var m={montada:"formador",parcial:"parcial",fechada:"fechadas",contratada:"contratadas",embarcada:"embarcadas"};return m[st]||"formador";}
 function localizaPedido(p){
   if(p.fob)return {etapa:"Pedidos FOB / Retira",tab:"fob",det:""};
@@ -7814,9 +7913,11 @@ function stageCard(t,cfg){
 }
 
 function renderParcial(){
-  const cs=state.trucks.filter(t=>t.status==="parcial"&&truckInScope(t));
-  setBadge("parcial",cs.length);
-  if($("#parcialMeta"))$("#parcialMeta").textContent=cs.length+(cs.length===1?" carga":" cargas");
+  const todasP=state.trucks.filter(t=>t.status==="parcial"&&truckInScope(t));
+  buildTabFilters("fPar",todasP);
+  const cs=filtraCargas(todasP,"fPar");
+  setBadge("parcial",todasP.length);
+  if($("#parcialMeta"))$("#parcialMeta").textContent=cs.length+(cs.length===1?" carga":" cargas")+(tabFiltrosAtivos("fPar")?(" de "+todasP.length+" (filtrado)"):"");
   const body=$("#parcialBody");if(!body)return;
   if(!cs.length){body.innerHTML='<div class="empty">Nenhuma carga em fechamento parcial. No Formador, comece uma carga e use "Fechar Parcial" quando ainda faltar volume para atingir '+MIN_CLOSE_PCT+'% da capacidade.</div>';return;}
   body.innerHTML="";
@@ -7852,7 +7953,7 @@ function fobNoPeriodo(p){
 }
 function fobPred(){
   var gv=function(id){var e=$(id);return e?e.value.trim().toLowerCase():"";};
-  var fp=gv("#fobFPed"),fc=gv("#fobFCli"),ff=gv("#fobFFil"),fv=gv("#fobFVend"),fu=gv("#fobFUf");
+  var fp=gv("#fobFPed"),fc=gv("#fobFCli"),ff=gv("#fobFFil"),fv=gv("#fobFVend"),fu=gv("#fobFUf"),fcd=gv("#fobFCid");
   var inc=function(v,q){return String(v==null?"":v).toLowerCase().indexOf(q)>-1;};
   return function(p){
     if(fp&&!inc(p.pedido,fp))return false;
@@ -7860,16 +7961,18 @@ function fobPred(){
     if(ff&&!inc(p.filial,ff))return false;
     if(fv&&!inc(p.vendedor,fv))return false;
     if(fu&&!inc(p.uf,fu))return false;
+    if(fcd&&!inc(p.cidade,fcd))return false;
     return true;
   };
 }
-function fobFiltrosAtivos(){return ["#fobFPed","#fobFCli","#fobFFil","#fobFVend","#fobFUf"].some(function(s){return $(s)&&$(s).value.trim()!=="";});}
+function fobFiltrosAtivos(){return ["#fobFPed","#fobFCli","#fobFFil","#fobFVend","#fobFUf","#fobFCid"].some(function(s){return $(s)&&$(s).value.trim()!=="";});}
 function buildFobFilters(){
   var all=fobPeds();
   var fill=function(id,vals){var dl=document.getElementById(id);if(!dl)return;var u=[];vals.forEach(function(v){if(v&&u.indexOf(v)===-1)u.push(v);});dl.innerHTML=u.sort().map(function(v){return '<option value="'+String(v).replace(/"/g,"&quot;")+'">';}).join("");};
   fill("fobDlFil",all.map(function(p){return p.filial;}));
   fill("fobDlVend",all.map(function(p){return p.vendedor;}));
   fill("fobDlUf",all.map(function(p){return p.uf;}));
+  fill("fobDlCid",all.map(function(p){return p.cidade;}));
 }
 function fobCard(p){
   const c=el("div","pcard fob "+p.cor+(p.bloqueado?" bloqueado":"")+(p.etaFob?"":" semdata"));
@@ -7980,10 +8083,12 @@ function wireEtaFechada(card,t){
   i.addEventListener("change",e=>{e.stopPropagation();definirPrevisaoEmbarque(t,i.value);});
 }
 function renderFechadas(){
-  const fechadas=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t));
-  setBadge("fech",fechadas.length);
-  $("#fechMeta").textContent=fechadas.length+(fechadas.length===1?" carga":" cargas");
-  $("#btnExportFech").disabled=fechadas.length===0;
+  const todasF=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t));
+  buildTabFilters("fFec",todasF);
+  const fechadas=filtraCargas(todasF,"fFec");
+  setBadge("fech",todasF.length);
+  $("#fechMeta").textContent=fechadas.length+(fechadas.length===1?" carga":" cargas")+(tabFiltrosAtivos("fFec")?(" de "+todasF.length+" (filtrado)"):"");
+  $("#btnExportFech").disabled=todasF.length===0;
   const body=$("#fechBody");
   if(!fechadas.length){body.innerHTML='<div class="empty">Nenhuma carga fechada ainda. Monte uma carga e clique em "Fechar Carga".</div>';return;}
   body.innerHTML="";
@@ -8020,7 +8125,7 @@ function veiculoContratado(t){
   if(!requireScope(t))return;
   if(!podeProgramar(t)){toast("Informe a data prevista de embarque para programar esta carga. Ela e o unico campo obrigatorio: transportadora, placa, motorista e frete/ton pago sao opcionais.","err",8000);return;}
   if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date()),_fk=truckFilial(t),_key=_fk+"|"+_wk;state.cargaSeq[_key]=(state.cargaSeq[_key]||0)+1;t.numeroCarga=state.cargaSeq[_key];t.semana=_wk;t.filialCarga=_fk;pushHist(t,{tipo:"Numero de carga gerado",de:"fechada",para:"contratada",motivo:"Carga "+_fk+" No "+t.numeroCarga});}t.status="contratada";t.contractedAt=new Date();renderAll();setTab("contratadas");
-  toast("Veiculo contratado para \""+(t.rota||"-")+"\". Movido para Cargas Programadas.","ok");logAction("contratar",(t.rota||"")+" - "+(t.transp||""));
+  toast("Veiculo contratado para \""+(t.rota||"-")+"\". Movido para Cargas Contratadas.","ok");logAction("contratar",(t.rota||"")+" - "+(t.transp||""));
 }
 function embarcarCarga(t){
   if(!requirePerm("embarcar"))return;
@@ -8032,9 +8137,10 @@ function embarcarCarga(t){
 /* PAINEL CONTRATADAS */
 function renderContratadas(){
   const todas=state.trucks.filter(t=>t.status==="contratada"&&truckInScope(t));
-  const cs=todas.filter(t=>noPeriodo(t,"contratada","fContr"));
+  buildTabFilters("fCon",todas);
+  const cs=filtraCargas(todas.filter(t=>noPeriodo(t,"contratada","fContr")),"fCon");
   setBadge("contr",todas.length);
-  $("#contrMeta").textContent=cs.length+(cs.length===1?" carga":" cargas")+(periodoAtivo("fContr")?(" de "+todas.length+" (filtrado)"):"");
+  $("#contrMeta").textContent=cs.length+(cs.length===1?" carga":" cargas")+((periodoAtivo("fContr")||tabFiltrosAtivos("fCon"))?(" de "+todas.length+" (filtrado)"):"");
   $("#btnExportContr").disabled=cs.length===0;
   const body=$("#contrBody");
   if(!cs.length){body.innerHTML='<div class="empty">'+(periodoAtivo("fContr")?"Nenhuma carga programada no periodo escolhido.":"Nenhum caminhao contratado ainda.")+'</div>';return;}
@@ -8047,7 +8153,7 @@ function renderContratadas(){
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>{
       if(!requirePerm("reverterStatus"))return;
-      var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Programada para Aguardando Contratacao:")||"").trim();
+      var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Contratada para Aguardando Contratacao:")||"").trim();
       if(!m){toast("Motivo obrigatorio.","err");return;}
       t.status="fechada";pushHist(t,{tipo:"Reversao de status",de:"contratada",para:"fechada",motivo:m});
       renderAll();setTab("fechadas");toast("Carga retornada para Aguardando Contratacao. Numero preservado.","info");
@@ -8064,10 +8170,11 @@ function renderContratadas(){
 /* PAINEL EMBARCADAS */
 function renderEmbarcadas(){
   const todasE=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
-  const cs=todasE.filter(t=>noPeriodo(t,"embarcada","fEmb"));
+  buildTabFilters("fEmb",todasE);
+  const cs=filtraCargas(todasE.filter(t=>noPeriodo(t,"embarcada","fEmb")),"fEmb");
   const fobEmb=state.pedidos.filter(p=>p.fob&&p.embarcado&&inScope(p));
   setBadge("emb",todasE.length+fobEmb.length);
-  if($("#embMeta")){var _eh=embHistFilt();$("#embMeta").textContent=cs.length+" carga(s) CIF"+(periodoAtivo("fEmb")?" de "+todasE.length:"")+" + "+fobEmb.length+" pedido(s) FOB \u00b7 Total embarcadas (hist\u00f3rico"+(filtrosAtivos()?", filtrado":"")+"): "+_eh.length;}
+  if($("#embMeta")){var _eh=embHistFilt();$("#embMeta").textContent=cs.length+" carga(s) CIF"+((periodoAtivo("fEmb")||tabFiltrosAtivos("fEmb"))?" de "+todasE.length:"")+" + "+fobEmb.length+" pedido(s) FOB \u00b7 Total embarcadas (hist\u00f3rico"+(filtrosAtivos()?", filtrado":"")+"): "+_eh.length;}
   if($("#btnExportEmb"))$("#btnExportEmb").disabled=cs.length===0;
   const body=$("#embBody");if(!body)return;
   const _fobPer=fobEmb.filter(fobNoPeriodo);
@@ -8091,16 +8198,16 @@ function renderEmbarcadas(){
   })();
   cs.forEach(t=>{
     const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"-")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>';
-    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar p/ Programadas</button><button class="clbtn canc">Cancelar</button>';
+    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar p/ Contratadas</button><button class="clbtn canc">Cancelar</button>';
     const r=stageCard(t,{headStyle:"background:linear-gradient(135deg,#0b3d6e,#1454b3)",pill:' <span class="pill" style="background:rgba(255,255,255,.22);color:#fff">EMBARCADA</span>',infoHtml:info,actions:acts});
     const card=r.card;
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>{
       if(!requirePerm("reverterStatus"))return;
-      var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Embarcada para Programada:")||"").trim();
+      var m=(prompt("Motivo para voltar a "+(t.numeroCarga?"Carga No "+t.numeroCarga+" ":"carga ")+"de Embarcada para Contratada:")||"").trim();
       if(!m){toast("Motivo obrigatorio.","err");return;}
       t.status="contratada";pushHist(t,{tipo:"Reversao de status",de:"embarcada",para:"contratada",motivo:m});
-      renderAll();setTab("contratadas");toast("Carga retornada para Cargas Programadas. Numero preservado.","info");
+      renderAll();setTab("contratadas");toast("Carga retornada para Cargas Contratadas. Numero preservado.","info");
       logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": embarcada -> contratada | Motivo: "+m);
     });
     const _rr=card.querySelector(".romb");if(_rr)_rr.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
@@ -8242,7 +8349,7 @@ function exportRomaneio(filter){
   const data=[["Carga","Status","Rota","Veiculo","Cap(kg)","Transportadora","Placa","Motorista","Pedido","Cliente","Filial","Item","Produto","Peso(kg)","Valor","MC%","MC R$","Frete Rateado","Financeiro"]];
   trucks.forEach((t,i)=>{
     const fr=loadFreight(t);const ps=state.pedidos.filter(p=>p.assignedTo===t.id);
-    const stLabel=t.status==="embarcada"?"Embarcada":t.status==="contratada"?"Programada":t.status==="fechada"?"Aguardando contratacao":"Montagem";
+    const stLabel=t.status==="embarcada"?"Embarcada":t.status==="contratada"?"Contratada":t.status==="fechada"?"Aguardando contratacao":"Montagem";
     const cargaLbl=t.numeroCarga?((t.filialCarga?t.filialCarga+" ":"")+"Carga "+t.numeroCarga):("(sem numero) #"+(i+1));
     ps.forEach(p=>{
       const itens=(typeof itensDoPedido==="function")?itensDoPedido(p):[{produto:(p.produtos||[]).join(", "),peso:p.peso,valor:p.valor,mcRs:p.mcRs}];
@@ -8550,7 +8657,7 @@ function resetState(){
 const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
 const INACT_MS=24*60*60*1000;
 let _lastActTs=0;
-const TABS_DEF=[["formador","Formador de Cargas"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Programadas"],["embarcadas","Cargas Embarcadas"],["frete","Tabela de Frete"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
+const TABS_DEF=[["formador","Formador de Cargas"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Contratadas"],["embarcadas","Cargas Embarcadas"],["frete","Tabela de Frete"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
 const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["excluirCargaVazia","Excluir carga vazia"],["comResolver","Responder / resolver solicitacoes"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["liberarProducao","Liberar carga p/ produção e exportar PCP"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
 let session=null;
@@ -8881,7 +8988,11 @@ $("#fContrClr")&&$("#fContrClr").addEventListener("click",()=>limparPeriodo("fCo
 ["#fEmbDe","#fEmbAte"].forEach(s=>{const e=$(s);if(e)e.addEventListener("change",renderEmbarcadas);});
 $("#fEmbClr")&&$("#fEmbClr").addEventListener("click",()=>limparPeriodo("fEmb",renderEmbarcadas));
 ["#fobFPed","#fobFCli","#fobFFil","#fobFVend","#fobFUf"].forEach(s=>{const e=$(s);if(e)e.addEventListener("input",renderFob);});
-$("#fobFClr")&&$("#fobFClr").addEventListener("click",()=>{["#fobFPed","#fobFCli","#fobFFil","#fobFVend","#fobFUf"].forEach(s=>{if($(s))$(s).value="";});renderFob();});
+wireTabFilters("fPar",renderParcial);
+wireTabFilters("fFec",renderFechadas);
+wireTabFilters("fCon",renderContratadas);
+wireTabFilters("fEmb",renderEmbarcadas);
+$("#fobFClr")&&$("#fobFClr").addEventListener("click",()=>{["#fobFPed","#fobFCli","#fobFFil","#fobFVend","#fobFUf","#fobFCid"].forEach(s=>{if($(s))$(s).value="";});renderFob();});
 $("#btnExportContr").addEventListener("click",()=>exportRomaneio("contratada"));
 $("#btnExportEmb").addEventListener("click",()=>exportRomaneio("embarcada"));
 $("#btnExportPCP")&&$("#btnExportPCP").addEventListener("click",exportarPCP);
@@ -9079,7 +9190,7 @@ netBoot();
     var trucks=state.trucks||[],peds=state.pedidos||[];
     var embIds={};trucks.forEach(function(t){if(t.status==="embarcada")embIds[t.id]=1;});
     var hoje=new Date();hoje.setHours(0,0,0,0);
-    function sit(p){if(p.assignedTo===null)return "No banco";var t=trucks.filter(function(x){return x.id===p.assignedTo;})[0];if(!t)return "Em carga";return ({montada:"Em montagem",parcial:"Parcial",fechada:"Fechada",contratada:"Programada"})[t.status]||"Em carga";}
+    function sit(p){if(p.assignedTo===null)return "No banco";var t=trucks.filter(function(x){return x.id===p.assignedTo;})[0];if(!t)return "Em carga";return ({montada:"Em montagem",parcial:"Parcial",fechada:"Fechada",contratada:"Contratada"})[t.status]||"Em carga";}
     var atr=[],hj=[],ris=[],comData=0,semData=0,futuros=0,considerados=0;
     peds.forEach(function(p){
       if(p.embarcado)return; if(p.assignedTo&&embIds[p.assignedTo])return;
@@ -9311,9 +9422,18 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.17.0";
+  var APP_VERSION="1.18.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.18.0",data:"04/09/2026",itens:[
+      ["MELHORIA","A aba Cargas Programadas passou a se chamar Cargas Contratadas. O nome Contratada agora é único para esse estado em todo o sistema: na aba, no cartão, nos avisos, na janela de detalhes, no Painel e na coluna de situação do romaneio exportado. Só o nome mudou — nenhuma regra, número ou fluxo foi alterado."],
+      ["NOVO","Filtros nas abas de carga. Fechado Parcial, Aguardando Contratação, Cargas Contratadas e Cargas Embarcadas ganharam a mesma barra de filtros: Filial, Rota, Cidade, UF, Vendedor e uma busca por número do pedido, cliente ou número da carga, com botão Limpar filtros."],
+      ["NOVO","O filtro encontra a carga tanto pela carga quanto pelo que está dentro dela. Procurando por uma cidade, aparecem as cargas que tenham algum pedido daquela cidade, mesmo que a rota da carga seja outra — e a carga aparece inteira, sem esconder os demais pedidos."],
+      ["MELHORIA","Preencher mais de um filtro restringe o resultado, em vez de ampliar. Rota Cascavel junto com Cidade Toledo mostra apenas as cargas que atendem aos dois critérios ao mesmo tempo."],
+      ["MELHORIA","As opções de cada filtro vêm dos dados daquela aba: as rotas e cidades oferecidas em Cargas Embarcadas são as das cargas embarcadas, não as do Formador inteiro."],
+      ["MELHORIA","Os filtros de período que já existiam em Cargas Contratadas e Cargas Embarcadas continuam funcionando e agora se somam aos novos filtros."],
+      ["MELHORIA","Pedidos FOB / Retira ganhou o filtro de Cidade, que faltava para ficar coerente com as demais abas."]
+    ]},
     {versao:"1.17.0",data:"04/09/2026",itens:[
       ["CORRECAO","Registro de Ações: segunda e última parte da correção de auditoria, agora no servidor. Antes, cada computador enviava o registro inteiro e o servidor gravava por cima do que já estava lá; quando dois operadores registravam quase ao mesmo tempo, um apagava as ações do outro. Agora o servidor junta os registros em vez de substituir, e nenhuma ação se perde."],
       ["MELHORIA","A junção acontece de forma protegida: enquanto um registro está sendo gravado, os demais aguardam a vez, o mesmo mecanismo que a Central de Solicitações já usava. Duas gravações simultâneas deixaram de se atropelar."],
@@ -9838,7 +9958,7 @@ netBoot();
   "use strict";
   function g(id){return document.getElementById(id);}
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-  var STATUS={montada:"Em montagem",parcial:"Fechado Parcial",fechada:"Aguardando Contratacao",contratada:"Programada",embarcada:"Embarcada",cancelada:"Cancelada"};
+  var STATUS={montada:"Em montagem",parcial:"Fechado Parcial",fechada:"Aguardando Contratacao",contratada:"Contratada",embarcada:"Embarcada",cancelada:"Cancelada"};
   function info(l,v,cls){return '<div class="cd-i"><span>'+l+'</span><b'+(cls?' class="'+cls+'"':'')+'>'+v+'</b></div>';}
   function origemDe(ps){return (ps[0]&&typeof plantOf==="function")?plantOf(ps[0].filial).nome:"-";}
   function destinosDe(ps){var s={};ps.forEach(function(p){s[norm(p.cliente)+"|"+norm(p.cidade)]=1;});return Object.keys(s).length;}
