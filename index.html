@@ -6310,6 +6310,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 
   /* ===== LIBERACAO P/ PRODUCAO (PCP) + PALETIZACAO ===== */
   .pill.prod{background:var(--verde-bg);color:#0a5d44}
+  .pill.rev{background:#E8DEF8;color:#4A2B7A;font-weight:700}
   .truck-lib{padding:0 15px 10px;display:flex}
   .btn-lib{flex:1;padding:8px;border:1px solid var(--verde-2);border-radius:9px;cursor:pointer;font-weight:700;font-size:11.5px;font-family:inherit;background:#fff;color:#0a5d44;transition:.15s}
   .btn-lib:hover{background:var(--verde-bg)}
@@ -7568,12 +7569,12 @@ function cargaMatch(t,ps,f){
 function filtraCargas(trucks,pref){
   const f=tabFiltroVals(pref);
   if(!(f.filial||f.rota||f.cidade||f.uf||f.vend||f.busca))return trucks;
-  return trucks.filter(t=>cargaMatch(t,state.pedidos.filter(p=>p.assignedTo===t.id),f));
+  return trucks.filter(t=>cargaMatch(t,((t&&t.revenda===true)?(state.pedidosRevenda||[]):state.pedidos).filter(p=>p.assignedTo===t.id),f));
 }
 function buildTabFilters(pref,trucks){
   const esc=s=>String(s).replace(/"/g,"&quot;");
   const ids={};(trucks||[]).forEach(t=>{ids[t.id]=1;});
-  const ps=state.pedidos.filter(p=>ids[p.assignedTo]);
+  const ps=state.pedidos.concat(state.pedidosRevenda||[]).filter(p=>ids[p.assignedTo]);
   const fill=(sfx,vals)=>{const dl=$("#"+pref+"Dl"+sfx);if(!dl)return;
     dl.innerHTML=[...new Set(vals.filter(v=>v!=null&&String(v).trim()!==""))].sort().map(v=>'<option value="'+esc(v)+'"></option>').join("");};
   fill("Filial",ps.map(p=>p.filial));
@@ -7768,7 +7769,7 @@ function periodoAte(pref){var e=$("#"+pref+"Ate");return (e&&e.value)?_diaZero(_
 function periodoAtivo(pref){return periodoDe(pref)!=null||periodoAte(pref)!=null;}
 function noPeriodo(t,status,pref){var de=periodoDe(pref),ate=periodoAte(pref);if(de==null&&ate==null)return true;var d=dataDaCarga(t,status);if(d==null)return false;if(de!=null&&d<de)return false;if(ate!=null&&d>ate)return false;return true;}
 function limparPeriodo(pref,fn){var a=$("#"+pref+"De"),b=$("#"+pref+"Ate");if(a)a.value="";if(b)b.value="";fn();}
-function filtrosAtivos(){return ["#fFilial","#fRota","#fUf","#fCidade","#fVendedor"].some(function(s){return $(s)&&$(s).value.trim()!=="";});}function cargaTag(t){return t.numeroCarga?'<span class="cargaseq">'+(t.filialCarga?t.filialCarga+' &middot; ':'')+'Carga '+t.numeroCarga+'</span> ':'';}
+function filtrosAtivos(){return ["#fFilial","#fRota","#fUf","#fCidade","#fVendedor"].some(function(s){return $(s)&&$(s).value.trim()!=="";});}function cargaTag(t){return t.numeroCarga?'<span class="cargaseq">'+(t.filialCarga?t.filialCarga+' &middot; ':'')+'Carga '+((t&&t.revenda===true)?'R-':'')+t.numeroCarga+'</span> ':'';}
 function _hesc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function histHtml(t){if(!t.history||!t.history.length)return "";return '<div class="clhist"><div class="clhist-t">Historico da carga</div>'+t.history.map(function(hh){var q=new Date(hh.ts).toLocaleDateString("pt-BR")+" "+new Date(hh.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});var head=hh.tipo?_hesc(hh.tipo):("Embarque para "+_hesc(hh.para)+(hh.de?" (era "+_hesc(hh.de)+")":""));return '<div class="clhist-i"><b>'+head+'</b> &middot; '+q+' &middot; '+_hesc(hh.user)+(hh.motivo?' &mdash; '+_hesc(hh.motivo):'')+'</div>';}).join("")+'</div>';}
 function editarEmbarque(t){if(!requireScope(t))return;var atual=t.eta?fmtEta(t.eta):"(nao definida)";var nova=(prompt("Nova data de embarque (dd/mm/aaaa):\nAtual: "+atual)||"").trim();if(!nova)return;var d=parseDateBr(nova);if(d==null){toast("Data invalida. Use dd/mm/aaaa.","err");return;}var motivo=(prompt("Motivo da alteracao da data de embarque:")||"").trim();if(!motivo){toast("Informe o motivo da alteracao.","err");return;}var dt=new Date(d),iso=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");var de=t.eta?fmtEta(t.eta):"-";t.eta=iso;t.history=t.history||[];t.history.push({ts:Date.now(),user:(typeof CUR!=="undefined"&&(CUR.nome||CUR.user))||"",de:de,para:fmtEta(iso),motivo:motivo});renderAll();toast("Data de embarque atualizada.","ok");logAction("editar_embarque",(t.rota||"")+": "+de+" -> "+fmtEta(iso)+" | Motivo: "+motivo);}
@@ -8201,7 +8202,7 @@ function completarComPedido(pid){
 }
 
 function renderParcial(){
-  const todasP=state.trucks.filter(t=>t.status==="parcial"&&truckInScope(t));
+  const todasP=state.trucks.concat(state.trucksRevenda||[]).filter(t=>t.status==="parcial"&&truckInScope(t));   /* 1.28.0: aba compartilhada */
   buildTabFilters("fPar",todasP);
   const cs=filtraCargas(todasP,"fPar");
   setBadge("parcial",todasP.length);
@@ -8210,22 +8211,29 @@ function renderParcial(){
   if(!cs.length){body.innerHTML='<div class="empty">Nenhuma carga em fechamento parcial. No Formador, comece uma carga e use "Fechar Parcial" quando ainda faltar volume para atingir '+MIN_CLOSE_PCT+'% da capacidade.</div>';return;}
   body.innerHTML="";
   cs.forEach(t=>{
-    const load0=truckLoad(t), min=t.cap*MIN_CLOSE_PCT/100, faltam=Math.max(0,min-load0), atinge=load0>=min-0.001;
+    const _eRev=(t&&t.revenda===true);   /* 1.28.0: a aba lista os dois mundos */
+    const load0=_eRev?truckLoadRevenda(t):truckLoad(t), min=t.cap*MIN_CLOSE_PCT/100, faltam=Math.max(0,min-load0), atinge=load0>=min-0.001;
     const pct0=t.cap?load0/t.cap*100:0;
     const prog='<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load0)+' / '+fmtKg(t.cap)+' &middot; min '+MIN_CLOSE_PCT+'% = '+fmtKg(min)+'</span><span>'+pct0.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(atinge?"otim":"")+'" style="width:'+Math.min(pct0,100)+'%"></div></div><div class="bate '+(atinge?"ok":"norm")+'">'+(atinge?"&#128994; Volume minimo atingido — pronto para fechar":"Faltam "+fmtKg(faltam)+" para "+MIN_CLOSE_PCT+"%")+'</div></div>';
-    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn compl">&#128229; Completar carga</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
-    const r=stageCard(t,{progressHtml:prog,pill:seloProdHtml(t),actions:acts});
+    /* Carga de revenda: so os botoes que fazem sentido nesta fase. Fora: Completar carga,
+       Mapa, Piso ANTT, Romaneios e Liberar p/ Producao (esta ultima nao se aplica a revenda). */
+    const acts=_eRev
+      ?'<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>'
+      :'<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn compl">&#128229; Completar carga</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
+    const r=_eRev
+      ?stageCardRevenda(t,{progressHtml:prog,pill:pillRevenda(t),actions:acts})
+      :stageCard(t,{progressHtml:prog,pill:seloProdHtml(t),actions:acts});
     const card=r.card, faltamTxt=fmtKg(faltam);
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
-    card.querySelector(".auto").addEventListener("click",()=>autoFill(t));
+    card.querySelector(".auto").addEventListener("click",()=>_eRev?autoFillRevenda(t):autoFill(t));
     const _cp=card.querySelector(".compl");if(_cp)_cp.addEventListener("click",()=>abrirCompletar(t));
-    card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
+    const _mp=card.querySelector(".mapb");if(_mp)_mp.addEventListener("click",()=>openMap(t));
     const _a=card.querySelector(".anttb");if(_a)_a.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
     const _r=card.querySelector(".romb");if(_r)_r.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
-    card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
-    wireLibProd(card,t);
+    card.querySelector(".reab").addEventListener("click",()=>_eRev?reabrirCargaRevenda(t):reabrirCarga(t));
+    if(!_eRev)wireLibProd(card,t);
     const fb=card.querySelector(".fech");
-    if(atinge)fb.addEventListener("click",()=>fecharCarga(t));
+    if(atinge)fb.addEventListener("click",()=>_eRev?fecharCargaRevenda(t):fecharCarga(t));
     else fb.addEventListener("click",()=>toast("Ainda faltam "+faltamTxt+" para "+MIN_CLOSE_PCT+"%. Adicione pedidos da regiao (Auto-Preencher) ou reabra no Formador.","info",6000));
     body.appendChild(card);
   });
@@ -8435,6 +8443,90 @@ function freteFootHtmlRevenda(t,fr){
     (t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo ('+(_neg?"negociado":"preco")+' - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'');
 }
 
+/* ===== ETAPAS DA CARGA DE REVENDA (1.28.0) =====
+   Espelhos de fecharCarga / fecharParcial / reabrirCarga sobre trucksRevenda+pedidosRevenda.
+   Tres trocas em cada: a lista de pedidos, o truckLoad e a remocao do requireScope (a revenda
+   nao tem escopo por planta, por decisao de negocio). Todo o resto -- o minimo de 90%, a
+   permissao fecharAbaixoMin, a confirmacao, o motivo e os campos de status -- e identico.
+   >>> Gemeos: fecharCarga(), fecharParcial(), reabrirCarga(). <<< */
+function fecharCargaRevenda(t){
+  if(!requirePerm("fechar"))return;
+  const assigned=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id);
+  if(!assigned.length){toast("Adicione pedidos antes de fechar a carga.","err");return;}
+  const load=truckLoadRevenda(t),pct=t.cap?load/t.cap*100:0;
+  let abaixo=false;
+  if(pct<MIN_CLOSE_PCT){
+    if(!can("fecharAbaixoMin")){toast("A carga esta com "+pct.toFixed(0)+"% da capacidade. O fechamento definitivo exige no minimo "+MIN_CLOSE_PCT+"%. Use \"Fechar Parcial\" ou peca a um gerente/master para liberar o fechamento abaixo do minimo.","info",8000);return;}
+    if(!confirm("Esta carga de revenda esta com "+pct.toFixed(0)+"% da capacidade, ABAIXO do minimo de "+MIN_CLOSE_PCT+"%.\n\nTem certeza que quer fechar a carga assim mesmo?"))return;
+    const motivo=(prompt("Motivo para fechar ABAIXO do minimo de "+MIN_CLOSE_PCT+"%:")||"").trim();
+    if(!motivo){toast("Motivo obrigatorio para fechar abaixo do minimo.","err");return;}
+    abaixo=true;t.belowMinReason=motivo;
+  }
+  t.status="fechada";t.closedAt=new Date();t.belowMin=abaixo;
+  renderAll();
+  toast("Carga de revenda \""+(t.rota||"-")+"\" fechada."+(abaixo?" (abaixo do minimo)":""),"ok");
+  logAction("fechar_carga_revenda",t.id+" "+(t.rota||"")+" "+pct.toFixed(0)+"%"+(abaixo?" - ABAIXO DO MINIMO | Motivo: "+(t.belowMinReason||""):""));
+}
+function fecharParcialRevenda(t){
+  if(!requirePerm("fechar"))return;
+  const assigned=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id);
+  if(!assigned.length){toast("Adicione ao menos um pedido para fechar parcialmente.","err");return;}
+  const load=truckLoadRevenda(t),pct=t.cap?load/t.cap*100:0;
+  t.status="parcial";t.partialAt=new Date();
+  renderAll();setTab("parcial");
+  toast("Carga de revenda \""+(t.rota||"-")+"\" movida para Fechado Parcial ("+pct.toFixed(0)+"%). Complete o volume ate "+MIN_CLOSE_PCT+"% para fechar.","ok",7000);
+  logAction("fechar_parcial_revenda",t.id+" "+(t.rota||"")+" "+pct.toFixed(0)+"%");
+}
+function reabrirCargaRevenda(t){
+  if(!requirePerm("reverterStatus"))return;
+  const motivo=(prompt("Informe o motivo para voltar o status desta carga de revenda:")||"").trim();
+  if(!motivo){toast("Motivo obrigatorio para voltar o status.","err");return;}
+  const de=t.status;
+  t.status="montada";t.revertReason=motivo;
+  pushHist(t,{tipo:"Reversao de status",de:de,para:"montagem",motivo:motivo});
+  renderAll();setTab("revenda");
+  toast("Carga de revenda reaberta na Montagem de Revenda.","info");
+  logAction("reverter_status_revenda",t.id+" "+(t.rota||"")+": "+de+" -> montagem | Motivo: "+motivo);
+}
+
+/* Marca visual da carga de revenda nas abas compartilhadas. Nesta fase e ela que distingue:
+   o "R-" do cargaTag so aparece quando existir numeroCarga, gerado na contratacao. */
+function pillRevenda(t){return (t&&t.revenda===true)?' <span class="pill rev">REVENDA</span>':"";}
+
+/* Gemeo do stageCard() para carga de revenda. Sem aplicaBloqueioEscopo (revenda nao tem
+   escopo por planta) e sem o botao de excluir carga vazia (aquele mexe em state.trucks).
+   >>> Gemeo: stageCard(). Correcao num deve ser avaliada no outro. <<< */
+function stageCardRevenda(t,cfg){
+  cfg=cfg||{};
+  const ps=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id).sort(cmpPedidos);
+  const fr=loadFreightRevenda(t);
+  const load=fr.kg, pct=t.cap?load/t.cap*100:0;
+  const card=el("div","clcard");
+  const prog=(cfg.progressHtml!=null)?cfg.progressHtml
+    :'<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(t.cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(pct>100?"over":(pct>=95?"otim":""))+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+(pct>100?'<div class="bate over">&#128680; Excesso de '+fmtKg(load-t.cap)+'</div>':'')+'</div>';
+  card.innerHTML=
+    '<div class="clh"'+(cfg.headStyle?' style="'+cfg.headStyle+'"':'')+' title="Clique para ver todos os detalhes da carga">'+
+      '<div class="clh-tit"><div class="clrota">'+cargaTag(t)+(t.rota||"Rota nao informada")+(cfg.pill||"")+'</div>'+
+      '<div class="cltipo">'+VEHICLES[String(t.cap)]+' &middot; '+fmtKg(t.cap)+' &middot; '+pct.toFixed(0)+'%'+(cfg.tipoExtra||"")+'</div></div>'+
+      margemLineRevenda(t)+
+      '<div class="clh-hint">'+ps.length+' pedido(s) &middot; ver detalhes &rsaquo;</div>'+
+    '</div>'+
+    prog+
+    (cfg.infoHtml||"")+
+    (cfg.warnHtml||"")+
+    foraDaPlanilhaAvisoHtml(ps)+
+    pedidosResumoHtml(ps)+
+    '<div class="clactions">'+(cfg.actions||"")+'</div>'+
+    '<div class="cl-foot">'+freteFootHtmlRevenda(t,fr)+'</div>';
+  card.querySelector(".clh").addEventListener("click",function(e){
+    if(e.target.closest("button"))return;
+    if(window.openCargaDetalhe)window.openCargaDetalhe(t);
+  });
+  const d=card.querySelector(".det");
+  if(d)d.addEventListener("click",function(e){e.stopPropagation();if(window.openCargaDetalhe)window.openCargaDetalhe(t);});
+  return {card:card,ps:ps,fr:fr,load:load,pct:pct};
+}
+
 function truckCardRevenda(t){
   const load=truckLoadRevenda(t),cap=t.cap,pct=cap?load/cap*100:0;
   const card=el("div","truck");card.dataset.truck=t.id;
@@ -8450,13 +8542,17 @@ function truckCardRevenda(t){
     '<div class="th-actions"><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div>'+margemLineRevenda(t)+'</div>'+
     (routeMismatchRevenda(t)?'<div class="route-warn" style="background:#FFF3CD;color:#8a6d3b;border:1px solid #FFE08A;border-radius:8px;padding:7px 10px;margin:8px 0 0;font-size:11.5px;font-weight:600">&#9888; Pedidos de rotas diferentes nesta carga.</div>':'')+
     '<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+fillCls+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+bateCls+'">'+bate+'</div></div>'+
-    '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button></div>'+
+    '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button>'+
+      '<button class="btn-parcial" '+(assigned.length?'':'disabled')+' title="Fechar parcial: aguarda mais pedidos ate atingir '+MIN_CLOSE_PCT+'%">&#9201; Fechar Parcial</button>'+
+      '<button class="btn-close" '+(assigned.length?'':'disabled')+' title="Fechar carga (minimo '+MIN_CLOSE_PCT+'% da capacidade)">&#9989; Fechar Carga</button></div>'+
     foraDaPlanilhaAvisoHtml(assigned)+
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="revbody-'+t.id+'">'+(assigned.length?'':'Arraste pedidos de revenda aqui')+'</div>'+
     '<div class="truck-foot">'+freteFootHtmlRevenda(t,loadFreightRevenda(t))+'</div>';
   const body=card.querySelector("#revbody-"+t.id);
   if(assigned.length){assigned.sort(cmpPedidos);assigned.forEach(p=>body.appendChild(pedidoCard(p,true)));}
   card.querySelector(".btn-auto").addEventListener("click",()=>autoFillRevenda(t));
+  card.querySelector(".btn-parcial").addEventListener("click",()=>fecharParcialRevenda(t));
+  card.querySelector(".btn-close").addEventListener("click",()=>fecharCargaRevenda(t));
   card.querySelector(".edit").addEventListener("click",()=>openModalRevenda(t));
   card.querySelector(".del").addEventListener("click",()=>excluirCargaRevenda(t));
   card.addEventListener("dragover",e=>{e.preventDefault();card.classList.add("over");});
@@ -9352,7 +9448,7 @@ function can(a){if(!CUR.profile)return false;if(CUR.profile.master)return true;r
 function canSee(tab){if(!CUR.profile)return false;if(CUR.profile.master)return true;if(tab==="comunicacao")return true;if(tab==="painel")return true;if(tab==="config")return can("gerenciar");if(tab==="revenda")return can("verRevenda");if(tab==="monitoria")return (CUR.profile.tabs||[]).indexOf("monitoria")>-1;return (CUR.profile.tabs||[]).indexOf(tab)>-1;}
 function requirePerm(a){if(can(a))return true;toast("Voce nao tem permissao para esta acao.","err");return false;}
 function inScope(p){if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];const okF=!fl.length||fl.indexOf(p.filial)>-1;const okU=!uf.length||uf.indexOf(String(p.uf||"").toUpperCase())>-1;return okF&&okU;}
-function truckInScope(t){if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];if(!fl.length&&!uf.length)return true;const ps=state.pedidos.filter(p=>p.assignedTo===t.id);if(!ps.length)return true;return ps.some(inScope);}
+function truckInScope(t){if(t&&t.revenda===true)return true;   /* 1.28.0: revenda nao tem escopo por planta (decisao de negocio, explicita) */if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];if(!fl.length&&!uf.length)return true;const ps=state.pedidos.filter(p=>p.assignedTo===t.id);if(!ps.length)return true;return ps.some(inScope);}
 /* ===== ESCOPO DE ACAO POR PLANTA =====
    Uma carga da N1 e sempre de uma unica planta (SRT/Sertanopolis ou ITA/Itaju): quem
    administra a carga e a planta, nao a UF de destino. Por isso este predicado olha so
@@ -10110,9 +10206,17 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.27.1";
+  var APP_VERSION="1.28.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.28.0",data:"05/09/2026",itens:[
+      ["NOVO","Cargas de revenda agora fecham. O cartão da carga de revenda ganhou os botões Fechar Parcial e Fechar Carga, com as mesmas regras das cargas normais: o fechamento definitivo exige no mínimo 90% da capacidade, e fechar abaixo disso pede confirmação, motivo e a permissão específica."],
+      ["NOVO","A aba Fechado Parcial passou a mostrar as cargas de revenda junto com as normais, identificadas pela etiqueta REVENDA. De lá dá para ver os detalhes, auto-preencher, reabrir e fechar a carga de revenda."],
+      ["MELHORIA","As cargas de revenda na aba mostram só o que faz sentido para elas: ficam de fora Completar carga, Mapa, Piso ANTT, Romaneios e Liberar p/ Produção — esta última porque a N1 não produz revenda."],
+      ["MELHORIA","Reabrir uma carga de revenda devolve para a Montagem de Revenda, na aba Revenda, e não para o Formador."],
+      ["MELHORIA","A janela de detalhes da carga passou a reconhecer a carga de revenda e mostra os pedidos, o frete e a margem dela corretamente. Para as cargas normais nada mudou."],
+      ["MELHORIA","Quem não trabalha com revenda não vê diferença: sem cargas de revenda, a aba Fechado Parcial continua exatamente como era."]
+    ]},
     {versao:"1.27.1",data:"05/09/2026",itens:[
       ["CORRECAO","Arrastar pedido na aba Revenda voltou a funcionar. Os cartões do banco de revenda estavam marcados como somente leitura desde a versão em que a aba ainda não montava carga, e por isso não podiam ser arrastados — não havia como montar a carga pela tela. Agora arrastam normalmente para a carga de revenda."],
       ["MELHORIA","O cartão do banco de revenda continua sem o botão de adicionar à carga, de propósito: aquele botão envia o pedido para as cargas normais do Formador, o que não faz sentido para revenda. Para montar a carga de revenda, arraste o pedido — ou use o Auto-Preencher no cartão da carga."],
@@ -10720,8 +10824,9 @@ netBoot();
 
   window.openCargaDetalhe=function(t){
     var o=g("cargaOverlay"); if(!o)return;
-    var ps=(state.pedidos||[]).filter(function(p){return p.assignedTo===t.id;}).sort(cmpPedidos);
-    var fr=loadFreight(t), load=fr.kg, pct=t.cap?load/t.cap*100:0, m=cargaMargem(t);
+    var _eRev=(t&&t.revenda===true);   /* 1.28.0: a mesma janela serve as duas listas */
+    var ps=(_eRev?(state.pedidosRevenda||[]):(state.pedidos||[])).filter(function(p){return p.assignedTo===t.id;}).sort(cmpPedidos);
+    var fr=_eRev?loadFreightRevenda(t):loadFreight(t), load=fr.kg, pct=t.cap?load/t.cap*100:0, m=_eRev?cargaMargemRevenda(t):cargaMargem(t);
     var num=t.numeroCarga?((t.filialCarga?t.filialCarga+" \u00b7 ":"")+"Carga "+t.numeroCarga):"(sem numero \u2014 gerado na contratacao)";
     g("cdTitulo").innerHTML='&#128666; '+esc(t.rota||"Rota nao informada")+' <span class="cd-st">'+esc(STATUS[t.status]||t.status)+'</span>';
 
