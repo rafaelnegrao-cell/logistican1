@@ -6482,7 +6482,15 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <input id="fRevBusca" type="search" placeholder="Buscar pedido ou cliente..." autocomplete="off">
         <button class="clear-f" id="fRevClr">Limpar filtros</button>
       </div>
-      <div class="panel-body"><div class="pedidos-list" id="revBody"><div class="empty">Nenhum pedido de revenda na carteira importada.</div></div></div>
+      <div class="workspace">
+        <section class="col col-pedidos">
+          <div class="pedidos-list" id="revBody"><div class="empty">Nenhum pedido de revenda na carteira importada.</div></div>
+        </section>
+        <section class="col col-montagem">
+          <div class="montagem-head"><h3>Montagem de Revenda</h3><span class="meta" id="revMontMeta">0 caminhoes</span></div>
+          <div class="trucks-area" id="revTrucksArea"></div>
+        </section>
+      </div>
     </section>
 
     <!-- PANEL FECHADAS (Aguardando Contratacao) -->
@@ -6733,6 +6741,18 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 </div>
 
 <!-- MODAL -->
+<div class="overlay" id="revOverlay">
+  <div class="modal" style="width:420px;max-width:94vw">
+    <div class="modal-head"><h3 id="revModalTitle">Nova Carga de Revenda</h3><button class="modal-x" id="revModalClose">&times;</button></div>
+    <div class="modal-body">
+      <div class="fld"><label>Tipo de veiculo</label><select id="revMTipo"></select></div>
+      <div class="fld"><label>Rota (opcional &mdash; herda do primeiro pedido)</label><input id="revMRota" placeholder="ex.: BAURU/SP" autocomplete="off"></div>
+      <div class="pal-hint">Transportadora, frete e data de embarque sao informados na etapa de contratacao, mais adiante.</div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" id="revModalCancel">Cancelar</button><button class="btn primary" id="revModalSave">Salvar</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay">
   <div class="modal">
     <div class="modal-head"><h3 id="modalTitle">Criar Nova Carga</h3><button class="x" id="modalClose">&times;</button></div>
@@ -6951,7 +6971,7 @@ const PED_LIMIT={"15000":6,"22000":4,"33000":2,"40000":1,"49000":1}; // limite d
 const STD_TIERS=[{label:"Até 5t",max:5000},{label:"Até 8t",max:8000},{label:"Até 13,5t",max:13500},{label:"Até 25t",max:25000},{label:"Acima 25t",max:0}];
 const OVERRIDES=["IBY4687","IBY4683"]; // liberacoes manuais fixas (doc)
 
-const state={pedidos:[],pedidosRevenda:[],trucks:[],trucksRevenda:[],carriers:[],nextTruck:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightCities:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null,prioMap:{},prioFileName:"",prioUpdatedAt:""};
+const state={pedidos:[],pedidosRevenda:[],trucks:[],trucksRevenda:[],carriers:[],nextTruck:1,nextTruckRevenda:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightCities:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null,prioMap:{},prioFileName:"",prioUpdatedAt:""};
 
 /* ===== SINCRONIZACAO COM O SERVIDOR (dados compartilhados pelo time) ===== */
 const NET={on:false,appRev:0,authRev:0,audRev:0,appData:null};
@@ -7781,6 +7801,8 @@ function setBadge(tab,n){document.querySelectorAll('[data-badge="'+tab+'"]').for
 /* rotulos de tabela p/ modo cartao no mobile */
 function labelTables(){document.querySelectorAll("table.dtable").forEach(tb=>{const ths=[...tb.querySelectorAll("thead th")].map(t=>t.textContent.trim());tb.querySelectorAll("tbody tr,tfoot tr").forEach(tr=>{[...tr.children].forEach((td,i)=>{if(ths[i]!==undefined&&!td.hasAttribute("colspan"))td.setAttribute("data-label",ths[i]);});});});}
 
+/* >>> Gemeo: truckCardRevenda(), na secao de MONTAGEM DE CARGA DE REVENDA (1.25.0).
+       Correcao aqui deve ser avaliada la tambem. <<< */
 function truckCard(t){
   const load=truckLoad(t),cap=t.cap,pct=cap?load/cap*100:0;
   const card=el("div","truck");card.dataset.truck=t.id;
@@ -8265,6 +8287,108 @@ function fobCard(p){
   c.addEventListener("click",e=>{if(e.target.closest("button")||e.target.closest("input"))return;openPedDetail(p);});
   return c;
 }
+/* ===== MONTAGEM DE CARGA DE REVENDA (1.25.0) =====
+   Codigo PARALELO ao Formador. Le e escreve exclusivamente state.pedidosRevenda e
+   state.trucksRevenda; nunca state.pedidos / state.trucks / state.nextTruck.
+   Compartilha apenas funcoes puras: assign, unassign, pedidoCard, cmpPedidos,
+   foraDaPlanilhaAvisoHtml, fmtKg. Sem escopo por planta (decisao de negocio).
+   >>> O cartao daqui e o gemeo do truckCard() do Formador. Correcao num deve ser
+       avaliada no outro. <<< */
+let _revTruck=null;
+function routeMismatchRevenda(t){if(!t||!t.rota||!t.rota.trim())return false;const tr=normRota(t.rota);return (state.pedidosRevenda||[]).some(p=>p.assignedTo===t.id&&p.rota&&normRota(p.rota)!==tr);}
+
+function openModalRevenda(t){
+  if(!requirePerm("criarCarga"))return;
+  _revTruck=t||null;
+  const sel=$("#revMTipo");
+  if(sel)sel.innerHTML=Object.keys(VEHICLES).sort((a,b)=>b-a).map(c=>'<option value="'+c+'">'+VEHICLES[c]+' &middot; '+fmtKg(+c)+'</option>').join("");
+  $("#revModalTitle").textContent=t?"Editar Carga de Revenda":"Nova Carga de Revenda";
+  if(sel)sel.value=t?String(t.cap):"33000";
+  $("#revMRota").value=t?(t.rota||""):"";
+  $("#revOverlay").classList.add("open");
+}
+function fecharModalRevenda(){$("#revOverlay").classList.remove("open");_revTruck=null;}
+function salvarCargaRevenda(){
+  if(!requirePerm("criarCarga"))return;
+  const cap=parseInt($("#revMTipo").value,10);
+  if(!cap){toast("Selecione o tipo de veiculo.","err");return;}
+  const rota=$("#revMRota").value.trim();
+  state.trucksRevenda=state.trucksRevenda||[];
+  if(_revTruck){
+    _revTruck.cap=cap;_revTruck.rota=rota;
+    logAction("editar_carga_revenda",(rota||"sem rota")+" "+VEHICLES[String(cap)]);
+    toast("Carga de revenda atualizada.","ok");
+  }else{
+    state.nextTruckRevenda=state.nextTruckRevenda||1;
+    const d={id:"TR"+(state.nextTruckRevenda++),cap:cap,rota:rota,status:"montada",revenda:true};
+    state.trucksRevenda.push(d);
+    logAction("criar_carga_revenda",d.id+" "+(rota||"sem rota")+" "+VEHICLES[String(cap)]);
+    toast("Carga de revenda criada ("+VEHICLES[String(cap)]+").","ok");
+  }
+  fecharModalRevenda();renderAll();
+}
+function excluirCargaRevenda(t){
+  if(!requirePerm("criarCarga"))return;
+  const n=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id).length;
+  if(!confirm(n?("Excluir esta carga de revenda? Os "+n+" pedido(s) voltam para o banco."):"Excluir esta carga de revenda?"))return;
+  (state.pedidosRevenda||[]).forEach(p=>{if(p.assignedTo===t.id)p.assignedTo=null;});
+  state.trucksRevenda=(state.trucksRevenda||[]).filter(x=>x.id!==t.id);
+  logAction("excluir_carga_revenda",t.id+" "+(t.rota||"")+(n?(" ("+n+" pedido(s) devolvidos)"):""));
+  renderAll();toast("Carga de revenda excluida.","info");
+}
+
+/* Gemeo enxuto do truckCard(): so o que faz sentido na 2b-2. Sem frete, sem margem,
+   sem fechar/parcial, sem liberar producao, sem auto-preencher, sem bloqueio de escopo
+   — tudo isso e de fases seguintes ou nao se aplica a revenda. */
+function truckCardRevenda(t){
+  const load=truckLoadRevenda(t),cap=t.cap,pct=cap?load/cap*100:0;
+  const card=el("div","truck");card.dataset.truck=t.id;
+  let fillCls="";if(pct>100)fillCls="over";else if(pct>=95)fillCls="otim";
+  let bate,bateCls;
+  if(pct>100){bate="&#128680; Excesso de "+fmtKg(load-cap);bateCls="over";}
+  else if(pct>=95){bate="&#128994; Carga otimizada &mdash; falta "+fmtKg(cap-load);bateCls="ok";}
+  else{bate="Falta: "+fmtKg(cap-load);bateCls="norm";}
+  const assigned=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id);
+  card.innerHTML=
+    '<div class="truck-head"><div class="th-top"><div><div class="th-rota">'+_hesc(t.rota||"Rota nao informada")+' <span class="pill">REVENDA</span></div>'+
+    '<div class="th-tipo">'+VEHICLES[String(cap)]+' &middot; '+fmtKg(cap)+'</div></div>'+
+    '<div class="th-actions"><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div></div>'+
+    (routeMismatchRevenda(t)?'<div class="route-warn" style="background:#FFF3CD;color:#8a6d3b;border:1px solid #FFE08A;border-radius:8px;padding:7px 10px;margin:8px 0 0;font-size:11.5px;font-weight:600">&#9888; Pedidos de rotas diferentes nesta carga.</div>':'')+
+    '<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+fillCls+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+bateCls+'">'+bate+'</div></div>'+
+    foraDaPlanilhaAvisoHtml(assigned)+
+    '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="revbody-'+t.id+'">'+(assigned.length?'':'Arraste pedidos de revenda aqui')+'</div>';
+  const body=card.querySelector("#revbody-"+t.id);
+  if(assigned.length){assigned.sort(cmpPedidos);assigned.forEach(p=>body.appendChild(pedidoCard(p,true)));}
+  card.querySelector(".edit").addEventListener("click",()=>openModalRevenda(t));
+  card.querySelector(".del").addEventListener("click",()=>excluirCargaRevenda(t));
+  card.addEventListener("dragover",e=>{e.preventDefault();card.classList.add("over");});
+  card.addEventListener("dragleave",()=>card.classList.remove("over"));
+  card.addEventListener("drop",e=>{e.preventDefault();card.classList.remove("over");
+    const id=e.dataTransfer.getData("text/plain");
+    const p=(state.pedidosRevenda||[]).find(x=>x.id===id);
+    if(!p||p.revenda!==true)return;          // guarda explicita: so pedido de revenda entra aqui
+    assign(p,t);renderAll();});
+  return card;
+}
+function renderTrucksRevenda(){
+  const area=$("#revTrucksArea");if(!area)return;
+  area.innerHTML="";
+  const montadas=(state.trucksRevenda||[]).filter(t=>t.status==="montada");
+  montadas.forEach(t=>area.appendChild(truckCardRevenda(t)));
+  const tile=el("div","add-truck");tile.innerHTML='<div class="plus">+</div><span>Criar Nova Carga</span>';
+  tile.addEventListener("click",()=>openModalRevenda(null));area.appendChild(tile);
+  const m=$("#revMontMeta");if(m)m.textContent=montadas.length+(montadas.length===1?" caminhao":" caminhoes");
+}
+function setupRevBankDrop(){
+  const bank=$("#revBody");if(!bank)return;
+  bank.addEventListener("dragover",e=>e.preventDefault());
+  bank.addEventListener("drop",e=>{e.preventDefault();
+    const id=e.dataTransfer.getData("text/plain");
+    const p=(state.pedidosRevenda||[]).find(x=>x.id===id);
+    if(!p||p.revenda!==true)return;          // guarda explicita
+    if(p.assignedTo!==null){p.assignedTo=null;renderAll();}});
+}
+
 /* ===== ABA REVENDA (1.23.0) — SOMENTE LEITURA =====
    Le exclusivamente state.pedidosRevenda (preenchido pelo ingest na 1.22.0). Nao toca em
    state.pedidos, nao monta carga, nao aloca nada. Reaproveita pedMatchF (1.18), inScope,
@@ -8301,7 +8425,8 @@ function renderRevenda(){
   body.innerHTML="";
   if(!todos.length){body.innerHTML='<div class="empty"><div class="ic">&#127978;</div>Nenhum pedido de revenda na carteira importada.</div>';return;}
   if(!lista.length){body.innerHTML='<div class="empty">Nenhum pedido de revenda com os filtros atuais.</div>';return;}
-  lista.forEach(p=>body.appendChild(pedidoCard(p,false,true)));   // true = somente leitura
+  lista.forEach(p=>body.appendChild(pedidoCard(p,false,true)));   // true = somente leitura no BANCO; dentro da carga o cartao volta a ser editavel
+  renderTrucksRevenda();
 }
 function wireRevFilters(){
   REVF_CAMPOS.forEach(s=>{const e=$("#fRev"+s);if(e)e.addEventListener("input",renderRevenda);});
@@ -8741,7 +8866,7 @@ function renderKpis(){
   $("#btnExport").disabled=state.trucks.length===0;
 }
 
-function renderAll(){renderPedidos();renderTrucks();renderFreteTab();buildFreightFilters();renderFob();renderRevenda();renderParcial();renderFechadas();renderContratadas();renderEmbarcadas();renderCarriers();renderRoutes();renderKpis();labelTables();saveState();}
+function renderAll(){renderPedidos();renderTrucks();renderFreteTab();buildFreightFilters();renderFob();renderRevenda();renderTrucksRevenda();renderParcial();renderFechadas();renderContratadas();renderEmbarcadas();renderCarriers();renderRoutes();renderKpis();labelTables();saveState();}
 
 /* modal */
 function openModal(t){if(t&&!requireScope(t))return;state.editingTruck=t;refreshCarrierList();$("#mTranspAdd").classList.add("hidden");["mTNome","mTCnpj","mTTel","mTContato"].forEach(id=>{const e=$("#"+id);if(e)e.value="";});$("#modalTitle").textContent=t?"Editar Carga":"Criar Nova Carga";$("#mTipo").value=t?String(t.cap):"33000";$("#mRota").value=t?(t.rota||""):"";$("#mTransp").value=t?(t.transp||""):"";$("#mPlaca").value=t?(t.placa||""):"";$("#mMot").value=t?(t.mot||""):"";const fr=t?loadFreight(t):null;$("#mFrete").value=fr&&fr.total?(fmtMoney(fr.rate)+"/ton  ("+fmtMoney(fr.total)+" total)"):"calculado dos pedidos";$("#mFretePago").value=t&&t.fretePago?t.fretePago:"";$("#mEta").value=t&&t.eta?t.eta:"";$("#overlay").classList.add("open");}
@@ -9038,7 +9163,7 @@ function updateSavedInfo(ts,fail){
 }
 function saveState(){
   if(_restoring)return;
-  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,cargaSeq:state.cargaSeq||{},embHist:state.embHist||[],pedidos:state.pedidos,pedidosRevenda:state.pedidosRevenda||[],trucksRevenda:state.trucksRevenda||[],trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,freightCities:state.freightCities||{},prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
+  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,nextTruckRevenda:state.nextTruckRevenda||1,cargaSeq:state.cargaSeq||{},embHist:state.embHist||[],pedidos:state.pedidos,pedidosRevenda:state.pedidosRevenda||[],trucksRevenda:state.trucksRevenda||[],trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,freightCities:state.freightCities||{},prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
   try{localStorage.setItem(SKEY,JSON.stringify(data));updateSavedInfo(data.ts);}catch(err){updateSavedInfo(null,true);}
   pushApp(data);
 }
@@ -9059,6 +9184,7 @@ function applyAppData(d){
   state.hasFrete=!!d.hasFrete;
   state.maxMcRs=d.maxMcRs||1;
   state.nextTruck=d.nextTruck||(state.trucks.length+1);
+  state.nextTruckRevenda=d.nextTruckRevenda||((state.trucksRevenda||[]).length+1);
   state.cargaSeq=(d.cargaSeq&&typeof d.cargaSeq==="object")?d.cargaSeq:{};
   state.embHist=Array.isArray(d.embHist)?d.embHist:[];
   state.trucks.forEach(function(_t){if(_t.status==="embarcada"&&!_t.embLogged){state.embHist.push({ts:_t.shippedAt?+new Date(_t.shippedAt):Date.now(),filial:(_t.filialCarga||truckFilial(_t)),rota:_t.rota||"",num:_t.numeroCarga||null,semana:_t.semana||"",kg:truckLoad(_t)});_t.embLogged=true;}});
@@ -9088,12 +9214,12 @@ function resetState(){
   if(!isMaster()){toast("Apenas o perfil master pode limpar os dados.","err");return;}
   if(!confirm("Apagar TODOS os dados salvos (pedidos, tabela de frete, transportadoras e cargas montadas/fechadas/contratadas)? Esta acao nao pode ser desfeita."))return;
   try{localStorage.removeItem(SKEY);}catch(e){}
-  state.pedidos=[];state.pedidosRevenda=[];state.trucks=[];state.trucksRevenda=[];state.carriers=[];state.freightTable={};state.freightCities={};state.freightSource="pedidos";state.freightFile="";state.fileName="";state.hasFrete=false;state.maxMcRs=1;state.nextTruck=1;
+  state.pedidos=[];state.pedidosRevenda=[];state.trucks=[];state.trucksRevenda=[];state.carriers=[];state.freightTable={};state.freightCities={};state.freightSource="pedidos";state.freightFile="";state.fileName="";state.hasFrete=false;state.maxMcRs=1;state.nextTruck=1;state.nextTruckRevenda=1;
   $("#fileMeta").textContent="Nenhuma planilha carregada";
   refreshCarrierList();buildFilters();buildFreightFilters();
   _restoring=true;renderAll();_restoring=false;
   try{localStorage.removeItem(SKEY);}catch(e){}
-  pushApp({v:1,ts:Date.now(),fileName:"",freightFile:"",freightSource:"pedidos",hasFrete:false,maxMcRs:1,nextTruck:1,pedidos:[],pedidosRevenda:[],trucks:[],trucksRevenda:[],carriers:[],freightTable:{},freightCities:{},prioMap:{},prioFileName:"",prioUpdatedAt:""});
+  pushApp({v:1,ts:Date.now(),fileName:"",freightFile:"",freightSource:"pedidos",hasFrete:false,maxMcRs:1,nextTruck:1,nextTruckRevenda:1,pedidos:[],pedidosRevenda:[],trucks:[],trucksRevenda:[],carriers:[],freightTable:{},freightCities:{},prioMap:{},prioFileName:"",prioUpdatedAt:""});
   updateSavedInfo(null);
   logAction("limpar","dados operacionais apagados");
   toast("Dados apagados. O sistema esta limpo (servidor e navegador).","info");
@@ -9492,6 +9618,11 @@ $("#btnLogout").addEventListener("click",logout);
 window.addEventListener("beforeunload",touchSession);
 ["click","keydown","touchstart","scroll"].forEach(ev=>document.addEventListener(ev,()=>{const n=Date.now();if(n-_lastActTs>20000){_lastActTs=n;updateActivity();}},{passive:true}));
 setupBankDrop();
+setupRevBankDrop();
+$("#revModalClose")&&$("#revModalClose").addEventListener("click",fecharModalRevenda);
+$("#revModalCancel")&&$("#revModalCancel").addEventListener("click",fecharModalRevenda);
+$("#revModalSave")&&$("#revModalSave").addEventListener("click",salvarCargaRevenda);
+$("#revOverlay")&&$("#revOverlay").addEventListener("click",e=>{if(e.target.id==="revOverlay")fecharModalRevenda();});
 netBoot();
 </script>
 <script>
@@ -9876,9 +10007,17 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.24.0";
+  var APP_VERSION="1.25.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.25.0",data:"05/09/2026",itens:[
+      ["NOVO","Montagem de carga de revenda. A aba Revenda passou a ter duas colunas, como o Formador: o banco de pedidos de revenda à esquerda e o espaço de montagem à direita, onde as cargas de revenda são criadas."],
+      ["NOVO","Criar carga de revenda: escolha o veículo e, se quiser, a rota. Os veículos e as capacidades são os mesmos das cargas normais. A carga nasce em montagem e recebe pedidos por arrasto, igual ao Formador."],
+      ["NOVO","Arraste os pedidos de revenda do banco para a carga, e de volta para o banco quando quiser. O cartão de cada carga mostra a ocupação, avisa quando há pedidos de rotas diferentes e destaca pedido que saiu da última planilha."],
+      ["MELHORIA","As duas montagens são estanques: pedido de revenda não entra em carga normal, e pedido normal não entra em carga de revenda. As cargas de revenda ficam numa lista própria e não aparecem em nenhuma tela do Formador."],
+      ["MELHORIA","Nesta entrega a carga de revenda ainda não tem frete, margem, auto-preencher nem fechamento — ela é criada e recebe pedidos. O restante do fluxo vem nas próximas entregas."],
+      ["MELHORIA","Criar, editar e excluir carga de revenda exige a permissão Criar / editar carga e fica registrado na Monitoria. Excluir devolve os pedidos ao banco de revenda."]
+    ]},
     {versao:"1.24.0",data:"05/09/2026",itens:[
       ["MELHORIA","Fundação da carga de revenda. O sistema passa a ter uma lista própria de cargas de revenda, separada das cargas normais, e os pedidos de revenda alocados nelas passam a sobreviver à reimportação da carteira — a mesma proteção que os pedidos normais já têm. Ainda não há tela: a montagem da carga de revenda vem na próxima entrega."],
       ["MELHORIA","Um pedido de revenda que esteja dentro de uma carga de revenda e não venha na planilha seguinte é mantido e marcado, em vez de desaparecer. Se estiver apenas na lista, sem carga, ele sai normalmente, como antes."],
