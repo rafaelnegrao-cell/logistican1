@@ -6358,6 +6358,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   <div class="nav">
     <button class="navbtn active" data-tab="formador">&#128666; Formador de Cargas</button>
     <button class="navbtn" data-tab="fob"><span>&#128230; Pedidos FOB / Retira</span><span class="nbadge" data-badge="fob">0</span></button>
+    <button class="navbtn" data-tab="revenda"><span>&#127978; Revenda</span><span class="nbadge" data-badge="rev">0</span></button>
     <button class="navbtn" data-tab="parcial"><span>&#9201; Fechado Parcial</span><span class="nbadge" data-badge="parcial">0</span></button>
     <button class="navbtn" data-tab="fechadas"><span>&#9203; Aguardando Contratacao</span><span class="nbadge" data-badge="fech">0</span></button>
     <button class="navbtn" data-tab="contratadas"><span>&#128467; Cargas Contratadas</span><span class="nbadge" data-badge="contr">0</span></button>
@@ -6467,6 +6468,21 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <button class="clear-f" id="fobFClr">Limpar</button>
       </div>
       <div class="panel-body" id="fobBody"><div class="empty">Sem pedidos FOB.</div></div>
+    </section>
+
+    <!-- PANEL REVENDA (somente leitura nesta fase) -->
+    <section class="panel" data-panel="revenda">
+      <div class="panel-head"><h2>Revenda</h2><span class="meta" id="revMeta">Pedidos de revenda da carteira &mdash; a N1 nao produz, apenas embarca</span></div>
+      <div class="filters tabfilters">
+        <input id="fRevFilial" list="fRevDlFilial" placeholder="Filial (busca)" autocomplete="off"><datalist id="fRevDlFilial"></datalist>
+        <input id="fRevRota" list="fRevDlRota" placeholder="Rota (busca)" autocomplete="off"><datalist id="fRevDlRota"></datalist>
+        <input id="fRevCidade" list="fRevDlCidade" placeholder="Cidade (busca)" autocomplete="off"><datalist id="fRevDlCidade"></datalist>
+        <input id="fRevUf" list="fRevDlUf" placeholder="UF" autocomplete="off" style="width:64px"><datalist id="fRevDlUf"></datalist>
+        <input id="fRevVend" list="fRevDlVend" placeholder="Vendedor (busca)" autocomplete="off"><datalist id="fRevDlVend"></datalist>
+        <input id="fRevBusca" type="search" placeholder="Buscar pedido ou cliente..." autocomplete="off">
+        <button class="clear-f" id="fRevClr">Limpar filtros</button>
+      </div>
+      <div class="panel-body"><div class="pedidos-list" id="revBody"><div class="empty">Nenhum pedido de revenda na carteira importada.</div></div></div>
     </section>
 
     <!-- PANEL FECHADAS (Aguardando Contratacao) -->
@@ -6905,6 +6921,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
 <nav class="botnav">
   <button data-tab="formador" class="active"><span class="bi">&#128666;</span>Formador</button>
   <button data-tab="fob"><span class="bi">&#128230;</span>FOB<span class="nbadge" data-badge="fob">0</span></button>
+  <button data-tab="revenda"><span class="bi">&#127978;</span>Revenda<span class="nbadge" data-badge="rev">0</span></button>
   <button data-tab="parcial"><span class="bi">&#9201;</span>Parcial<span class="nbadge" data-badge="parcial">0</span></button>
   <button data-tab="fechadas"><span class="bi">&#9203;</span>Aguard.<span class="nbadge" data-badge="fech">0</span></button>
   <button data-tab="contratadas"><span class="bi">&#128467;</span>Contrat.<span class="nbadge" data-badge="contr">0</span></button>
@@ -7558,9 +7575,9 @@ function foraDaPlanilhaAvisoHtml(ps){
   if(!n)return "";
   return '<div class="cl-fora">&#9888; '+n+' pedido(s) desta carga nao vieram na ultima planilha importada e foram mantidos aqui. Confira com o faturamento: se ja foram faturados, embarque a carga; se nao, cancele a carga ou remova o pedido. Isto e apenas um aviso &mdash; nada esta bloqueado.</div>';
 }
-function pedidoCard(p,inTruck){
+function pedidoCard(p,inTruck,somenteLeitura){
   const c=el("div",(inTruck?"tcard ":"pcard ")+p.cor+(p.bloqueado?" bloqueado":"")+(!inTruck&&!p.apto?" naoapto":""));
-  c.draggable=true;c.dataset.id=p.id;
+  c.draggable=!somenteLeitura;c.dataset.id=p.id;   // 1.23.0: sem 3o argumento => true, como sempre foi
   if(inTruck){
     const fr=c.dataset.frete||0;
     c.innerHTML='<button class="tc-rem" title="Remover">&times;</button>'+
@@ -7573,14 +7590,16 @@ function pedidoCard(p,inTruck){
     let statusTag = p.mcPct<0?'<span class="tag bloq">MC negativa</span>':(p.bloqueado?(p.apto?'<span class="tag prio">Bloq. liberado</span>':'<span class="tag bloq">Bloqueado</span>'):'<span class="tag lib">Apto</span>');
     c.innerHTML=
       '<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+lockI+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
-      '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div><button class="pc-add" title="Adicionar a uma carga">+ Carga</button></div></div>'+
+      '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div>'+(somenteLeitura?'':'<button class="pc-add" title="Adicionar a uma carga">+ Carga</button>')+'</div></div>'+
       '<div class="pc-tags">'+foraDaPlanilhaTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
       (p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
       '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>';
-    c.querySelector(".pc-add").addEventListener("click",e=>{e.stopPropagation();quickAssign(p);});
+    const _add=c.querySelector(".pc-add");if(_add)_add.addEventListener("click",e=>{e.stopPropagation();quickAssign(p);});
   }
-  c.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",p.id);c.classList.add("dragging");});
-  c.addEventListener("dragend",()=>c.classList.remove("dragging"));
+  if(!somenteLeitura){
+    c.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",p.id);c.classList.add("dragging");});
+    c.addEventListener("dragend",()=>c.classList.remove("dragging"));
+  }
   c.addEventListener("click",e=>{if(e.target.closest("button")||e.target.closest("input")||e.target.closest("select"))return;openPedDetail(p);});
   return c;
 }
@@ -8203,6 +8222,50 @@ function fobCard(p){
   c.addEventListener("click",e=>{if(e.target.closest("button")||e.target.closest("input"))return;openPedDetail(p);});
   return c;
 }
+/* ===== ABA REVENDA (1.23.0) — SOMENTE LEITURA =====
+   Le exclusivamente state.pedidosRevenda (preenchido pelo ingest na 1.22.0). Nao toca em
+   state.pedidos, nao monta carga, nao aloca nada. Reaproveita pedMatchF (1.18), inScope,
+   cmpPedidos e o pedidoCard, este ultimo em modo somente leitura. */
+const REVF_CAMPOS=["Filial","Rota","Cidade","Uf","Vend","Busca"];
+function revFiltroVals(){
+  const g=s=>{const e=$("#fRev"+s);return e?e.value.trim().toLowerCase():"";};
+  return {filial:g("Filial"),rota:g("Rota"),cidade:g("Cidade"),uf:g("Uf"),vend:g("Vend"),busca:g("Busca")};
+}
+function revFiltrosAtivos(){const f=revFiltroVals();return !!(f.filial||f.rota||f.cidade||f.uf||f.vend||f.busca);}
+function revPeds(){return (state.pedidosRevenda||[]).filter(inScope);}
+function buildRevFilters(){
+  const esc=s=>String(s).replace(/"/g,"&quot;");
+  const ps=revPeds();
+  const fill=(sfx,vals)=>{const dl=$("#fRevDl"+sfx);if(!dl)return;
+    dl.innerHTML=[...new Set(vals.filter(v=>v!=null&&String(v).trim()!==""))].sort().map(v=>'<option value="'+esc(v)+'"></option>').join("");};
+  fill("Filial",ps.map(p=>p.filial));
+  fill("Rota",ps.map(p=>p.rota));
+  fill("Cidade",ps.map(p=>p.cidade));
+  fill("Uf",ps.map(p=>p.uf));
+  fill("Vend",ps.map(p=>p.vendedor));
+}
+function renderRevenda(){
+  const body=$("#revBody");if(!body)return;
+  const todos=revPeds();
+  setBadge("rev",todos.length);
+  buildRevFilters();
+  const f=revFiltroVals();
+  const lista=todos.filter(p=>pedMatchF(p,f)).sort(cmpPedidos);
+  const meta=$("#revMeta");
+  if(meta)meta.textContent=todos.length
+    ? (lista.length+(lista.length===1?" pedido":" pedidos")+(revFiltrosAtivos()?(" de "+todos.length+" (filtrado)"):"")+" · a N1 nao produz revenda, apenas embarca")
+    : "Pedidos de revenda da carteira — a N1 nao produz, apenas embarca";
+  body.innerHTML="";
+  if(!todos.length){body.innerHTML='<div class="empty"><div class="ic">&#127978;</div>Nenhum pedido de revenda na carteira importada.</div>';return;}
+  if(!lista.length){body.innerHTML='<div class="empty">Nenhum pedido de revenda com os filtros atuais.</div>';return;}
+  lista.forEach(p=>body.appendChild(pedidoCard(p,false,true)));   // true = somente leitura
+}
+function wireRevFilters(){
+  REVF_CAMPOS.forEach(s=>{const e=$("#fRev"+s);if(e)e.addEventListener("input",renderRevenda);});
+  const b=$("#fRevClr");
+  if(b)b.addEventListener("click",()=>{REVF_CAMPOS.forEach(s=>{const e=$("#fRev"+s);if(e)e.value="";});renderRevenda();});
+}
+
 function renderFob(){
   const all=fobPeds();
   buildFobFilters();
@@ -8635,7 +8698,7 @@ function renderKpis(){
   $("#btnExport").disabled=state.trucks.length===0;
 }
 
-function renderAll(){renderPedidos();renderTrucks();renderFreteTab();buildFreightFilters();renderFob();renderParcial();renderFechadas();renderContratadas();renderEmbarcadas();renderCarriers();renderRoutes();renderKpis();labelTables();saveState();}
+function renderAll(){renderPedidos();renderTrucks();renderFreteTab();buildFreightFilters();renderFob();renderRevenda();renderParcial();renderFechadas();renderContratadas();renderEmbarcadas();renderCarriers();renderRoutes();renderKpis();labelTables();saveState();}
 
 /* modal */
 function openModal(t){if(t&&!requireScope(t))return;state.editingTruck=t;refreshCarrierList();$("#mTranspAdd").classList.add("hidden");["mTNome","mTCnpj","mTTel","mTContato"].forEach(id=>{const e=$("#"+id);if(e)e.value="";});$("#modalTitle").textContent=t?"Editar Carga":"Criar Nova Carga";$("#mTipo").value=t?String(t.cap):"33000";$("#mRota").value=t?(t.rota||""):"";$("#mTransp").value=t?(t.transp||""):"";$("#mPlaca").value=t?(t.placa||""):"";$("#mMot").value=t?(t.mot||""):"";const fr=t?loadFreight(t):null;$("#mFrete").value=fr&&fr.total?(fmtMoney(fr.rate)+"/ton  ("+fmtMoney(fr.total)+" total)"):"calculado dos pedidos";$("#mFretePago").value=t&&t.fretePago?t.fretePago:"";$("#mEta").value=t&&t.eta?t.eta:"";$("#overlay").classList.add("open");}
@@ -8746,7 +8809,7 @@ function readFile(file){state.fileName=file.name;$("#fileMeta").textContent=file
 function setupBankDrop(){const bank=$("#pedidosList");bank.addEventListener("dragover",e=>e.preventDefault());bank.addEventListener("drop",e=>{e.preventDefault();const id=e.dataTransfer.getData("text/plain");const p=state.pedidos.find(x=>x.id===id);if(p&&p.assignedTo!==null){p.assignedTo=null;renderAll();}});}
 
 /* tabs */
-function setTab(tab,force){if(!force&&typeof CUR!=="undefined"&&CUR.profile&&!canSee(tab))return;state.tab=tab;document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.panel===tab));if(tab==="config")renderConfig();if(tab==="monitoria"){refreshAudit().then(renderMonitoria);}if(tab==="comunicacao"&&window.renderComm){window.renderComm();}if(tab==="painel"&&window.renderPainel){window.renderPainel();}if(tab==="embarcadas"){renderEmbarcadas();}if(tab==="contratadas"){renderContratadas();}labelTables();window.scrollTo(0,0);}
+function setTab(tab,force){if(!force&&typeof CUR!=="undefined"&&CUR.profile&&!canSee(tab))return;state.tab=tab;document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.dataset.panel===tab));if(tab==="config")renderConfig();if(tab==="monitoria"){refreshAudit().then(renderMonitoria);}if(tab==="comunicacao"&&window.renderComm){window.renderComm();}if(tab==="painel"&&window.renderPainel){window.renderPainel();}if(tab==="revenda"){renderRevenda();}if(tab==="embarcadas"){renderEmbarcadas();}if(tab==="contratadas"){renderContratadas();}labelTables();window.scrollTo(0,0);}
 
 /* ================= MAPA DOS DESTINOS (offline) ================= */
 let _muniMap=null;
@@ -8997,8 +9060,8 @@ function resetState(){
 const AKEY="n1_auth_v1", AUDKEY="n1_audit_v1", RKEY="n1_remember_v1";
 const INACT_MS=24*60*60*1000;
 let _lastActTs=0;
-const TABS_DEF=[["formador","Formador de Cargas"],["fob","Pedidos FOB / Retira"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Contratadas"],["embarcadas","Cargas Embarcadas"],["frete","Tabela de Frete"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
-const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["excluirCargaVazia","Excluir carga vazia"],["comResolver","Responder / resolver solicitacoes"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["liberarProducao","Liberar carga p/ produção e exportar PCP"],["gerenciar","Gerenciar usuarios e perfis"]];
+const TABS_DEF=[["formador","Formador de Cargas"],["fob","Pedidos FOB / Retira"],["revenda","Revenda"],["parcial","Fechado Parcial"],["fechadas","Aguardando Contratacao"],["contratadas","Cargas Contratadas"],["embarcadas","Cargas Embarcadas"],["frete","Tabela de Frete"],["cadastros","Cadastros"],["legenda","Legenda & Criterios"],["monitoria","Monitoria"],["config","Configuracoes"]];
+const ACTIONS_DEF=[["importPed","Importar pedidos"],["importFrete","Importar tabela de frete"],["criarCarga","Criar / editar carga"],["autoPreencher","Auto-preencher carga"],["fechar","Fechar carga"],["fecharAbaixoMin","Fechar carga abaixo do minimo"],["contratar","Contratar veiculo"],["embarcar","Marcar embarcado"],["reverterStatus","Voltar / reabrir status de carga"],["excluirCargaVazia","Excluir carga vazia"],["comResolver","Responder / resolver solicitacoes"],["cadTransp","Cadastrar transportadora"],["cadRota","Cadastrar rota / frete"],["exportar","Exportar"],["verRevenda","Ver aba Revenda"],["liberarProducao","Liberar carga p/ produção e exportar PCP"],["gerenciar","Gerenciar usuarios e perfis"]];
 let auth={users:[],profiles:[]};
 let session=null;
 const CUR={user:null,nome:"",profile:null};
@@ -9013,7 +9076,7 @@ function genSalt(){return Math.random().toString(36).slice(2,10)+Date.now().toSt
 function profileById(id){return auth.profiles.find(p=>p.id===id)||null;}
 function isMaster(){return !!(CUR.profile&&CUR.profile.master);}
 function can(a){if(!CUR.profile)return false;if(CUR.profile.master)return true;return (CUR.profile.actions||[]).indexOf(a)>-1;}
-function canSee(tab){if(!CUR.profile)return false;if(CUR.profile.master)return true;if(tab==="comunicacao")return true;if(tab==="painel")return true;if(tab==="config")return can("gerenciar");if(tab==="monitoria")return (CUR.profile.tabs||[]).indexOf("monitoria")>-1;return (CUR.profile.tabs||[]).indexOf(tab)>-1;}
+function canSee(tab){if(!CUR.profile)return false;if(CUR.profile.master)return true;if(tab==="comunicacao")return true;if(tab==="painel")return true;if(tab==="config")return can("gerenciar");if(tab==="revenda")return can("verRevenda");if(tab==="monitoria")return (CUR.profile.tabs||[]).indexOf("monitoria")>-1;return (CUR.profile.tabs||[]).indexOf(tab)>-1;}
 function requirePerm(a){if(can(a))return true;toast("Voce nao tem permissao para esta acao.","err");return false;}
 function inScope(p){if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];const okF=!fl.length||fl.indexOf(p.filial)>-1;const okU=!uf.length||uf.indexOf(String(p.uf||"").toUpperCase())>-1;return okF&&okU;}
 function truckInScope(t){if(!CUR.profile||CUR.profile.master)return true;const fl=CUR.profile.filiais||[],uf=CUR.profile.ufs||[];if(!fl.length&&!uf.length)return true;const ps=state.pedidos.filter(p=>p.assignedTo===t.id);if(!ps.length)return true;return ps.some(inScope);}
@@ -9332,6 +9395,7 @@ wireTabFilters("fPar",renderParcial);
 wireTabFilters("fFec",renderFechadas);
 wireTabFilters("fCon",renderContratadas);
 wireTabFilters("fEmb",renderEmbarcadas);
+wireRevFilters();
 $("#fobFClr")&&$("#fobFClr").addEventListener("click",()=>{["#fobFPed","#fobFCli","#fobFFil","#fobFVend","#fobFUf","#fobFCid"].forEach(s=>{if($(s))$(s).value="";});renderFob();});
 $("#btnExportContr").addEventListener("click",()=>exportRomaneio("contratada"));
 $("#btnExportEmb").addEventListener("click",()=>exportRomaneio("embarcada"));
@@ -9768,9 +9832,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.22.0";
+  var APP_VERSION="1.23.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.23.0",data:"05/09/2026",itens:[
+      ["NOVO","Aba Revenda. Os pedidos de revenda da carteira, que a versão anterior passou a guardar, agora podem ser vistos numa aba própria, no mesmo formato de cartão do Banco de Pedidos: número, cliente, cidade, rota, peso, margem e mix."],
+      ["NOVO","A aba tem os mesmos filtros do Formador — filial, rota, cidade, UF, vendedor e busca por pedido ou cliente — com botão Limpar filtros, e respeita o escopo de filial e estado do perfil."],
+      ["MELHORIA","Nesta entrega a aba é somente leitura: dá para consultar e filtrar, mas ainda não há montagem de carga de revenda. Os cartões não têm o botão de adicionar à carga e não podem ser arrastados, justamente para não misturar revenda com as cargas normais. A montagem vem na próxima entrega."],
+      ["NOVO","Nova permissão Ver aba Revenda em Configurações. Por padrão somente o master enxerga a aba, até que a permissão seja marcada no perfil desejado."],
+      ["MELHORIA","O Formador de Cargas não mudou em nada: mesmo banco de pedidos, mesmas cargas, mesmos cálculos. A aba Revenda lê apenas a lista de revenda, separada."]
+    ]},
     {versao:"1.22.0",data:"04/09/2026",itens:[
       ["MELHORIA","Base do Formador de Revenda. Os pedidos de revenda deixam de ser descartados na importação da carteira e passam a ser guardados numa lista própria, separada dos pedidos normais. Esta versão é apenas a fundação: ainda não há tela nem carga de revenda — isso vem nas próximas entregas."],
       ["MELHORIA","Os pedidos de revenda passam a ser calculados como qualquer outro: peso, valor, margem, rota, cidade e frete. Antes eles eram apenas contados e jogados fora, sem nenhum dado aproveitável."],
