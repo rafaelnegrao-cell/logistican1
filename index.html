@@ -6164,6 +6164,19 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .tabfilters{padding:10px 14px 0;gap:7px}
   .tabfilters input{min-width:0}
   .cl-note{padding:7px 14px;font-size:10.5px;color:#0a5d44;background:#EAF7F1;font-weight:600;line-height:1.4}
+  .comp-ctx{font-size:11.5px;color:var(--cinza);background:var(--cinza-bg);border:1px solid var(--grade);border-radius:9px;padding:9px 12px;margin-bottom:11px;line-height:1.5}
+  .comp-ctx b{color:var(--texto)}
+  .comp-list{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow:auto}
+  .comp-i{display:flex;flex-wrap:wrap;align-items:center;gap:9px;border:1px solid var(--grade);border-radius:9px;padding:8px 10px;background:#fff}
+  .comp-i.over{border-color:#f0c9a0;background:#FFF8F0}
+  .comp-ped{font-weight:800;font-size:11.5px;white-space:nowrap}
+  .comp-cli{font-size:11.5px;color:var(--texto);flex:1 1 160px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .comp-cid{font-size:10.5px;color:var(--cinza);white-space:nowrap}
+  .comp-kg{font-size:11.5px;font-weight:700;color:var(--verde);white-space:nowrap}
+  .comp-sim{font-size:10.5px;color:var(--cinza);flex:1 1 100%}
+  .comp-i.over .comp-sim{color:#8a4b00;font-weight:700}
+  .comp-add{background:var(--verde);border:1px solid var(--verde);color:#fff;padding:4px 11px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;white-space:nowrap}
+  .comp-add:hover{filter:brightness(1.08)}
   .cl-neg{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 14px;background:#FFFBF0;border-top:1px solid var(--grade);font-size:11px;color:var(--cinza)}
   .cl-neg label{font-weight:700;color:#8a6d00}
   .cl-neg input[type=number]{font:inherit;font-size:11.5px;padding:4px 7px;border:1px solid var(--grade);border-radius:7px;color:var(--texto);background:#fff;width:110px}
@@ -6874,6 +6887,17 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
       <div class="pal-hint">Campos em branco saem como <b>PADRAO</b> no arquivo do PCP. O bloqueio efetivo da producao acontece no PCP &mdash; aqui a carga apenas e marcada, o perfil de paletizacao e informado e o arquivo e exportado.</div>
     </div>
     <div class="modal-foot"><button class="btn ghost hidden" id="palRetirar">Retirar liberacao</button><button class="btn ghost" id="palCancel">Cancelar</button><button class="btn primary" id="palSave">Liberar p/ Producao</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="compOverlay">
+  <div class="modal" style="width:680px;max-width:96vw">
+    <div class="modal-head"><h3>&#128229; Completar carga</h3><button class="modal-x" id="compClose">&times;</button></div>
+    <div class="modal-body">
+      <div class="comp-ctx" id="compCtx"></div>
+      <div id="compBody"></div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" id="compCancel">Fechar</button></div>
   </div>
 </div>
 
@@ -8012,6 +8036,75 @@ function stageCard(t,cfg){
   return {card:card,ps:ps,fr:fr,load:load,pct:pct};
 }
 
+/* ===== COMPLETAR CARGA PARCIAL (1.21.0) =====
+   Lista os pedidos soltos no banco que sao da MESMA rota da carga parcial, para o operador
+   escolher quais adicionar. So rota exata (normRota), sem cidade nem aproximacao. A alocacao
+   passa pelo assign() de sempre; nada aqui muda status de carga nem regra de fechamento. */
+let _compTruck=null;
+function pedidosDisponiveisRota(t){
+  const rk=normRota((t&&t.rota)||"");
+  if(!rk)return [];
+  return bancoPeds()                                  // ja exclui FOB, fora de escopo e embarcado
+    .filter(p=>p.assignedTo===null)                   // so os soltos no banco
+    .filter(p=>normRota(p.rota)===rk)                 // rota exata
+    .sort(cmpPedidos);
+}
+function abrirCompletar(t){
+  if(!requirePerm("autoPreencher"))return;
+  if(!requireScope(t))return;
+  _compTruck=t;
+  renderCompletar();
+  $("#compOverlay").classList.add("open");
+}
+function fecharCompletar(){$("#compOverlay").classList.remove("open");_compTruck=null;}
+function renderCompletar(){
+  const t=_compTruck;if(!t)return;
+  const load=truckLoad(t),cap=t.cap||0,pct=cap?load/cap*100:0;
+  const min=cap*MIN_CLOSE_PCT/100,faltam=Math.max(0,min-load);
+  const ctx=$("#compCtx");
+  if(ctx)ctx.innerHTML='Carga <b>'+_hesc(t.rota||"sem rota")+'</b> &middot; '+VEHICLES[String(cap)]+
+    ' &middot; hoje com <b>'+fmtKg(load)+'</b> de '+fmtKg(cap)+' (<b>'+pct.toFixed(0)+'%</b>)'+
+    (faltam>0?' &middot; faltam <b>'+fmtKg(faltam)+'</b> para os '+MIN_CLOSE_PCT+'% do fechamento':' &middot; ja atingiu os '+MIN_CLOSE_PCT+'%')+
+    '<br>Abaixo, os pedidos ainda no banco que sao da <b>mesma rota</b> desta carga.';
+  const body=$("#compBody");if(!body)return;
+  const disp=pedidosDisponiveisRota(t);
+  if(!disp.length){
+    body.innerHTML='<div class="empty">'+(normRota(t.rota||"")
+      ? 'Nenhum pedido solto no banco com a rota "'+_hesc(t.rota)+'". Os pedidos dessa rota ja estao alocados, embarcados ou fora do seu escopo.'
+      : 'Esta carga esta sem rota definida. Informe a rota da carga para ver os pedidos da mesma rota.')+'</div>';
+    return;
+  }
+  body.innerHTML='<div class="comp-list">'+disp.map(function(p){
+    const novo=load+(p.peso||0), np=cap?novo/cap*100:0, over=cap&&novo>cap;
+    return '<div class="comp-i'+(over?' over':'')+'">'+
+      '<span class="comp-ped">#'+_hesc(p.pedido)+(p.bloqueado?' &#128274;':'')+'</span>'+
+      '<span class="comp-cli">'+_hesc(p.cliente||"-")+'</span>'+
+      (p.cidade?'<span class="comp-cid">&#128205; '+_hesc(p.cidade)+(p.uf?"/"+_hesc(p.uf):"")+'</span>':'')+
+      '<span class="comp-kg">'+fmtKg(p.peso)+'</span>'+
+      '<button class="comp-add" data-id="'+_hesc(p.id)+'">+ Adicionar</button>'+
+      '<span class="comp-sim">'+(over
+        ? '&#9888; deixa a carga em '+np.toFixed(0)+'% &mdash; acima da capacidade (excesso de '+fmtKg(novo-cap)+')'
+        : 'deixa a carga em '+np.toFixed(0)+'% ('+fmtKg(novo)+' de '+fmtKg(cap)+')')+'</span>'+
+      '</div>';
+  }).join("")+'</div>';
+  Array.prototype.forEach.call(body.querySelectorAll(".comp-add"),function(b){
+    b.addEventListener("click",function(){completarComPedido(b.getAttribute("data-id"));});
+  });
+}
+function completarComPedido(pid){
+  const t=_compTruck;if(!t)return;
+  const p=state.pedidos.filter(function(x){return x.id===pid;})[0];
+  if(!p||p.assignedTo!==null){toast("Este pedido ja nao esta disponivel.","info");renderCompletar();return;}
+  const antes=truckLoad(t);
+  assign(p,t);                                   // alocacao pelo caminho de sempre
+  if(p.assignedTo!==t.id){renderCompletar();return;}   // assign recusou (escopo/permissao)
+  const depois=truckLoad(t),cap=t.cap||0,np=cap?depois/cap*100:0;
+  logAction("completar_carga",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": +#"+p.pedido+" ("+fmtKg(p.peso)+") -> "+np.toFixed(0)+"%");
+  renderAll();
+  renderCompletar();
+  toast("Pedido #"+p.pedido+" adicionado. A carga foi de "+fmtKg(antes)+" para "+fmtKg(depois)+" ("+np.toFixed(0)+"%)."+(cap&&depois>cap?" Atencao: acima da capacidade.":""),cap&&depois>cap?"info":"ok",6500);
+}
+
 function renderParcial(){
   const todasP=state.trucks.filter(t=>t.status==="parcial"&&truckInScope(t));
   buildTabFilters("fPar",todasP);
@@ -8025,11 +8118,12 @@ function renderParcial(){
     const load0=truckLoad(t), min=t.cap*MIN_CLOSE_PCT/100, faltam=Math.max(0,min-load0), atinge=load0>=min-0.001;
     const pct0=t.cap?load0/t.cap*100:0;
     const prog='<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load0)+' / '+fmtKg(t.cap)+' &middot; min '+MIN_CLOSE_PCT+'% = '+fmtKg(min)+'</span><span>'+pct0.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+(atinge?"otim":"")+'" style="width:'+Math.min(pct0,100)+'%"></div></div><div class="bate '+(atinge?"ok":"norm")+'">'+(atinge?"&#128994; Volume minimo atingido — pronto para fechar":"Faltam "+fmtKg(faltam)+" para "+MIN_CLOSE_PCT+"%")+'</div></div>';
-    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
+    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn auto">&#9889; Auto-Preencher</button><button class="clbtn compl">&#128229; Completar carga</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn fech primary" '+(atinge?'':'disabled')+'>&#9989; Fechar Carga</button>';
     const r=stageCard(t,{progressHtml:prog,pill:seloProdHtml(t),actions:acts});
     const card=r.card, faltamTxt=fmtKg(faltam);
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".auto").addEventListener("click",()=>autoFill(t));
+    const _cp=card.querySelector(".compl");if(_cp)_cp.addEventListener("click",()=>abrirCompletar(t));
     card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     const _a=card.querySelector(".anttb");if(_a)_a.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
     const _r=card.querySelector(".romb");if(_r)_r.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
@@ -9171,7 +9265,7 @@ function importAuthConfig(file){
 /* ===== MONITORIA ===== */
 function fmtDur(sec){sec=Math.max(0,Math.round(sec||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h?h+"h ":"")+(m||h?m+"min ":"")+s+"s";}
 function fmtDT(ts){const d=new Date(ts);const p=n=>n<10?"0"+n:n;return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());}
-function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",frete_negociado:"Definiu/alterou frete negociado (industria)",reverter_status:"Voltou/reabriu status de carga",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",liberar_producao:"Liberou carga p/ producao",paletizacao:"Atualizou paletizacao da carga",retirar_liberacao_producao:"Retirou liberacao de producao",export_pcp:"Exportou arquivo p/ o PCP",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",export_auditoria:"Exportou registro de auditoria",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",completar_carga:"Completou carga parcial (pedido da mesma rota)",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",frete_negociado:"Definiu/alterou frete negociado (industria)",reverter_status:"Voltou/reabriu status de carga",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",liberar_producao:"Liberou carga p/ producao",paletizacao:"Atualizou paletizacao da carga",retirar_liberacao_producao:"Retirou liberacao de producao",export_pcp:"Exportou arquivo p/ o PCP",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",export_auditoria:"Exportou registro de auditoria",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
 function csvEsc(s){s=String(s==null?"":s);return /[";\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
 function exportAudit(){
   const a=loadAudit();
@@ -9236,6 +9330,9 @@ $("#btnExportEmb").addEventListener("click",()=>exportRomaneio("embarcada"));
 $("#btnExportPCP")&&$("#btnExportPCP").addEventListener("click",exportarPCP);
 $("#palClose")&&$("#palClose").addEventListener("click",closePaletizacao);
 $("#palCancel")&&$("#palCancel").addEventListener("click",closePaletizacao);
+$("#compClose")&&$("#compClose").addEventListener("click",fecharCompletar);
+$("#compCancel")&&$("#compCancel").addEventListener("click",fecharCompletar);
+$("#compOverlay")&&$("#compOverlay").addEventListener("click",e=>{if(e.target.id==="compOverlay")fecharCompletar();});
 $("#palSave")&&$("#palSave").addEventListener("click",salvarPaletizacao);
 $("#palRetirar")&&$("#palRetirar").addEventListener("click",retirarLiberacaoProducao);
 $("#palOverlay")&&$("#palOverlay").addEventListener("click",e=>{if(e.target.id==="palOverlay")closePaletizacao();});
@@ -9663,9 +9760,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.20.0";
+  var APP_VERSION="1.21.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.21.0",data:"04/09/2026",itens:[
+      ["NOVO","Botão Completar carga nos cartões de Fechado Parcial. Ele abre uma janela com os pedidos que ainda estão soltos no banco e são da mesma rota daquela carga, para o operador escolher quais adicionar e tentar fechar o volume."],
+      ["NOVO","A lista mostra, de cada pedido, o número, o cliente, a cidade e o peso — e, ao lado, quanto a carga ficaria se aquele pedido fosse adicionado. Assim dá para escolher o que completa melhor sem precisar calcular na mão."],
+      ["MELHORIA","Se o pedido levar a carga acima da capacidade, a linha fica destacada e o aviso mostra em quantos por cento ela ficaria e qual seria o excesso. O botão continua liberado: o sistema avisa, quem decide é o operador."],
+      ["MELHORIA","Só entram na lista pedidos da rota exata da carga, ainda no banco, dentro do escopo do operador e que não sejam FOB. A alocação usa o mesmo caminho de sempre, e o status da carga não muda: o fechamento continua sendo uma decisão à parte."],
+      ["MELHORIA","A ação exige a permissão Auto-preencher carga, a mesma do botão ao lado, respeita o bloqueio de cargas de outra planta e fica registrada na Monitoria."]
+    ]},
     {versao:"1.20.0",data:"04/09/2026",itens:[
       ["NOVO","Frete negociado para cargas de indústria. Quando uma carga tem ao menos um pedido do canal indústria, o frete é cotado pontualmente com o cliente e a tabela da rota deixa de ser uma referência válida. Essas cargas passam a ter um campo próprio no cartão para informar o teto negociado, em R$ por tonelada."],
       ["CORRECAO","O saldo dessas cargas passa a ser calculado sobre o valor negociado, não sobre a tabela: saldo é o negociado menos o frete pago. O cartão e a janela de detalhes mostram a linha do frete negociado e o rótulo passa a dizer Saldo (negociado − pago), para o número nunca aparecer com referência errada."],
