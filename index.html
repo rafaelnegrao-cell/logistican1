@@ -6164,6 +6164,11 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .tabfilters{padding:10px 14px 0;gap:7px}
   .tabfilters input{min-width:0}
   .cl-note{padding:7px 14px;font-size:10.5px;color:#0a5d44;background:#EAF7F1;font-weight:600;line-height:1.4}
+  .cl-neg{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 14px;background:#FFFBF0;border-top:1px solid var(--grade);font-size:11px;color:var(--cinza)}
+  .cl-neg label{font-weight:700;color:#8a6d00}
+  .cl-neg input[type=number]{font:inherit;font-size:11.5px;padding:4px 7px;border:1px solid var(--grade);border-radius:7px;color:var(--texto);background:#fff;width:110px}
+  .cl-neg b{color:var(--texto)}
+  .cl-neg .cl-neg-info{color:var(--cinza);flex:1 1 auto;min-width:0}
   .cl-fora{padding:7px 14px;font-size:10.5px;color:#8a4b00;background:#FFF1E0;font-weight:600;line-height:1.4;border-top:1px solid var(--grade)}
   .tag.fora{background:#FFE0C2;color:#8a4b00;font-weight:700}
   .tc-fora{margin-top:4px;font-size:10px;font-weight:700;color:#8a4b00;background:#FFF1E0;border-radius:6px;padding:3px 6px}
@@ -7066,6 +7071,16 @@ function isBloqueado(v){const n=norm(v);if(!n)return false;return n.includes("bl
 function isPrio(v){const n=norm(v);return n==="1"||n==="sim"||n==="s"||n==="x"||n==="true"||n.includes("priorit")||n.includes("urgente");}
 function isFOB(v){const n=norm(v);return n.includes("destinat")||n.includes("fob");} // FOB / Destinatario = cliente paga frete; CIF / Emitente = N1 paga
 function isRevenda(v){return norm(v).includes("revenda");}
+/* Canal industria: o frete e cotado pontualmente com o cliente (ele passa um teto), entao a
+   tabela da rota nao serve de referencia para o saldo. Reconhecimento por normalizacao, no
+   mesmo padrao do isRevenda acima. */
+function isIndustria(v){return norm(v).includes("industria");}
+function cargaTemIndustria(t){
+  if(!t)return false;
+  const ps=state.pedidos.filter(p=>p.assignedTo===t.id);
+  if(!ps.length&&t.freteSnap)return !!t.freteSnap.temIndustria;   // carga embarcada: vale o snapshot
+  return ps.some(p=>isIndustria(p.canal));
+}
 
 /* limpeza de rotulos */
 function cleanFaixa(v){let s=String(v||"").trim();s=s.replace(/[^\x20-\x7E\u2265\u2264\u26A0<>=.\dt ]/g,"");s=s.replace(/\u26A0/g,"").trim();return s;}
@@ -7590,8 +7605,16 @@ function loadFreight(t){
   const alloc={};
   ps.forEach(p=>{alloc[p.id]=total*(p.peso/sumP);}); // rateio 100% pelo peso
   const pagoTon=t.fretePago||0, pagoTotal=pagoTon*kg/1000;
-  const saldo=total-pagoTotal;                   // preco tabela - pago
-  return {total,kg,alloc,rate,sumV,pagoTon,pagoTotal,saldo};
+  /* 1.20.0 — carga com pedido de INDUSTRIA e frete negociado informado usa o negociado como
+     referencia do saldo, no lugar da tabela. Fora desse caso negTon fica 0 e o saldo cai
+     exatamente na expressao anterior (total - pagoTotal). total, rate, alloc e pagoTotal
+     nao mudam em situacao nenhuma. */
+  const temIndustria=cargaTemIndustria(t);
+  const negTon=(temIndustria&&t.freteNegociado>0)?t.freteNegociado:0;
+  const negTotal=negTon>0?negTon*kg/1000:0;
+  const refFrete=negTon>0?"negociado":"tabela";
+  const saldo=negTon>0?(negTotal-pagoTotal):(total-pagoTotal);
+  return {total,kg,alloc,rate,sumV,pagoTon,pagoTotal,saldo,refFrete,negTon,negTotal,temIndustria};
 }
 
 function itensDoPedido(p){if(p.itens&&p.itens.length)return p.itens;var prods=(p.produtos&&p.produtos.length)?p.produtos:[""];var n=prods.length;return prods.map(function(nome){return {produto:nome,peso:(p.peso||0)/n,valor:(p.valor||0)/n,mcRs:(p.mcRs||0)/n,_est:true};});}
@@ -7684,7 +7707,7 @@ function truckCard(t){
     '<div class="truck-lib"><button class="btn-lib libprod'+(t.liberadaProducao?' on':'')+'">&#127981; '+(t.liberadaProducao?'Liberada p/ Producao':'Liberar p/ Producao')+'</button></div>'+
     foraDaPlanilhaAvisoHtml(assigned)+
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="body-'+t.id+'">'+(assigned.length?'':'Arraste pedidos aqui ou use o Auto-Preencher')+'</div>'+
-    '<div class="truck-foot"><div class="tf-line"><span>Preco frete (tabela do pedido)</span><b>'+fmtMoney(fr.total)+'</b></div><div class="tf-line"><span>R$/ton efetivo (proporcional)</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+(t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo (preco - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'')+'</div>';
+    '<div class="truck-foot"><div class="tf-line"><span>Preco frete (tabela do pedido)</span><b>'+fmtMoney(fr.total)+'</b></div><div class="tf-line"><span>R$/ton efetivo (proporcional)</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+(t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo ('+(fr.refFrete==="negociado"?"negociado":"preco")+' - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'')+'</div>';
   const body=card.querySelector("#body-"+t.id);
   if(assigned.length){assigned.sort(cmpPedidos);assigned.forEach(p=>{const tc=pedidoCard(p,true);tc.querySelector("[data-frete]").textContent="Frete rateado: "+fmtMoney(fr.alloc[p.id]||0);body.appendChild(tc);});}
   card.querySelector(".edit").addEventListener("click",()=>openModal(t));
@@ -7853,10 +7876,55 @@ function retirarLiberacaoProducao(){
 }
 
 /* PAINEL FECHADO PARCIAL */
+/* ===== FRETE NEGOCIADO (canal industria) =====
+   Valor em R$/TON, mesma unidade do fretePago, para a comparacao negociado - pago sair na
+   mesma grandeza e continuar correta quando o peso da carga muda. So aparece em carga que
+   tenha ao menos um pedido de industria. Em carga embarcada e somente leitura. */
+function freteNegociadoHtml(t,fr){
+  if(!cargaTemIndustria(t))return "";
+  const tem=t.freteNegociado>0;
+  const tot=(fr&&fr.negTotal>0)?(" &rarr; "+fmtMoney(fr.negTotal)+" na carga"):"";
+  if(t.status==="embarcada"){
+    return '<div class="cl-neg"><label>&#127981; Frete negociado (industria)</label>'+
+      '<b>'+(tem?(fmtMoney(t.freteNegociado)+"/ton"):"nao informado")+'</b>'+
+      '<span class="cl-neg-info">'+(tem?("congelado no embarque"+tot):"a carga embarcou sem valor negociado")+'</span></div>';
+  }
+  return '<div class="cl-neg"><label for="neg_'+t.id+'">&#127981; Frete negociado (industria)</label>'+
+    '<input type="number" step="0.01" min="0" class="neginp" id="neg_'+t.id+'" value="'+_hesc(tem?t.freteNegociado:"")+'" placeholder="R$/ton">'+
+    '<span class="cl-neg-info">'+(tem?("R$/ton"+tot):"Informe o teto cotado com o cliente, em R$/ton. Sem ele, esta carga fica fora do indicador Saldo frete.")+'</span></div>';
+}
+function definirFreteNegociado(t,v){
+  if(!requirePerm("contratar"))return;
+  if(!requireScope(t))return;
+  const n=parseNum(v);
+  const de=(t.freteNegociado>0)?(fmtMoney(t.freteNegociado)+"/ton"):"-";
+  if(!(n>0)){
+    if(!(t.freteNegociado>0))return;
+    delete t.freteNegociado;
+    pushHist(t,{tipo:"Frete negociado",de:de,para:"-",motivo:"Valor removido"});
+    logAction("frete_negociado",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> removido");
+    renderAll();toast("Frete negociado removido. A carga sai do indicador Saldo frete.","info",6500);
+    return;
+  }
+  if(t.freteNegociado===n)return;
+  t.freteNegociado=n;
+  pushHist(t,{tipo:"Frete negociado",de:de,para:fmtMoney(n)+"/ton",motivo:"Cotado com o cliente (industria)"});
+  logAction("frete_negociado",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": "+de+" -> "+fmtMoney(n)+"/ton");
+  renderAll();
+  toast("Frete negociado definido: "+fmtMoney(n)+"/ton.","ok");
+}
+function wireFreteNegociado(card,t){
+  const i=card.querySelector(".neginp");if(!i)return;
+  i.addEventListener("click",e=>e.stopPropagation());
+  i.addEventListener("change",e=>{e.stopPropagation();definirFreteNegociado(t,i.value);});
+}
+
 function freteFootHtml(t,fr){
+  const _neg=!!(fr&&fr.refFrete==="negociado");
   return '<div class="tf-line"><span>Preco frete (tabela)</span><b>'+fmtMoney(fr.total)+'</b></div>'+
     '<div class="tf-line"><span>R$/ton efetivo</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+
-    (t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo (preco - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'');
+    (_neg?'<div class="tf-line"><span>Frete negociado (industria, '+fmtMoney(fr.negTon)+'/ton)</span><b>'+fmtMoney(fr.negTotal)+'</b></div>':'')+
+    (t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo ('+(_neg?"negociado":"preco")+' - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'');
 }
 /* ===== LISTA ENXUTA DOS PEDIDOS NO CARD =====
    So exibicao. Recebe o "ps" que o stageCard ja montou (state.pedidos por assignedTo,
@@ -7927,6 +7995,7 @@ function stageCard(t,cfg){
     prog+
     (cfg.infoHtml||"")+
     (cfg.warnHtml||"")+
+    freteNegociadoHtml(t,fr)+
     foraDaPlanilhaAvisoHtml(ps)+
     pedidosResumoHtml(ps)+
     '<div class="clactions">'+(cfg.actions||"")+excluirVaziaBtnHtml(ps)+'</div>'+
@@ -7938,6 +8007,7 @@ function stageCard(t,cfg){
   const d=card.querySelector(".det");
   if(d)d.addEventListener("click",function(e){e.stopPropagation();if(window.openCargaDetalhe)window.openCargaDetalhe(t);});
   wireExcluirVazia(card,t);
+  wireFreteNegociado(card,t);
   aplicaBloqueioEscopo(card,t);
   return {card:card,ps:ps,fr:fr,load:load,pct:pct};
 }
@@ -8160,7 +8230,7 @@ function veiculoContratado(t){
 function embarcarCarga(t){
   if(!requirePerm("embarcar"))return;
   if(!requireScope(t))return;
-  t.status="embarcada";t.shippedAt=new Date();var _ps=state.pedidos.filter(function(p){return p.assignedTo===t.id;});var _fr=loadFreight(t);t.freteSnap={total:_fr.total,pagoTotal:_fr.pagoTotal,saldo:_fr.saldo,kg:_ps.reduce(function(s,p){return s+(p.peso||0);},0),rate:_fr.rate,pagoTon:_fr.pagoTon};if(!t.embLogged){state.embHist=state.embHist||[];state.embHist.push({ts:Date.now(),filial:(t.filialCarga||truckFilial(t)),filialNome:(_ps[0]&&_ps[0].filial)||"",rota:t.rota||"",ufs:Array.from(new Set(_ps.map(function(p){return String(p.uf||"").toUpperCase();}).filter(Boolean))),cidades:Array.from(new Set(_ps.map(function(p){return p.cidade;}).filter(Boolean))),vendedores:Array.from(new Set(_ps.map(function(p){return p.vendedor;}).filter(Boolean))),num:t.numeroCarga||null,semana:t.semana||"",kg:t.freteSnap.kg,saldo:_fr.saldo});t.embLogged=true;}renderAll();setTab("embarcadas");
+  t.status="embarcada";t.shippedAt=new Date();var _ps=state.pedidos.filter(function(p){return p.assignedTo===t.id;});var _fr=loadFreight(t);t.freteSnap={total:_fr.total,pagoTotal:_fr.pagoTotal,saldo:_fr.saldo,kg:_ps.reduce(function(s,p){return s+(p.peso||0);},0),rate:_fr.rate,pagoTon:_fr.pagoTon,refFrete:_fr.refFrete,negTon:_fr.negTon,negTotal:_fr.negTotal,temIndustria:_fr.temIndustria};if(!t.embLogged){state.embHist=state.embHist||[];state.embHist.push({ts:Date.now(),filial:(t.filialCarga||truckFilial(t)),filialNome:(_ps[0]&&_ps[0].filial)||"",rota:t.rota||"",ufs:Array.from(new Set(_ps.map(function(p){return String(p.uf||"").toUpperCase();}).filter(Boolean))),cidades:Array.from(new Set(_ps.map(function(p){return p.cidade;}).filter(Boolean))),vendedores:Array.from(new Set(_ps.map(function(p){return p.vendedor;}).filter(Boolean))),num:t.numeroCarga||null,semana:t.semana||"",kg:t.freteSnap.kg,saldo:_fr.saldo});t.embLogged=true;}renderAll();setTab("embarcadas");
   toast("Carga \""+(t.rota||"-")+"\" marcada como Embarcada.","ok");logAction("embarcar",(t.rota||"")+" "+VEHICLES[String(t.cap)]);
 }
 
@@ -8450,7 +8520,14 @@ function renderKpis(){
   if($("#kContr"))$("#kContr").textContent=contr.length;
   const emb=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
   if($("#kEmb"))$("#kEmb").textContent=emb.length;
-  const saldo=contr.concat(emb).filter(truckInScope).filter(t=>t.fretePago>0).reduce((s,t)=>s+loadFreight(t).saldo,0); // carga sem frete pago nao entra: saldo dela seria o preco de tabela inteiro
+  /* Carga sem frete pago nao entra (o saldo dela seria o preco de tabela inteiro). Desde a
+     1.20.0, carga de INDUSTRIA sem frete negociado informado tambem fica de fora: a tabela
+     da rota nao e referencia valida para ela. Com o negociado informado, entra normalmente. */
+  const saldo=contr.concat(emb).filter(truckInScope).filter(t=>t.fretePago>0).reduce(function(s,t){
+    const fr=loadFreight(t);
+    if(fr.temIndustria&&!(fr.negTon>0))return s;
+    return s+fr.saldo;
+  },0);
   const ks=$("#kSaldo");ks.textContent=(saldo>=0?"":"-")+"R$ "+Math.abs(saldo).toLocaleString("pt-BR",{maximumFractionDigits:0});
   const ksc=$("#kSaldoCard");if(ksc){ksc.classList.toggle("green",saldo>=0);ksc.classList.toggle("alert",saldo<0);ksc.classList.toggle("neutral",false);}
   $("#kAloc").textContent=fmtT(aloc);
@@ -9094,7 +9171,7 @@ function importAuthConfig(file){
 /* ===== MONITORIA ===== */
 function fmtDur(sec){sec=Math.max(0,Math.round(sec||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return (h?h+"h ":"")+(m||h?m+"min ":"")+s+"s";}
 function fmtDT(ts){const d=new Date(ts);const p=n=>n<10?"0"+n:n;return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());}
-function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",reverter_status:"Voltou/reabriu status de carga",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",liberar_producao:"Liberou carga p/ producao",paletizacao:"Atualizou paletizacao da carga",retirar_liberacao_producao:"Retirou liberacao de producao",export_pcp:"Exportou arquivo p/ o PCP",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",export_auditoria:"Exportou registro de auditoria",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
+function actionLabel(a){const m={login:"Entrou no sistema",logout:"Saiu do sistema",import_pedidos:"Importou pedidos",import_priorizados:"Atualizou priorizados",import_frete:"Importou tabela de frete",criar_carga:"Criou/editou carga",auto_preencher:"Auto-preencheu carga",fechar_carga:"Fechou carga",fechar_parcial:"Fechou carga (parcial)",contratar:"Contratou veiculo",frete_negociado:"Definiu/alterou frete negociado (industria)",reverter_status:"Voltou/reabriu status de carga",embarcar:"Marcou embarcado",embarcar_fob:"Embarcou pedido FOB",cad_transp:"Cadastrou transportadora",cad_rota:"Cadastrou/editou rota",exportar:"Exportou romaneio",liberar_producao:"Liberou carga p/ producao",paletizacao:"Atualizou paletizacao da carga",retirar_liberacao_producao:"Retirou liberacao de producao",export_pcp:"Exportou arquivo p/ o PCP",limpar:"Limpou dados",usuario_criado:"Criou usuario",usuario_editado:"Editou usuario",usuario_removido:"Removeu usuario",export_acessos:"Exportou backup de acessos",export_auditoria:"Exportou registro de auditoria",import_acessos:"Restaurou acessos (backup)",perfil_criado:"Criou perfil",perfil_editado:"Editou perfil",perfil_removido:"Removeu perfil"};return m[a]||a;}
 function csvEsc(s){s=String(s==null?"":s);return /[";\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
 function exportAudit(){
   const a=loadAudit();
@@ -9586,9 +9663,17 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.19.0";
+  var APP_VERSION="1.20.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.20.0",data:"04/09/2026",itens:[
+      ["NOVO","Frete negociado para cargas de indústria. Quando uma carga tem ao menos um pedido do canal indústria, o frete é cotado pontualmente com o cliente e a tabela da rota deixa de ser uma referência válida. Essas cargas passam a ter um campo próprio no cartão para informar o teto negociado, em R$ por tonelada."],
+      ["CORRECAO","O saldo dessas cargas passa a ser calculado sobre o valor negociado, não sobre a tabela: saldo é o negociado menos o frete pago. O cartão e a janela de detalhes mostram a linha do frete negociado e o rótulo passa a dizer Saldo (negociado − pago), para o número nunca aparecer com referência errada."],
+      ["CORRECAO","O indicador Saldo frete do topo deixa de somar carga de indústria que ainda não tem o negociado informado, porque a tabela distorceria o total. Assim que o valor é informado, ela volta a entrar normalmente. Cargas sem pedido de indústria não mudaram em nada."],
+      ["MELHORIA","O valor é informado em R$ por tonelada, a mesma unidade do frete pago, e o sistema mostra ao lado quanto isso dá na carga inteira. Assim o teto continua correto mesmo que a carga ganhe ou perca pedidos."],
+      ["MELHORIA","Ao embarcar, o frete negociado é congelado junto com os demais valores de frete, para o saldo da carga embarcada não voltar a usar a tabela. Cargas embarcadas antes desta versão permanecem exatamente como estão."],
+      ["MELHORIA","Informar ou alterar o frete negociado exige a permissão Contratar veículo, respeita o escopo de planta e fica registrado no histórico da carga e na Monitoria."]
+    ]},
     {versao:"1.19.0",data:"04/09/2026",itens:[
       ["NOVO","Cidades atendidas por rota, na Tabela de Frete. Cada rota passa a mostrar as cidades que atende, com a UF, numa coluna nova. A lista junta duas origens: as cidades que aparecem nos pedidos daquela rota, atualizadas a cada importação, e as que você cadastrar manualmente."],
       ["NOVO","Cadastro de cidade. Um formulário na própria aba permite informar cidade, estado e rota. A rota pode ser escolhida entre as existentes ou digitada como nova — nesse caso ela é criada na tabela sem tarifa, já com a cidade. A tarifa continua sendo cadastrada por rota, como sempre."],
@@ -10160,7 +10245,8 @@ netBoot();
       info("Preco frete (tabela)",fmtMoney(fr.total))+
       info("R$/ton efetivo",fr.rate?fmtMoney(fr.rate):"-")+
       info("Frete pago",t.fretePago?(fmtMoney(fr.pagoTotal)+" ("+fmtMoney(fr.pagoTon)+"/ton)"):"a definir")+
-      info("Saldo (preco - pago)",t.fretePago?fmtMoney(fr.saldo):"a definir",t.fretePago?(fr.saldo>=0?"pos":"neg"):"")+
+      (fr.refFrete==="negociado"?info("Frete negociado (industria)",fmtMoney(fr.negTotal)+" ("+fmtMoney(fr.negTon)+"/ton)"):"")+
+      info("Saldo ("+(fr.refFrete==="negociado"?"negociado":"preco")+" - pago)",t.fretePago?fmtMoney(fr.saldo):"a definir",t.fretePago?(fr.saldo>=0?"pos":"neg"):"")+
       info("MC da carga",m.vl>0?m.mcPct.toFixed(1)+"%":"-",m.vl>0?mcCor(m.mcPct):"")+
       info("MC apos frete pago",(m.fretePago!=null&&m.vl>0)?m.mcPctLiq.toFixed(1)+"%":"-",(m.fretePago!=null&&m.vl>0)?mcCor(m.mcPctLiq):"")+
       '</div>'+(m.acima?'<div class="cd-alert">&#9888; Frete pago esta '+fmtMoney(m.delta)+' acima da tabela.</div>':'')+'</div>';
