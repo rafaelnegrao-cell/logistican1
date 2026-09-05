@@ -9311,9 +9311,15 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.16.0";
+  var APP_VERSION="1.17.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.17.0",data:"04/09/2026",itens:[
+      ["CORRECAO","Registro de Ações: segunda e última parte da correção de auditoria, agora no servidor. Antes, cada computador enviava o registro inteiro e o servidor gravava por cima do que já estava lá; quando dois operadores registravam quase ao mesmo tempo, um apagava as ações do outro. Agora o servidor junta os registros em vez de substituir, e nenhuma ação se perde."],
+      ["MELHORIA","A junção acontece de forma protegida: enquanto um registro está sendo gravado, os demais aguardam a vez, o mesmo mecanismo que a Central de Solicitações já usava. Duas gravações simultâneas deixaram de se atropelar."],
+      ["MELHORIA","A correção vale para todos os computadores imediatamente, inclusive os que ainda estiverem com a versão anterior aberta na tela: nada mudou na forma como o sistema envia o registro, apenas no que o servidor faz com ele."],
+      ["MELHORIA","O limite de tamanho do registro (20.000 ações e 5.000 acessos, sempre descartando os mais antigos) passou a ser aplicado no servidor, que agora é quem consolida tudo. Nada é apagado por tempo."]
+    ]},
     {versao:"1.16.0",data:"04/09/2026",itens:[
       ["CORRECAO","Registro de Ações: primeira parte de uma correção de auditoria. Foi identificado que ações de um operador podiam desaparecer do registro quando outro operador usava o sistema ao mesmo tempo. Esta versão corrige as duas causas do lado da tela; a causa principal, no servidor, vem na próxima entrega."],
       ["CORRECAO","Abrir a Monitoria não grava mais nada. Antes, só de abrir a aba ou trocar o filtro de usuário, o sistema reenviava o registro inteiro daquele computador por cima do servidor, apagando ações que outros operadores tinham acabado de registrar. Agora a Monitoria apenas lê e mostra."],

@@ -20,6 +20,13 @@ app.config["MAX_CONTENT_LENGTH"] = 30 * 1024 * 1024  # ate 30 MB por requisicao
 
 STORES = ("auth", "app", "audit", "antt")
 
+# Teto do registro de auditoria. Espelha o pruneAudit do index.html: o corte e so por
+# tamanho, nunca por data, e sempre remove os mais antigos. Desde a 1.17.0 a poda e
+# aplicada aqui no servidor, porque o PUT /api/audit passou a FUNDIR em vez de substituir
+# (se o cliente podasse e enviasse, o servidor ressuscitaria o que ele acabou de cortar).
+AUD_MAXL = 20000
+AUD_MAXS = 5000
+
 # Railway expoe normalmente DATABASE_URL; aceitamos variantes por seguranca.
 DB_URL = (os.environ.get("DATABASE_URL") or os.environ.get("DATABASE")
           or os.environ.get("POSTGRES_URL") or os.environ.get("PG_URL"))
@@ -134,6 +141,7 @@ def ensure_init():
     migrate_from_volume()
     seed_store_if_absent("comms", {"threads": []})
     seed_store_if_absent("antt", {"portaria": "", "vigencia": "", "atualizado": 0, "coef": []})
+    seed_store_if_absent("audit", {"sessions": [], "logs": []})
     _INIT_DONE = True
 
 
@@ -169,6 +177,113 @@ def comms_mutate(fn):
     finally:
         conn.close()
     return result
+
+
+# ---------- Registro de auditoria (fusao atomica) ----------
+# O separador da chave e o U+0001, o mesmo do _audKey() do index.html. Escrito com chr(1)
+# de proposito: nao ha contrabarra no fonte para se perder em copia ou edicao.
+_AUD_SEP = chr(1)
+
+
+def _aud_s(v):
+    """Converte como o String() do JS faz dentro de Array.join: None vira string vazia,
+    numero inteiro vira o inteiro. Sem isso, uma acao sem detalhe teria chave 'None' aqui
+    e '' no front, e cada gravacao duplicaria a entrada."""
+    if v is None:
+        return ""
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v)
+
+
+def _aud_key(e):
+    """Identidade de uma entrada de log: ts|user|action|detail.
+    Tem que dar exatamente o mesmo resultado que o _audKey() do index.html."""
+    if not isinstance(e, dict):
+        return None
+    return _AUD_SEP.join([_aud_s(e.get("ts")), _aud_s(e.get("user")),
+                          _aud_s(e.get("action")), _aud_s(e.get("detail"))])
+
+
+def _audit_merge(base, incoming):
+    """Une dois retratos do registro. Mesma regra do mergeAudit() do index.html:
+      - logs: identidade ts|user|action|detail; uniao sem duplicar, ordenada por ts
+      - sessions: identidade id; em duplicata vence a de maior logoutAt
+    Ao final aplica a poda, cortando sempre os mais antigos."""
+    base = base if isinstance(base, dict) else {}
+    incoming = incoming if isinstance(incoming, dict) else {}
+
+    logs = []
+    vistos = set()
+    for e in list(base.get("logs") or []) + list(incoming.get("logs") or []):
+        if not isinstance(e, dict):
+            continue
+        k = _aud_key(e)
+        if k in vistos:
+            continue
+        vistos.add(k)
+        logs.append(e)
+    logs.sort(key=lambda x: x.get("ts") or 0)
+
+    por_id = {}
+    ordem = []
+    for s in list(base.get("sessions") or []) + list(incoming.get("sessions") or []):
+        if not isinstance(s, dict) or not s.get("id"):
+            continue
+        sid = s["id"]
+        ex = por_id.get(sid)
+        if ex is None:
+            por_id[sid] = s
+            ordem.append(sid)
+        elif (s.get("logoutAt") or 0) > (ex.get("logoutAt") or 0):
+            por_id[sid] = s
+    sessions = [por_id[i] for i in ordem]
+    sessions.sort(key=lambda x: x.get("loginAt") or 0)
+
+    if len(logs) > AUD_MAXL:
+        logs = logs[len(logs) - AUD_MAXL:]
+    if len(sessions) > AUD_MAXS:
+        sessions = sessions[len(sessions) - AUD_MAXS:]
+    return {"sessions": sessions, "logs": logs}
+
+
+def audit_mutate(incoming):
+    """Le-modifica-grava a store 'audit' de forma atomica (SELECT ... FOR UPDATE), no molde
+    do comms_mutate. O PUT /api/audit deixa de substituir o registro inteiro e passa a
+    FUNDIR: um cliente com uma copia desatualizada nao consegue mais apagar acoes de outro.
+
+    Contrato de rede inalterado -- mesmo verbo, mesma URL, mesmo corpo {data:...} e mesma
+    resposta {rev, updatedAt} -- para o front que ja esta nos navegadores nao mudar nada.
+
+    A linha e semeada antes do FOR UPDATE de proposito: sem linha nao ha o que travar, e
+    duas primeiras gravacoes simultaneas ainda se atropelariam."""
+    now = int(time.time() * 1000)
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO kv_store (name, rev, updated_at, data) VALUES ('audit', 0, %s, %s) "
+                "ON CONFLICT (name) DO NOTHING",
+                (now, Json({"sessions": [], "logs": []})),
+            )
+            cur.execute("SELECT data FROM kv_store WHERE name='audit' FOR UPDATE")
+            row = cur.fetchone()
+            base = (row[0] if row and row[0] else None) or {"sessions": [], "logs": []}
+            data = _audit_merge(base, incoming)
+            cur.execute(
+                "INSERT INTO kv_store (name, rev, updated_at, data) VALUES ('audit', 1, %s, %s) "
+                "ON CONFLICT (name) DO UPDATE SET rev = kv_store.rev + 1, "
+                "updated_at = EXCLUDED.updated_at, data = EXCLUDED.data "
+                "RETURNING rev, updated_at",
+                (now, Json(data)),
+            )
+            r = cur.fetchone()
+        conn.commit()
+    finally:
+        conn.close()
+    return {"rev": r[0], "updatedAt": r[1]}
 
 
 def _author(body):
@@ -214,6 +329,10 @@ def api_store(name):
     parsed = request.get_json(force=True, silent=True)
     if not isinstance(parsed, dict) or "data" not in parsed:
         return jsonify({"error": "bad json"}), 400
+    if name == "audit":
+        # registro de auditoria: funde em vez de substituir (ver audit_mutate).
+        # auth/app/antt continuam em write_store -- para eles substituir e o correto.
+        return jsonify(audit_mutate(parsed["data"]))
     return jsonify(write_store(name, parsed["data"]))
 
 
