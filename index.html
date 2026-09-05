@@ -6152,6 +6152,15 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
   .clinfo2{display:flex;flex-wrap:wrap;gap:10px;padding:9px 14px;background:#f6f9ff;font-size:11px;color:var(--cinza);border-top:1px solid var(--grade)}
   .clinfo2 b{color:var(--texto)}
   .cl-warn{padding:7px 14px;font-size:10.5px;color:#8a6d00;background:#FFF8E1;font-weight:600;line-height:1.4}
+  .cidform{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 12px;padding:11px 13px;background:var(--cinza-bg);border:1px solid var(--grade);border-radius:10px}
+  .cidform-t{font-size:12px;font-weight:800;color:var(--texto)}
+  .cidform input,.cidform select{font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--grade);border-radius:7px;background:#fff;color:var(--texto)}
+  .cidform-h{font-size:10.5px;color:var(--cinza);flex:1 1 100%}
+  .cidcell{display:flex;flex-wrap:wrap;gap:4px;max-width:420px}
+  .cidtag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;background:var(--cinza-bg);border:1px solid var(--grade);border-radius:6px;padding:1px 6px;white-space:nowrap}
+  .cidtag.man{background:var(--verde-bg);border-color:#bfe6cf;color:#0a5d44;font-weight:700}
+  .cidx{border:none;background:transparent;color:#0a5d44;cursor:pointer;font-size:13px;line-height:1;padding:0 0 0 2px}
+  .cidx:hover{color:var(--risco)}
   .tabfilters{padding:10px 14px 0;gap:7px}
   .tabfilters input{min-width:0}
   .cl-note{padding:7px 14px;font-size:10.5px;color:#0a5d44;background:#EAF7F1;font-weight:600;line-height:1.4}
@@ -6404,6 +6413,7 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     <!-- PANEL TABELA DE FRETE -->
     <section class="panel" data-panel="frete">
       <div class="panel-head"><h2>Tabela de Frete por Rota</h2><span class="meta">Faixas de preco (R$/ton) por faixa de peso</span><span class="spacer" style="flex:1"></span>
+        <button class="btn" id="btnExportFrete">&#11015; Exportar tabela de frete</button>
         <button class="btn" id="btnImportFrete">&#128193; Importar Tabela de Frete</button>
         <input type="file" id="freteFileInput" accept=".csv,.xlsx,.xls" class="hidden">
       </div>
@@ -6411,7 +6421,16 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
         <div class="ftools">
           <select id="ffFilial"><option value="">Todas filiais</option></select>
           <input id="ffBusca" placeholder="Buscar rota / cidade..." style="min-width:240px">
+          <input id="ffCidade" list="ffDlCidade" placeholder="Filtrar por cidade" autocomplete="off" style="min-width:180px"><datalist id="ffDlCidade"></datalist>
           <span class="meta" id="freteCount" style="color:var(--cinza)"></span>
+        </div>
+        <div class="cidform">
+          <span class="cidform-t">&#127961; Cadastrar cidade em uma rota</span>
+          <input id="cCidNome" placeholder="Cidade" autocomplete="off">
+          <select id="cCidUf"><option value="">UF</option></select>
+          <input id="cCidRota" list="cCidDlRota" placeholder="Rota (escolha uma ou digite uma nova)" autocomplete="off"><datalist id="cCidDlRota"></datalist>
+          <button class="btn primary" id="cCidAdd">+ Cadastrar cidade</button>
+          <span class="cidform-h">A tarifa continua sendo por rota. A cidade e apenas informativa. Rota nova nasce sem tarifa.</span>
         </div>
         <div id="freteTabBody"><div class="empty">Importe os pedidos (ou uma tabela de frete) para ver as faixas de preco por rota.</div></div>
       </div>
@@ -6886,7 +6905,7 @@ const PED_LIMIT={"15000":6,"22000":4,"33000":2,"40000":1,"49000":1}; // limite d
 const STD_TIERS=[{label:"Até 5t",max:5000},{label:"Até 8t",max:8000},{label:"Até 13,5t",max:13500},{label:"Até 25t",max:25000},{label:"Acima 25t",max:0}];
 const OVERRIDES=["IBY4687","IBY4683"]; // liberacoes manuais fixas (doc)
 
-const state={pedidos:[],trucks:[],carriers:[],nextTruck:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null,prioMap:{},prioFileName:"",prioUpdatedAt:""};
+const state={pedidos:[],trucks:[],carriers:[],nextTruck:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightCities:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null,prioMap:{},prioFileName:"",prioUpdatedAt:""};
 
 /* ===== SINCRONIZACAO COM O SERVIDOR (dados compartilhados pelo time) ===== */
 const NET={on:false,appRev:0,authRev:0,audRev:0,appData:null};
@@ -7065,6 +7084,17 @@ function buildFreightTableFromPeds(){
     }
     if(!T[rk].km&&p.km)T[rk].km=p.km;
     if(!T[rk].filial&&p.rotaFil)T[rk].filial=p.rotaFil;
+  });
+  /* 1.19.0 — GUARDA ADITIVA: uma rota criada pelo cadastro de cidade nao vem dos pedidos,
+     entao seria descartada aqui. Reinjeta so as rotas que (a) ja existem na tabela atual e
+     (b) tem cidade manual cadastrada, e apenas quando o proprio T nao as trouxe. Nao altera
+     nenhuma rota vinda dos pedidos, nao mexe em tarifa nem em freightSource. */
+  const _fc=state.freightCities||{};
+  Object.keys(_fc).forEach(function(rk){
+    if(T[rk])return;                                        // os pedidos ja trouxeram a rota
+    if(!(_fc[rk]&&_fc[rk].length))return;                   // sem cidade manual, nada a preservar
+    const ant=state.freightTable&&state.freightTable[rk];
+    if(ant)T[rk]=ant;                                       // preserva a rota como estava
   });
   state.freightTable=T;
 }
@@ -8245,22 +8275,152 @@ function buildFreightFilters(){
   const cur=$("#ffFilial").value;
   $("#ffFilial").innerHTML='<option value="">Todas filiais</option>'+fils.map(f=>'<option>'+f+'</option>').join("");
   if([...$("#ffFilial").options].some(o=>o.value===cur))$("#ffFilial").value=cur;
+  const esc=s=>String(s).replace(/"/g,"&quot;");
+  const dlR=$("#cCidDlRota");
+  if(dlR)dlR.innerHTML=[...new Set(Object.values(state.freightTable).map(r=>r.destino).filter(Boolean))].sort().map(v=>'<option value="'+esc(v)+'"></option>').join("");
+  const dlC=$("#ffDlCidade");
+  if(dlC){const cs=[];Object.keys(state.freightTable).forEach(k=>cidadesDaRota(k).forEach(c=>cs.push(cidadeLabel(c))));
+    dlC.innerHTML=[...new Set(cs)].sort().map(v=>'<option value="'+esc(v)+'"></option>').join("");}
+  const selU=$("#cCidUf");
+  if(selU){const cu=selU.value;selU.innerHTML='<option value="">UF</option>'+allUFs().map(u=>'<option>'+u+'</option>').join("");if(cu)selU.value=cu;}
 }
+/* ===== CIDADES ATENDIDAS POR ROTA (1.19.0) =====
+   A tarifa continua sendo POR ROTA. A cidade e apenas informacao: quais cidades aquela
+   rota atende. Duas fontes: as automaticas (cidades distintas dos pedidos daquela rota,
+   que mudam a cada importacao) e as manuais (cadastradas na tela, em state.freightCities,
+   que nao podem sumir na reimportacao). Nada aqui entra em calculo de frete. */
+function rotaKey(destino,cod){return (destino||"-")+"||"+(cod||"");}   // mesma formula ja usada na tabela
+function _cidKey(c){return norm(c&&c.cidade)+"|"+String((c&&c.uf)||"").toUpperCase();}
+function cidadesAuto(rk){
+  const out=[];
+  state.pedidos.forEach(function(p){
+    if(rotaKey(p.rota,p.rotaCod)!==rk)return;
+    if(!p.cidade||!String(p.cidade).trim())return;
+    out.push({cidade:String(p.cidade).trim(),uf:String(p.uf||"").toUpperCase(),manual:false});
+  });
+  return out;
+}
+function cidadesManuais(rk){
+  const l=(state.freightCities||{})[rk]||[];
+  return l.map(function(c){return {cidade:c.cidade,uf:String(c.uf||"").toUpperCase(),manual:true};});
+}
+function cidadesDaRota(rk){
+  const vistos={},out=[];
+  cidadesManuais(rk).concat(cidadesAuto(rk)).forEach(function(c){   // manual primeiro: preserva o "manual" no dedup
+    const k=_cidKey(c);
+    if(!k||k==="|")return;
+    if(vistos[k])return;
+    vistos[k]=1;out.push(c);
+  });
+  out.sort(function(a,b){return String(a.cidade).localeCompare(String(b.cidade));});
+  return out;
+}
+function cidadeLabel(c){return c.cidade+(c.uf?"/"+c.uf:"");}
+function cidadesTexto(rk){return cidadesDaRota(rk).map(cidadeLabel).join(", ");}
+
+function salvarCidadeRota(){
+  if(!requirePerm("cadRota"))return;
+  const cid=$("#cCidNome").value.trim();
+  const uf=$("#cCidUf").value.trim().toUpperCase();
+  const rot=$("#cCidRota").value.trim();
+  if(!cid){toast("Informe a cidade.","err");return;}
+  if(!uf){toast("Escolha o estado (UF).","err");return;}
+  if(!rot){toast("Informe a rota: escolha uma existente ou digite uma nova.","err");return;}
+  const T=state.freightTable||{};
+  let rk=null;
+  Object.keys(T).forEach(function(k){if(rk===null&&norm(T[k].destino)===norm(rot))rk=k;});
+  let nova=false;
+  if(rk===null){
+    rk=rotaKey(rot,"");
+    T[rk]={cod:"",destino:rot,uf:uf,filial:"",km:0,tiers:{}};   // rota nova nasce SEM tarifa
+    state.freightTable=T;
+    nova=true;
+  }
+  state.freightCities=state.freightCities||{};
+  const lista=state.freightCities[rk]||[];
+  const alvo={cidade:cid,uf:uf};
+  const jaTem=cidadesDaRota(rk).some(function(c){return _cidKey(c)===_cidKey(alvo);});
+  if(jaTem&&!nova){toast("A cidade "+cid+"/"+uf+" ja consta nessa rota.","info");return;}
+  lista.push(alvo);
+  state.freightCities[rk]=lista;
+  ["cCidNome","cCidRota"].forEach(function(id){$("#"+id).value="";});
+  buildFreightFilters();renderFreteTab();saveState();
+  toast(nova?("Rota \""+rot+"\" criada (sem tarifa) com a cidade "+cid+"/"+uf+"."):("Cidade "+cid+"/"+uf+" adicionada a rota \""+T[rk].destino+"\"."),"ok",6500);
+  logAction("cad_cidade_rota",cid+"/"+uf+" -> "+T[rk].destino+(nova?" (rota nova, sem tarifa)":""));
+}
+function removerCidadeRota(rk,idx){
+  if(!requirePerm("cadRota"))return;
+  const lista=(state.freightCities||{})[rk]||[];
+  const c=lista[idx];if(!c)return;
+  if(!confirm("Remover a cidade "+c.cidade+"/"+(c.uf||"")+" desta rota?"))return;
+  lista.splice(idx,1);
+  if(!lista.length)delete state.freightCities[rk];else state.freightCities[rk]=lista;
+  buildFreightFilters();renderFreteTab();saveState();
+  toast("Cidade removida da rota.","info");
+  logAction("rem_cidade_rota",c.cidade+"/"+(c.uf||"")+" <- "+((state.freightTable[rk]||{}).destino||rk));
+}
+function cidadesCelulaHtml(rk){
+  const cs=cidadesDaRota(rk);
+  if(!cs.length)return '<span style="color:var(--cinza)">-</span>';
+  const man=(state.freightCities||{})[rk]||[];
+  return '<div class="cidcell">'+cs.map(function(c){
+    if(!c.manual)return '<span class="cidtag">'+_hesc(cidadeLabel(c))+'</span>';
+    let i=-1;man.forEach(function(m,ix){if(i<0&&_cidKey(m)===_cidKey(c))i=ix;});
+    return '<span class="cidtag man">'+_hesc(cidadeLabel(c))+
+      '<button class="cidx" data-rk="'+_hesc(rk)+'" data-ix="'+i+'" title="Remover cidade cadastrada">&times;</button></span>';
+  }).join("")+'</div>';
+}
+
 function renderFreteTab(){
   const body=$("#freteTabBody");
   const T=state.freightTable;const keys=Object.keys(T);
   if(!keys.length){body.innerHTML='<div class="empty">Importe os pedidos (ou uma tabela de frete) para ver as faixas de preco por rota.</div>';$("#freteCount").textContent="";return;}
   const ff=$("#ffFilial").value, q=norm($("#ffBusca").value);
+  const qc=norm($("#ffCidade")?$("#ffCidade").value:"");   // 1.19.0: acha a rota pela cidade que ela atende
   // colunas de faixa (uniao, ordenadas por peso)
   const tiers=[...new Set(keys.flatMap(k=>Object.keys(T[k].tiers)))].sort((a,b)=>tierRank(a)-tierRank(b));
-  let rows=keys.map(k=>T[k]).filter(r=>(!ff||r.filial===ff)&&(!q||norm(r.destino).includes(q)||norm(String(r.cod)).includes(q)||norm(String(r.cif||"")).includes(q)));
+  const _cidTxt={};keys.forEach(k=>{_cidTxt[k]=norm(cidadesTexto(k));});
+  let rows=keys.map(k=>T[k]).filter(r=>{const k=rotaKey(r.destino,r.cod);
+    if(ff&&r.filial!==ff)return false;
+    if(q&&!(norm(r.destino).includes(q)||norm(String(r.cod)).includes(q)||norm(String(r.cif||"")).includes(q)||(_cidTxt[k]||"").includes(q)))return false;
+    if(qc&&!(_cidTxt[k]||"").includes(qc))return false;
+    return true;});
   rows.sort((a,b)=>String(a.filial).localeCompare(String(b.filial))||(a.cod-b.cod)||String(a.destino).localeCompare(String(b.destino)));
   $("#freteCount").textContent=rows.length+" rotas"+(state.freightSource==="import"?" (tabela importada)":" (da planilha de pedidos)");
   const hasCif=rows.some(r=>r.cif);
-  let html='<table class="dtable"><thead><tr><th>Cod</th><th>Rota</th><th>UF</th><th>Filial</th><th class="num">Km</th>'+(hasCif?'<th>Tabela CIF</th>':'')+tiers.map(t=>'<th class="num">'+t+'</th>').join("")+'</tr></thead><tbody>';
-  rows.forEach(r=>{html+='<tr><td class="b">'+(r.cod||"-")+'</td><td class="b">'+r.destino+'</td><td>'+(r.uf||"-")+'</td><td>'+(r.filial||"-")+'</td><td class="num">'+(r.km?Math.round(r.km):"-")+'</td>'+(hasCif?'<td>'+(r.cif||"-")+'</td>':'')+tiers.map(t=>'<td class="num ftier">'+(r.tiers[t]?fmtMoney(r.tiers[t]):"-")+'</td>').join("")+'</tr>';});
+  let html='<table class="dtable"><thead><tr><th>Cod</th><th>Rota</th><th>UF</th><th>Filial</th><th class="num">Km</th>'+(hasCif?'<th>Tabela CIF</th>':'')+tiers.map(t=>'<th class="num">'+t+'</th>').join("")+'<th>Cidades atendidas</th></tr></thead><tbody>';
+  rows.forEach(r=>{html+='<tr><td class="b">'+(r.cod||"-")+'</td><td class="b">'+r.destino+'</td><td>'+(r.uf||"-")+'</td><td>'+(r.filial||"-")+'</td><td class="num">'+(r.km?Math.round(r.km):"-")+'</td>'+(hasCif?'<td>'+(r.cif||"-")+'</td>':'')+tiers.map(t=>'<td class="num ftier">'+(r.tiers[t]?fmtMoney(r.tiers[t]):"-")+'</td>').join("")+'<td>'+cidadesCelulaHtml(rotaKey(r.destino,r.cod))+'</td></tr>';});
   html+='</tbody></table><div style="margin-top:10px;font-size:10.5px;color:var(--cinza)">Faixas por peso (padrao CIF): Ate 5t / Ate 8t / Ate 13,5t / Ate 25t / Acima 25t. Cargas mais pesadas tem R$/ton menor. Cadastre ou atualize em <b>Cadastros &raquo; Rotas &amp; Frete</b>.</div>';
   body.innerHTML=html;
+  Array.prototype.forEach.call(body.querySelectorAll(".cidx"),function(b){
+    b.addEventListener("click",function(){removerCidadeRota(b.getAttribute("data-rk"),parseInt(b.getAttribute("data-ix"),10));});
+  });
+}
+
+function exportarTabelaFrete(){
+  if(!requirePerm("exportar"))return;
+  const T=state.freightTable||{},keys=Object.keys(T);
+  if(!keys.length){toast("Nao ha rotas na tabela de frete para exportar.","info");return;}
+  /* Colunas espelhando o importador (Cod, Rota, UF, Filial, Km, Faixa, Frete/Ton), mais
+     Tabela CIF e Cidades. Uma linha por rota x faixa. Rota sem tarifa sai com uma linha
+     de faixa vazia: ela aparece no arquivo, mas o importador ignora linha sem preco. */
+  const head=["Cod","Rota","UF","Filial","Km","Tabela CIF","Faixa","Frete/Ton","Cidades"];
+  const data=[head];
+  keys.sort(function(a,b){return String(T[a].filial).localeCompare(String(T[b].filial))||String(T[a].destino).localeCompare(String(T[b].destino));});
+  let nL=0;
+  keys.forEach(function(k){
+    const r=T[k],cids=cidadesTexto(k);
+    const fx=Object.keys(r.tiers||{}).sort(function(a,b){return tierRank(a)-tierRank(b);});
+    if(!fx.length){data.push([r.cod||"",r.destino||"",r.uf||"",r.filial||"",r.km?Math.round(r.km):"","" ,"",  "",cids]);nL++;return;}
+    fx.forEach(function(f){data.push([r.cod||"",r.destino||"",r.uf||"",r.filial||"",r.km?Math.round(r.km):"",r.cif||"",f,+(r.tiers[f]||0),cids]);nL++;});
+  });
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(data);
+  ws["!cols"]=[{wch:8},{wch:26},{wch:5},{wch:12},{wch:8},{wch:14},{wch:12},{wch:11},{wch:52}];
+  XLSX.utils.book_append_sheet(wb,ws,"Tabela de Frete");
+  const d=new Date(),fn="N1_Tabela_Frete_"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+".xlsx";
+  XLSX.writeFile(wb,fn);
+  toast(keys.length+" rota(s) exportadas na tabela de frete.","ok");
+  logAction("export_frete",keys.length+" rota(s) / "+nL+" linha(s)");
 }
 
 /* FRETE PANEL */
@@ -8594,7 +8754,7 @@ function updateSavedInfo(ts,fail){
 }
 function saveState(){
   if(_restoring)return;
-  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,cargaSeq:state.cargaSeq||{},embHist:state.embHist||[],pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
+  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,cargaSeq:state.cargaSeq||{},embHist:state.embHist||[],pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,freightCities:state.freightCities||{},prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
   try{localStorage.setItem(SKEY,JSON.stringify(data));updateSavedInfo(data.ts);}catch(err){updateSavedInfo(null,true);}
   pushApp(data);
 }
@@ -8606,6 +8766,7 @@ function applyAppData(d){
   state.trucks=Array.isArray(d.trucks)?d.trucks:[];
   state.carriers=Array.isArray(d.carriers)?d.carriers:[];
   state.freightTable=d.freightTable&&typeof d.freightTable==="object"?d.freightTable:{};
+  state.freightCities=d.freightCities&&typeof d.freightCities==="object"?d.freightCities:{};
   state.freightSource=d.freightSource||"pedidos";
   state.freightFile=d.freightFile||"";
   state.fileName=d.fileName||"";
@@ -8641,12 +8802,12 @@ function resetState(){
   if(!isMaster()){toast("Apenas o perfil master pode limpar os dados.","err");return;}
   if(!confirm("Apagar TODOS os dados salvos (pedidos, tabela de frete, transportadoras e cargas montadas/fechadas/contratadas)? Esta acao nao pode ser desfeita."))return;
   try{localStorage.removeItem(SKEY);}catch(e){}
-  state.pedidos=[];state.trucks=[];state.carriers=[];state.freightTable={};state.freightSource="pedidos";state.freightFile="";state.fileName="";state.hasFrete=false;state.maxMcRs=1;state.nextTruck=1;
+  state.pedidos=[];state.trucks=[];state.carriers=[];state.freightTable={};state.freightCities={};state.freightSource="pedidos";state.freightFile="";state.fileName="";state.hasFrete=false;state.maxMcRs=1;state.nextTruck=1;
   $("#fileMeta").textContent="Nenhuma planilha carregada";
   refreshCarrierList();buildFilters();buildFreightFilters();
   _restoring=true;renderAll();_restoring=false;
   try{localStorage.removeItem(SKEY);}catch(e){}
-  pushApp({v:1,ts:Date.now(),fileName:"",freightFile:"",freightSource:"pedidos",hasFrete:false,maxMcRs:1,nextTruck:1,pedidos:[],trucks:[],carriers:[],freightTable:{},prioMap:{},prioFileName:"",prioUpdatedAt:""});
+  pushApp({v:1,ts:Date.now(),fileName:"",freightFile:"",freightSource:"pedidos",hasFrete:false,maxMcRs:1,nextTruck:1,pedidos:[],trucks:[],carriers:[],freightTable:{},freightCities:{},prioMap:{},prioFileName:"",prioUpdatedAt:""});
   updateSavedInfo(null);
   logAction("limpar","dados operacionais apagados");
   toast("Dados apagados. O sistema esta limpo (servidor e navegador).","info");
@@ -9005,6 +9166,9 @@ $("#btnImportFrete").addEventListener("click",()=>$("#freteFileInput").click());
 $("#freteFileInput").addEventListener("change",e=>{if(e.target.files[0])importFreightTable(e.target.files[0]);e.target.value="";});
 $("#ffFilial").addEventListener("change",renderFreteTab);
 $("#ffBusca").addEventListener("input",renderFreteTab);
+$("#ffCidade")&&$("#ffCidade").addEventListener("input",renderFreteTab);
+$("#cCidAdd")&&$("#cCidAdd").addEventListener("click",salvarCidadeRota);
+$("#btnExportFrete")&&$("#btnExportFrete").addEventListener("click",exportarTabelaFrete);
 ["#fFilial","#fRota","#fProduto","#fVendedor","#fCanal","#fCidade","#fUf"].forEach(s=>{const el=$(s);if(el)el.addEventListener("input",()=>{renderPedidos();renderKpis();});});
 $("#fSortEntrega")&&$("#fSortEntrega").addEventListener("change",()=>{renderPedidos();});
 (function(){var wrap=$("#fFinWrap"),btn=$("#fFinBtn"),menu=$("#fFinMenu");if(btn&&menu){btn.addEventListener("click",function(e){e.stopPropagation();menu.classList.toggle("open");});document.addEventListener("click",function(e){if(wrap&&!wrap.contains(e.target))menu.classList.remove("open");});[].forEach.call(document.querySelectorAll(".fFinChk"),function(c){c.addEventListener("change",function(){var sel=[].map.call(document.querySelectorAll(".fFinChk:checked"),function(x){return x.value;});btn.textContent=sel.length?(sel.length===1?sel[0]:sel.length+" status"):"Status";btn.classList.toggle("active",sel.length>0);renderPedidos();renderKpis();});});}})();
@@ -9422,9 +9586,17 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.18.0";
+  var APP_VERSION="1.19.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.19.0",data:"04/09/2026",itens:[
+      ["NOVO","Cidades atendidas por rota, na Tabela de Frete. Cada rota passa a mostrar as cidades que atende, com a UF, numa coluna nova. A lista junta duas origens: as cidades que aparecem nos pedidos daquela rota, atualizadas a cada importação, e as que você cadastrar manualmente."],
+      ["NOVO","Cadastro de cidade. Um formulário na própria aba permite informar cidade, estado e rota. A rota pode ser escolhida entre as existentes ou digitada como nova — nesse caso ela é criada na tabela sem tarifa, já com a cidade. A tarifa continua sendo cadastrada por rota, como sempre."],
+      ["MELHORIA","As cidades cadastradas à mão não se perdem na reimportação de pedidos. Elas ficam guardadas separadamente das automáticas, e a rota criada por esse cadastro também é preservada."],
+      ["NOVO","Filtro por cidade na Tabela de Frete, para responder rápido a pergunta “qual rota atende esta cidade?”. A busca geral da aba também passou a procurar nas cidades, não só na rota e no código."],
+      ["NOVO","Botão Exportar tabela de frete: gera um Excel com as rotas, as faixas de tarifa e a coluna de cidades, com as mesmas colunas que o sistema usa para importar. Rota sem tarifa aparece no arquivo, mas não retorna numa reimportação, porque o importador ignora linha sem preço."],
+      ["MELHORIA","A cidade é apenas informação da rota: não vira tarifa própria e não entra em nenhum cálculo de frete ou de margem. Cadastrar e remover cidade exige a permissão Cadastrar rota / frete e fica registrado na Monitoria."]
+    ]},
     {versao:"1.18.0",data:"04/09/2026",itens:[
       ["MELHORIA","A aba Cargas Programadas passou a se chamar Cargas Contratadas. O nome Contratada agora é único para esse estado em todo o sistema: na aba, no cartão, nos avisos, na janela de detalhes, no Painel e na coluna de situação do romaneio exportado. Só o nome mudou — nenhuma regra, número ou fluxo foi alterado."],
       ["NOVO","Filtros nas abas de carga. Fechado Parcial, Aguardando Contratação, Cargas Contratadas e Cargas Embarcadas ganharam a mesma barra de filtros: Filial, Rota, Cidade, UF, Vendedor e uma busca por número do pedido, cliente ou número da carga, com botão Limpar filtros."],
