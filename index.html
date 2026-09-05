@@ -6907,9 +6907,35 @@ async function netPoll(){
     const rev=await apiGet("/rev");
     if(rev.auth>NET.authRev){const a=await apiGet("/auth");if(a.data){auth=a.data;auth.users=auth.users||[];auth.profiles=auth.profiles||[];}NET.authRev=a.rev;const u=auth.users.find(x=>x.user===CUR.user);if(u){CUR.nome=u.nome;CUR.profile=profileById(u.profileId)||CUR.profile;}applyPermissions();if(state.tab==="config")renderConfig();}
     if(rev.app>NET.appRev){const ap=await apiGet("/app");NET.appData=ap.data;NET.appRev=ap.rev;if(applyAppData(ap.data)){_restoring=true;renderAll();_restoring=false;}}
+    if(rev.audit>NET.audRev){const au=await apiGet("/audit");if(au.data)mergeAudit(au.data);NET.audRev=au.rev;if(state.tab==="monitoria")renderMonitoria();} // so leitura: nunca grava por aqui
   }catch(e){}
 }
 async function refreshAudit(){if(!NET.on)return;try{const a=await apiGet("/audit");if(a.data){AUD=a.data;AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];NET.audRev=a.rev;}}catch(e){}}
+/* ===== MERGE DO LOG DE AUDITORIA (1.16.0) =====
+   O poll traz o log do servidor, mas o pushAudit tem debounce de 900 ms: pode existir acao
+   local ainda nao enviada dentro do AUD. Substituir cego (AUD=remoto) apagaria essa acao.
+   Aqui o remoto e a base e as entradas que so existem localmente sao reinseridas.
+   Esta funcao NAO grava nada: quem grava e o logAction, pelo caminho normal. */
+function _audKey(e){return [e&&e.ts,e&&e.user,e&&e.action,e&&e.detail].join("\u0001");}
+function mergeAudit(remoto){
+  remoto=remoto||{};
+  const rLogs=Array.isArray(remoto.logs)?remoto.logs:[];
+  const rSess=Array.isArray(remoto.sessions)?remoto.sessions:[];
+  const lLogs=(AUD&&Array.isArray(AUD.logs))?AUD.logs:[];
+  const lSess=(AUD&&Array.isArray(AUD.sessions))?AUD.sessions:[];
+  const vistos=new Set(rLogs.map(_audKey));
+  const soLocais=lLogs.filter(e=>!vistos.has(_audKey(e)));                 // ainda nao chegaram ao servidor
+  const logs=rLogs.concat(soLocais).sort((x,y)=>(x.ts||0)-(y.ts||0));
+  const porId={};
+  rSess.concat(lSess).forEach(s=>{
+    if(!s||!s.id)return;
+    const ex=porId[s.id];
+    if(!ex||((s.logoutAt||0)>(ex.logoutAt||0)))porId[s.id]=s;              // vence a atividade mais recente
+  });
+  const sessions=Object.keys(porId).map(k=>porId[k]).sort((x,y)=>(x.loginAt||0)-(y.loginAt||0));
+  AUD={sessions:sessions,logs:logs};
+  return AUD;
+}
 
 const $=s=>document.querySelector(s);
 const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
@@ -8816,8 +8842,11 @@ function exportAudit(){
 function renderMonitoria(){
   const body=$("#monBody");if(!body)return;
   if(!canSee("monitoria")){body.innerHTML='<div class="empty">Acesso restrito.</div>';return;}
-  touchSession();
-  const a=pruneAudit(loadAudit());saveAudit(a);
+  /* 1.16.0 — a Monitoria LE e MOSTRA, nunca grava. Antes, abrir a aba (ou so trocar o
+     filtro de usuario) chamava touchSession() e saveAudit(), empurrando o log inteiro deste
+     cliente por cima do servidor e apagando acoes de outros operadores. A poda continua onde
+     deve: no caminho de escrita (logAction e startSession). */
+  const a=loadAudit();
   const uf=$("#monUser")?$("#monUser").value:"";
   const users=[...new Set(a.sessions.map(s=>s.user).concat(a.logs.map(l=>l.user)))].sort();
   const userSel='<select id="monUser"><option value="">Todos usuarios</option>'+users.map(u=>'<option'+(u===uf?' selected':'')+'>'+u+'</option>').join("")+'</select>';
@@ -8826,7 +8855,7 @@ function renderMonitoria(){
   let html='<div class="ftools" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+userSel+'<button class="btn ghost" id="btnExpAud" style="padding:4px 12px;font-size:12px">&#11015; Exportar registro (CSV)</button><span class="meta" style="color:var(--cinza)">Registro permanente &middot; '+sess.length+' acessos &middot; '+logs.length+' acoes</span></div>';
   html+='<div class="cadcard"><h4>Acessos e tempo de navegacao</h4><table class="dtable"><thead><tr><th>Usuario</th><th>Acesso (data/hora)</th><th>Tempo de navegacao</th><th>Ultima atividade</th></tr></thead><tbody>';
   if(!sess.length)html+='<tr><td colspan="4" style="color:var(--cinza)">Sem registros.</td></tr>';
-  sess.slice(0,300).forEach(s=>{const ativo=session&&s.id===session.id;html+='<tr><td class="b">'+(s.nome||s.user)+'</td><td>'+fmtDT(s.loginAt)+'</td><td>'+fmtDur(s.durationSec)+(ativo?' <span class="tag lib">em andamento</span>':'')+'</td><td>'+fmtDT(s.logoutAt||s.loginAt)+'</td></tr>';});
+  sess.slice(0,300).forEach(s=>{const ativo=session&&s.id===session.id;html+='<tr><td class="b">'+(s.nome||s.user)+'</td><td>'+fmtDT(s.loginAt)+'</td><td>'+fmtDur(ativo?Math.round((Date.now()-(typeof s.loginAt==="number"?s.loginAt:Date.now()))/1000):s.durationSec)+(ativo?' <span class="tag lib">em andamento</span>':'')+'</td><td>'+fmtDT(s.logoutAt||s.loginAt)+'</td></tr>';});
   html+='</tbody></table></div>';
   html+='<div class="cadcard"><h4>Registro de acoes (log)</h4><table class="dtable"><thead><tr><th>Data/hora</th><th>Usuario</th><th>Acao</th><th>Detalhe</th></tr></thead><tbody>';
   if(!logs.length)html+='<tr><td colspan="4" style="color:var(--cinza)">Sem registros.</td></tr>';
@@ -9282,9 +9311,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.15.0";
+  var APP_VERSION="1.16.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.16.0",data:"04/09/2026",itens:[
+      ["CORRECAO","Registro de Ações: primeira parte de uma correção de auditoria. Foi identificado que ações de um operador podiam desaparecer do registro quando outro operador usava o sistema ao mesmo tempo. Esta versão corrige as duas causas do lado da tela; a causa principal, no servidor, vem na próxima entrega."],
+      ["CORRECAO","Abrir a Monitoria não grava mais nada. Antes, só de abrir a aba ou trocar o filtro de usuário, o sistema reenviava o registro inteiro daquele computador por cima do servidor, apagando ações que outros operadores tinham acabado de registrar. Agora a Monitoria apenas lê e mostra."],
+      ["CORRECAO","O registro passa a ser atualizado sozinho. Antes, quem estava com a Monitoria aberta via uma foto do momento em que entrou na aba e só enxergava novidades saindo e voltando. Agora as ações dos outros operadores aparecem automaticamente, em poucos segundos."],
+      ["MELHORIA","Ao receber a atualização do servidor, o sistema funde os registros em vez de substituir: uma ação recém-registrada neste computador, ainda a caminho do servidor, não é mais descartada."],
+      ["MELHORIA","O tempo de navegação da sessão em andamento passa a ser calculado na hora da exibição, ficando mais preciso do que antes, e sem precisar gravar nada para isso."]
+    ]},
     {versao:"1.15.0",data:"04/09/2026",itens:[
       ["CORRECAO","Pedido dentro de carga não se perde mais na reimportação da carteira. Até agora, quando a planilha de Pedidos a Faturar era reimportada e um pedido não vinha nela, ele sumia da carga mesmo que a carga ainda não tivesse embarcado, e o operador precisava remontar na mão. Agora todo pedido alocado numa carga em montagem, fechada parcial, aguardando contratação ou programada é mantido, com todos os seus dados."],
       ["NOVO","O pedido mantido nessa situação recebe o selo Saiu da planilha, no cartão dele e na lista de pedidos da carga. A carga que contém um pedido assim mostra um aviso sugerindo confirmar com o faturamento e, se for o caso, embarcar ou cancelar. É apenas orientação: nada fica bloqueado."],
