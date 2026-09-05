@@ -7851,6 +7851,8 @@ function renderTrucks(){
 }
 
 /* AUTO-PREENCHER (criterios de priorizacao do doc) */
+/* >>> Gemeos de revenda: bestRouteForVehicleRevenda() e autoFillRevenda(), na secao de
+       MONTAGEM DE CARGA DE REVENDA. Correcao aqui deve ser avaliada la tambem. <<< */
 function bestRouteForVehicle(cap){
   const avail=state.pedidos.filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&inScope(p));
   if(!avail.length)return null;
@@ -8340,6 +8342,57 @@ function excluirCargaRevenda(t){
 /* Gemeo enxuto do truckCard(): so o que faz sentido na 2b-2. Sem frete, sem margem,
    sem fechar/parcial, sem liberar producao, sem auto-preencher, sem bloqueio de escopo
    — tudo isso e de fases seguintes ou nao se aplica a revenda. */
+/* AUTO-PREENCHER DE REVENDA (1.26.0) — espelho do bestRouteForVehicle/autoFill do Formador,
+   sobre state.pedidosRevenda. Duas diferencas deliberadas:
+   - sem requireScope: quem enxerga a aba age em qualquer carga de revenda (decisao de negocio);
+   - sem scoreSum na metrica: pedido de revenda fica com score 0, entao somar seria termo morto.
+   O inScope CONTINUA, porque o banco da aba ja filtra por ele desde a 1.23 — sem isso o
+   auto-preencher alocaria pedido que o operador nem consegue ver.
+   >>> Gemeos: bestRouteForVehicle() e autoFill(). Correcao num deve ser avaliada no outro. <<< */
+function bestRouteForVehicleRevenda(cap){
+  const avail=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&inScope(p));
+  if(!avail.length)return null;
+  const lim=PED_LIMIT[String(cap)]||1;
+  const byRoute={};
+  avail.forEach(p=>{const k=normRota(p.rota)||"-";(byRoute[k]=byRoute[k]||{name:p.rota||"",items:[]}).items.push(p);});
+  let best=null,bestMetric=-1;
+  Object.values(byRoute).forEach(r=>{
+    const sorted=r.items.slice().sort(cmpPedidos);
+    let load=0,prio=0,count=0;
+    for(const p of sorted){
+      if(count>=lim)break;
+      if(load+p.peso<=cap){load+=p.peso;if(p.prio)prio++;count++;}}
+    if(load<=0)return;
+    const metric=prio*100000 + (load/cap)*10000;   // sem score: a revenda nao tem
+    if(metric>bestMetric){bestMetric=metric;best=r.name;}
+  });
+  return best;
+}
+function autoFillRevenda(t){
+  if(!requirePerm("autoPreencher"))return;        // sem requireScope: revenda nao tem escopo por planta
+  let auto=false;
+  if(!t.rota||!t.rota.trim()){
+    const r=bestRouteForVehicleRevenda(t.cap);
+    if(!r){toast("Nenhum pedido de revenda APTO disponivel para preencher.","info");return;}
+    t.rota=r; auto=true;
+  }
+  const tr=normRota(t.rota);const lim=PED_LIMIT[String(t.cap)]||1;
+  const f=revFiltroVals();
+  let avail=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===null&&!p.fob&&p.apto&&inScope(p)&&normRota(p.rota)===tr&&pedMatchF(p,f));
+  if(!avail.length){toast("Nenhum pedido de revenda disponivel para a rota \""+t.rota+"\" com os filtros atuais.","info");return;}
+  avail.sort(cmpPedidos);
+  let load=truckLoadRevenda(t),added=0,greens=0;
+  let count=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id).length;
+  for(const p of avail){
+    if(count>=lim)break;
+    if(load+p.peso<=t.cap){p.assignedTo=t.id;load+=p.peso;added++;count++;if(p.prio)greens++;}}
+  renderAll();
+  if(!added){toast(count>=lim?"A carga ja atingiu o limite de "+lim+" pedido(s) para este veiculo.":"Os pedidos de revenda da rota nao cabem na capacidade do veiculo.","info");return;}
+  const pct=t.cap?(load/t.cap*100):0;
+  logAction("auto_preencher_revenda",t.id+" "+(t.rota||"")+": +"+added+" pedido(s), "+fmtKg(load)+" ("+pct.toFixed(0)+"%)");
+  toast((auto?"Rota escolhida: \""+t.rota+"\". ":"")+added+" pedido(s) de revenda adicionados &middot; "+count+"/"+lim+" pedidos na carga &middot; "+greens+" priorizados &middot; "+fmtKg(load)+" ("+pct.toFixed(0)+"%).","ok",7000);
+}
+
 function truckCardRevenda(t){
   const load=truckLoadRevenda(t),cap=t.cap,pct=cap?load/cap*100:0;
   const card=el("div","truck");card.dataset.truck=t.id;
@@ -8355,10 +8408,12 @@ function truckCardRevenda(t){
     '<div class="th-actions"><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div></div>'+
     (routeMismatchRevenda(t)?'<div class="route-warn" style="background:#FFF3CD;color:#8a6d3b;border:1px solid #FFE08A;border-radius:8px;padding:7px 10px;margin:8px 0 0;font-size:11.5px;font-weight:600">&#9888; Pedidos de rotas diferentes nesta carga.</div>':'')+
     '<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+fillCls+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+bateCls+'">'+bate+'</div></div>'+
+    '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button></div>'+
     foraDaPlanilhaAvisoHtml(assigned)+
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="revbody-'+t.id+'">'+(assigned.length?'':'Arraste pedidos de revenda aqui')+'</div>';
   const body=card.querySelector("#revbody-"+t.id);
   if(assigned.length){assigned.sort(cmpPedidos);assigned.forEach(p=>body.appendChild(pedidoCard(p,true)));}
+  card.querySelector(".btn-auto").addEventListener("click",()=>autoFillRevenda(t));
   card.querySelector(".edit").addEventListener("click",()=>openModalRevenda(t));
   card.querySelector(".del").addEventListener("click",()=>excluirCargaRevenda(t));
   card.addEventListener("dragover",e=>{e.preventDefault();card.classList.add("over");});
@@ -10007,9 +10062,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.25.0";
+  var APP_VERSION="1.26.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.26.0",data:"05/09/2026",itens:[
+      ["NOVO","Auto-Preencher na carga de revenda. O cartão da carga de revenda ganhou o mesmo botão do Formador: se a carga ainda não tem rota, o sistema escolhe a rota com mais volume disponível e encaixa os pedidos de revenda dela, respeitando a capacidade do veículo e o limite de pedidos por tipo de veículo."],
+      ["MELHORIA","A ordem de escolha é a mesma da carga normal: pedido priorizado primeiro, depois maior margem, depois maior volume e por último a entrega mais próxima."],
+      ["MELHORIA","O auto-preencher só considera pedidos aptos, como no Formador — pedido de revenda com margem negativa não entra por ele. Continua sendo possível colocá-lo na carga arrastando à mão, se for uma decisão do operador."],
+      ["MELHORIA","O auto-preencher respeita os filtros que estiverem aplicados na aba Revenda, então dá para restringir por rota, cidade ou vendedor antes de preencher."],
+      ["MELHORIA","A ação exige a permissão Auto-preencher carga, a mesma do Formador, e fica registrada na Monitoria. As cargas normais não são afetadas: o auto-preencher de revenda só enxerga a lista de revenda."]
+    ]},
     {versao:"1.25.0",data:"05/09/2026",itens:[
       ["NOVO","Montagem de carga de revenda. A aba Revenda passou a ter duas colunas, como o Formador: o banco de pedidos de revenda à esquerda e o espaço de montagem à direita, onde as cargas de revenda são criadas."],
       ["NOVO","Criar carga de revenda: escolha o veículo e, se quiser, a rota. Os veículos e as capacidades são os mesmos das cargas normais. A carga nasce em montagem e recebe pedidos por arrasto, igual ao Formador."],
