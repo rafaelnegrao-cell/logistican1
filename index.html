@@ -7638,7 +7638,7 @@ function foraDaPlanilhaAvisoHtml(ps){
   if(!n)return "";
   return '<div class="cl-fora">&#9888; '+n+' pedido(s) desta carga nao vieram na ultima planilha importada e foram mantidos aqui. Confira com o faturamento: se ja foram faturados, embarque a carga; se nao, cancele a carga ou remova o pedido. Isto e apenas um aviso &mdash; nada esta bloqueado.</div>';
 }
-function pedidoCard(p,inTruck,somenteLeitura){
+function pedidoCard(p,inTruck,somenteLeitura,semBotaoAdd){
   const c=el("div",(inTruck?"tcard ":"pcard ")+p.cor+(p.bloqueado?" bloqueado":"")+(!inTruck&&!p.apto?" naoapto":""));
   c.draggable=!somenteLeitura;c.dataset.id=p.id;   // 1.23.0: sem 3o argumento => true, como sempre foi
   if(inTruck){
@@ -7653,7 +7653,7 @@ function pedidoCard(p,inTruck,somenteLeitura){
     let statusTag = p.mcPct<0?'<span class="tag bloq">MC negativa</span>':(p.bloqueado?(p.apto?'<span class="tag prio">Bloq. liberado</span>':'<span class="tag bloq">Bloqueado</span>'):'<span class="tag lib">Apto</span>');
     c.innerHTML=
       '<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+lockI+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
-      '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div>'+(somenteLeitura?'':'<button class="pc-add" title="Adicionar a uma carga">+ Carga</button>')+'</div></div>'+
+      '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div>'+((somenteLeitura||semBotaoAdd)?'':'<button class="pc-add" title="Adicionar a uma carga">+ Carga</button>')+'</div></div>'+
       '<div class="pc-tags">'+foraDaPlanilhaTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
       (p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
       '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>';
@@ -8523,7 +8523,12 @@ function renderRevenda(){
   body.innerHTML="";
   if(!todos.length){body.innerHTML='<div class="empty"><div class="ic">&#127978;</div>Nenhum pedido de revenda na carteira importada.</div>';return;}
   if(!lista.length){body.innerHTML='<div class="empty">Nenhum pedido de revenda com os filtros atuais.</div>';return;}
-  lista.forEach(p=>body.appendChild(pedidoCard(p,false,true)));   // true = somente leitura no BANCO; dentro da carga o cartao volta a ser editavel
+  /* 1.27.1 — CORRECAO: o cartao do banco de revenda precisa ser ARRASTAVEL (a montagem
+     entrou na 1.25.0 e este "somente leitura" ficou preso da 1.23.0, quando a aba so lia).
+     Mas NAO pode ter o botao "+ Carga": ele chama quickAssign, que aloca em carga NORMAL
+     (state.trucks) e deixaria o pedido de revenda apontando para o lugar errado. Por isso
+     o 4o argumento: arrastavel, com os handlers, e sem o botao. */
+  lista.forEach(p=>body.appendChild(pedidoCard(p,false,false,true)));
   renderTrucksRevenda();
 }
 function wireRevFilters(){
@@ -10105,9 +10110,14 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.27.0";
+  var APP_VERSION="1.27.1";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.27.1",data:"05/09/2026",itens:[
+      ["CORRECAO","Arrastar pedido na aba Revenda voltou a funcionar. Os cartões do banco de revenda estavam marcados como somente leitura desde a versão em que a aba ainda não montava carga, e por isso não podiam ser arrastados — não havia como montar a carga pela tela. Agora arrastam normalmente para a carga de revenda."],
+      ["MELHORIA","O cartão do banco de revenda continua sem o botão de adicionar à carga, de propósito: aquele botão envia o pedido para as cargas normais do Formador, o que não faz sentido para revenda. Para montar a carga de revenda, arraste o pedido — ou use o Auto-Preencher no cartão da carga."],
+      ["MELHORIA","O Banco de Pedidos do Formador não mudou em nada: continua com o arrastar e com o botão de adicionar à carga, como sempre."]
+    ]},
     {versao:"1.27.0",data:"05/09/2026",itens:[
       ["NOVO","Frete e margem na carga de revenda. O cartão da carga de revenda passou a mostrar a MC da carga no cabeçalho e o rodapé de frete com o preço de tabela e o R$/ton efetivo, no mesmo formato do Formador."],
       ["MELHORIA","A conta é exatamente a mesma das cargas normais: o preço vem do frete do próprio pedido, o rateio é por peso e os pedidos do mesmo cliente e cidade são agrupados. Nada foi recalculado de forma diferente para revenda."],
