@@ -6934,7 +6934,7 @@ const PED_LIMIT={"15000":6,"22000":4,"33000":2,"40000":1,"49000":1}; // limite d
 const STD_TIERS=[{label:"Até 5t",max:5000},{label:"Até 8t",max:8000},{label:"Até 13,5t",max:13500},{label:"Até 25t",max:25000},{label:"Acima 25t",max:0}];
 const OVERRIDES=["IBY4687","IBY4683"]; // liberacoes manuais fixas (doc)
 
-const state={pedidos:[],trucks:[],carriers:[],nextTruck:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightCities:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null,prioMap:{},prioFileName:"",prioUpdatedAt:""};
+const state={pedidos:[],pedidosRevenda:[],trucks:[],carriers:[],nextTruck:1,editingTruck:null,fileName:"",hasFrete:false,maxMcRs:1,tab:"formador",freightTable:{},freightCities:{},freightSource:"pedidos",cadSub:"transp",editRouteKey:null,prioMap:{},prioFileName:"",prioUpdatedAt:""};
 
 /* ===== SINCRONIZACAO COM O SERVIDOR (dados compartilhados pelo time) ===== */
 const NET={on:false,appRev:0,authRev:0,audRev:0,appData:null};
@@ -7294,10 +7294,14 @@ function ingest(rows){
   const cleanFil=s=>{s=String(s||"").trim();const i=s.indexOf(" - ");return i>-1?s.slice(0,i).trim():s;};
   const cleanVend=s=>{s=String(s||"").trim();const i=s.indexOf(" - ");return i>-1?s.slice(i+3).trim():s;};
   const peds=[];
+  const pedsRev=[];   // 1.22.0: pedidos de revenda, separados no destino (ver adiante)
   const fileNums={};Object.values(G).forEach(g=>{fileNums[String(g.pedido)]=true;}); // todos os pedidos do arquivo (inclui revenda)
   let nRevenda=0;
   Object.values(G).forEach(g=>{
-    if(g.revenda){nRevenda++;return;} // ignora pedidos de revenda: nao sao envasados em casa, nao formam carga
+    /* 1.22.0 — a revenda NAO e mais descartada aqui. Ela atravessa o mesmo bloco de calculo
+       abaixo (que e neutro quanto a revenda) e e separada no destino, no roteamento apos a
+       montagem do objeto: pedido normal vai para "peds", revenda vai para "pedsRev".
+       So "peds" segue para o mergePedidos e para state.pedidos — a revenda fica isolada. */
     const peso=g.pesos.reduce((a,b)=>a+b,0);
     const vl=g.valor-g.icms; // Venda Liquida = Valor - ICMS (referencia contabil)
     const mcDenom=mcDen(g.valor,g.icms); // denominador da MC% conforme MC_BASE
@@ -7311,9 +7315,11 @@ function ingest(rows){
     const apto = !fob && mcPct>=0 && (!bloq || prio || override);
     const cor = prio?"verde":(mcPct<0?"vermelho":"azul");
     const freteRate=(g.frete&&g.frete>0)?g.frete:((g.custoFreteTot>0&&peso>0)?(g.custoFreteTot/(peso/1000)):0); // tarifa do arquivo OU custo total / toneladas
-    peds.push({id:"P"+peds.length,pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
+    const _o={id:"",pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
       rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),canal:String(g.canal||"").trim(),peso,valor:g.valor,icms:g.icms,vlLiq:vl,mcRs:g.mcRs,mcPct,vl:mcDenom,
-      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,itens:(g.itens||[]),entrega:g.entrega,emissao:(g.emissao!=null?g.emissao:null),contaFrete:(g.contaFrete||(isFOB(g.tipo)?"Destinatario":"Emitente")),assignedTo:null,score:0});
+      prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,itens:(g.itens||[]),entrega:g.entrega,emissao:(g.emissao!=null?g.emissao:null),contaFrete:(g.contaFrete||(isFOB(g.tipo)?"Destinatario":"Emitente")),assignedTo:null,score:0};
+    if(g.revenda){nRevenda++;_o.id="R"+pedsRev.length;_o.revenda=true;pedsRev.push(_o);return;}  // espaco de ids proprio: "R"
+    _o.id="P"+peds.length;peds.push(_o);
   });
   // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
   const embTruckIds=new Set(state.trucks.filter(t=>t.status==="embarcada").map(t=>t.id));
@@ -7332,13 +7338,14 @@ function ingest(rows){
   const nDrop=_sumiram.filter(p=>!_emCargaViva(p)).length;            // normais: estavam so no banco
   state.pedidos=mergePedidos(state.pedidos,peds,fileNums);
   state.pedidos.forEach((p,i)=>p.id="P"+i);
+  state.pedidosRevenda=pedsRev;   // lista crua, substituicao integral: sem cargas de revenda ainda, nao ha o que preservar
   applyPrioToState();
   buildFreightTableFromPeds();
   buildFilters(); renderAll();
   renderImportAlerta({emCarga:_sumEmCarga,noBanco:nDrop,voltaram:_voltaram});
-  logAction("import_pedidos",peds.length+" p/ carga / "+nNew+" novos / "+nUpd+" atualizados / "+nEmb+" embarcados historico / "+nDrop+" removidos / "+nRevenda+" revenda ignorados / arquivo: "+(state.fileName||"-"));
+  logAction("import_pedidos",peds.length+" p/ carga / "+nNew+" novos / "+nUpd+" atualizados / "+nEmb+" embarcados historico / "+nDrop+" removidos / "+nRevenda+" de revenda / arquivo: "+(state.fileName||"-"));
   const aptos=state.pedidos.filter(p=>p.apto),nf=peds.filter(p=>p.fob).length;
-  toast(peds.length+" pedidos para carga: "+nNew+" novos, "+nUpd+" atualizados &middot; "+nEmb+" embarcados mantidos no historico"+(nDrop?" &middot; "+nDrop+" removidos (sairam do arquivo)":"")+(nRevenda?" &middot; "+nRevenda+" revenda ignorados":"")+".","ok",8500);
+  toast(peds.length+" pedidos para carga: "+nNew+" novos, "+nUpd+" atualizados &middot; "+nEmb+" embarcados mantidos no historico"+(nDrop?" &middot; "+nDrop+" removidos (sairam do arquivo)":"")+(nRevenda?" &middot; "+nRevenda+" de revenda":"")+".","ok",8500);
 }
 
 /* merge: novo arquivo = pedidos a trabalhar; embarcados ficam salvos como historico (gestao) */
@@ -8925,7 +8932,7 @@ function updateSavedInfo(ts,fail){
 }
 function saveState(){
   if(_restoring)return;
-  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,cargaSeq:state.cargaSeq||{},embHist:state.embHist||[],pedidos:state.pedidos,trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,freightCities:state.freightCities||{},prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
+  const data={v:1,ts:Date.now(),fileName:state.fileName,freightFile:state.freightFile||"",freightSource:state.freightSource,hasFrete:state.hasFrete,maxMcRs:state.maxMcRs,nextTruck:state.nextTruck,cargaSeq:state.cargaSeq||{},embHist:state.embHist||[],pedidos:state.pedidos,pedidosRevenda:state.pedidosRevenda||[],trucks:state.trucks,carriers:state.carriers,freightTable:state.freightTable,freightCities:state.freightCities||{},prioMap:state.prioMap||{},prioFileName:state.prioFileName||"",prioUpdatedAt:state.prioUpdatedAt||""};
   try{localStorage.setItem(SKEY,JSON.stringify(data));updateSavedInfo(data.ts);}catch(err){updateSavedInfo(null,true);}
   pushApp(data);
 }
@@ -8933,6 +8940,7 @@ function applyAppData(d){
   if(!d||!Array.isArray(d.pedidos))return false;
   _restoring=true;
   state.pedidos=d.pedidos;
+  state.pedidosRevenda=Array.isArray(d.pedidosRevenda)?d.pedidosRevenda:[];
   normalizaMcBase(); // pedidos salvos podem ter vindo com a base anterior
   state.trucks=Array.isArray(d.trucks)?d.trucks:[];
   state.carriers=Array.isArray(d.carriers)?d.carriers:[];
@@ -8973,12 +8981,12 @@ function resetState(){
   if(!isMaster()){toast("Apenas o perfil master pode limpar os dados.","err");return;}
   if(!confirm("Apagar TODOS os dados salvos (pedidos, tabela de frete, transportadoras e cargas montadas/fechadas/contratadas)? Esta acao nao pode ser desfeita."))return;
   try{localStorage.removeItem(SKEY);}catch(e){}
-  state.pedidos=[];state.trucks=[];state.carriers=[];state.freightTable={};state.freightCities={};state.freightSource="pedidos";state.freightFile="";state.fileName="";state.hasFrete=false;state.maxMcRs=1;state.nextTruck=1;
+  state.pedidos=[];state.pedidosRevenda=[];state.trucks=[];state.carriers=[];state.freightTable={};state.freightCities={};state.freightSource="pedidos";state.freightFile="";state.fileName="";state.hasFrete=false;state.maxMcRs=1;state.nextTruck=1;
   $("#fileMeta").textContent="Nenhuma planilha carregada";
   refreshCarrierList();buildFilters();buildFreightFilters();
   _restoring=true;renderAll();_restoring=false;
   try{localStorage.removeItem(SKEY);}catch(e){}
-  pushApp({v:1,ts:Date.now(),fileName:"",freightFile:"",freightSource:"pedidos",hasFrete:false,maxMcRs:1,nextTruck:1,pedidos:[],trucks:[],carriers:[],freightTable:{},freightCities:{},prioMap:{},prioFileName:"",prioUpdatedAt:""});
+  pushApp({v:1,ts:Date.now(),fileName:"",freightFile:"",freightSource:"pedidos",hasFrete:false,maxMcRs:1,nextTruck:1,pedidos:[],pedidosRevenda:[],trucks:[],carriers:[],freightTable:{},freightCities:{},prioMap:{},prioFileName:"",prioUpdatedAt:""});
   updateSavedInfo(null);
   logAction("limpar","dados operacionais apagados");
   toast("Dados apagados. O sistema esta limpo (servidor e navegador).","info");
@@ -9760,9 +9768,15 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.21.0";
+  var APP_VERSION="1.22.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.22.0",data:"04/09/2026",itens:[
+      ["MELHORIA","Base do Formador de Revenda. Os pedidos de revenda deixam de ser descartados na importação da carteira e passam a ser guardados numa lista própria, separada dos pedidos normais. Esta versão é apenas a fundação: ainda não há tela nem carga de revenda — isso vem nas próximas entregas."],
+      ["MELHORIA","Os pedidos de revenda passam a ser calculados como qualquer outro: peso, valor, margem, rota, cidade e frete. Antes eles eram apenas contados e jogados fora, sem nenhum dado aproveitável."],
+      ["MELHORIA","Nada muda para quem não trabalha com revenda. Os pedidos normais seguem exatamente o mesmo caminho de antes — mesma importação, mesma formação de carga, mesmos números. A revenda fica numa lista à parte, sem tocar em nenhum cálculo, carga, filtro ou exportação."],
+      ["MELHORIA","No aviso de importação, o texto deixou de dizer que os pedidos de revenda foram ignorados, porque agora eles são guardados."]
+    ]},
     {versao:"1.21.0",data:"04/09/2026",itens:[
       ["NOVO","Botão Completar carga nos cartões de Fechado Parcial. Ele abre uma janela com os pedidos que ainda estão soltos no banco e são da mesma rota daquela carga, para o operador escolher quais adicionar e tentar fechar o volume."],
       ["NOVO","A lista mostra, de cada pedido, o número, o cliente, a cidade e o peso — e, ao lado, quanto a carga ficaria se aquele pedido fosse adicionado. Assim dá para escolher o que completa melhor sem precisar calcular na mão."],
