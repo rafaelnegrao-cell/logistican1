@@ -7707,6 +7707,8 @@ function renderPedidos(){
 
 /* frete da carga: preco = R$/ton REAL dos pedidos (proporcionalizado por peso quando >1) */
 function freteTabelaRate(rotaName,rotaCod,kg){if(!state.freightTable)return null;if(state.freightSource!=="import"&&state.freightSource!=="manual")return null;var keys=Object.keys(state.freightTable),entry=null;if(rotaCod){for(var i=0;i<keys.length;i++){var e=state.freightTable[keys[i]];if(e.cod&&String(e.cod).trim()!==""&&String(e.cod).trim()===String(rotaCod).trim()){entry=e;break;}}}if(!entry){var rn=norm(rotaName);for(var j=0;j<keys.length;j++){var e2=state.freightTable[keys[j]];if(rn&&norm(e2.destino)===rn){entry=e2;break;}}}if(!entry||!entry.tiers)return null;var ate=[],acima=[];Object.keys(entry.tiers).forEach(function(lab){var L=String(lab);if(!/(kg|t\b|ate|at\u00e9|acima|>|\+|\u2265)/i.test(L))return;var m=L.match(/([\d.,]+)/);if(!m)return;var t=parseFloat(m[1].replace(/\./g,"").replace(",","."))*1000;var rate=entry.tiers[lab];if(!(rate>0))return;if(/acima|>|\+/i.test(lab))acima.push({kg:t,rate:rate});else ate.push({kg:t,rate:rate});});ate.sort(function(a,b){return a.kg-b.kg;});acima.sort(function(a,b){return a.kg-b.kg;});for(var k=0;k<ate.length;k++){if(kg<=ate[k].kg)return ate[k].rate;}var pick=null;for(var l=0;l<acima.length;l++){if(kg>acima[l].kg&&(!pick||acima[l].kg>pick.kg))pick=acima[l];}if(pick)return pick.rate;if(acima.length)return acima[acima.length-1].rate;if(ate.length)return ate[ate.length-1].rate;return null;}
+/* >>> Gemeos de revenda: loadFreightRevenda(), cargaMargemRevenda(), margemLineRevenda()
+       e freteFootHtmlRevenda(). Correcao aqui deve ser avaliada la tambem. <<< */
 function loadFreight(t){
   const ps=state.pedidos.filter(p=>p.assignedTo===t.id);
   if(!ps.length&&t.freteSnap)return t.freteSnap;
@@ -8393,6 +8395,46 @@ function autoFillRevenda(t){
   toast((auto?"Rota escolhida: \""+t.rota+"\". ":"")+added+" pedido(s) de revenda adicionados &middot; "+count+"/"+lim+" pedidos na carga &middot; "+greens+" priorizados &middot; "+fmtKg(load)+" ("+pct.toFixed(0)+"%).","ok",7000);
 }
 
+/* ===== FRETE E MARGEM DA CARGA DE REVENDA (1.27.0) =====
+   Espelhos linha a linha de loadFreight / cargaMargem / margemLine / freteFootHtml, lendo
+   state.pedidosRevenda. Mesma conta do Formador: o preco vem do frete do proprio pedido
+   (freteTabelaRate so responde com tabela importada/manual, senao cai no heavy.frete), o
+   rateio e 100% por peso, e a regra do frete negociado de industria (1.20.0) tambem vale.
+   >>> Gemeos: loadFreight(), cargaMargem(), margemLine(), freteFootHtml().
+       Correcao num deve ser avaliada no outro. <<< */
+function cargaTemIndustriaRevenda(t){
+  if(!t)return false;
+  const ps=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id);
+  if(!ps.length&&t.freteSnap)return !!t.freteSnap.temIndustria;   // carga embarcada: vale o snapshot
+  return ps.some(p=>isIndustria(p.canal));
+}
+function loadFreightRevenda(t){
+  const ps=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id);
+  if(!ps.length&&t.freteSnap)return t.freteSnap;   // carga embarcada: o snapshot manda
+  const kg=ps.reduce((s,p)=>s+p.peso,0);
+  let total=0;{const _grp={};ps.forEach(p=>{const _k=norm(p.cliente)+"|"+norm(p.cidade)+"|"+norm(p.uf);(_grp[_k]=_grp[_k]||[]).push(p);});Object.keys(_grp).forEach(_k=>{const g=_grp[_k];const gkg=g.reduce((s,p)=>s+p.peso,0);const heavy=g.reduce((a,b)=>b.peso>a.peso?b:a,g[0]);var _rt=freteTabelaRate(heavy.rota,heavy.rotaCod,gkg);if(!(_rt>0))_rt=heavy.frete||0;total+=(gkg/1000)*_rt;});}
+  const rate=kg>0?total/(kg/1000):0;
+  const sumP=kg||1, sumV=ps.reduce((s,p)=>s+(p.valor||0),0);
+  const alloc={};
+  ps.forEach(p=>{alloc[p.id]=total*(p.peso/sumP);});
+  const pagoTon=t.fretePago||0, pagoTotal=pagoTon*kg/1000;
+  const temIndustria=cargaTemIndustriaRevenda(t);
+  const negTon=(temIndustria&&t.freteNegociado>0)?t.freteNegociado:0;
+  const negTotal=negTon>0?negTon*kg/1000:0;
+  const refFrete=negTon>0?"negociado":"tabela";
+  const saldo=negTon>0?(negTotal-pagoTotal):(total-pagoTotal);
+  return {total,kg,alloc,rate,sumV,pagoTon,pagoTotal,saldo,refFrete,negTon,negTotal,temIndustria};
+}
+function cargaMargemRevenda(t){var ps=(state.pedidosRevenda||[]).filter(function(p){return p.assignedTo===t.id;});var mc=0,vl=0,tons=0,ftab=0;ps.forEach(function(p){mc+=(p.mcRs||0);vl+=(p.vl||0);tons+=(p.peso||0)/1000;ftab+=((p.peso||0)/1000)*(p.frete||0);});var mcPct=vl>0?mc/vl*100:0;var fpago=(t.fretePago>0)?t.fretePago*tons:null;var mcLiq=mc,mcPctLiq=mcPct,acima=false,delta=0;if(fpago!=null){delta=fpago-ftab;mcLiq=mc-delta;mcPctLiq=vl>0?mcLiq/vl*100:0;acima=delta>0.5;}return{mc:mc,vl:vl,mcPct:mcPct,mcLiq:mcLiq,mcPctLiq:mcPctLiq,freteTab:ftab,fretePago:fpago,acima:acima,delta:delta,tons:tons};}
+function margemLineRevenda(t){var m=cargaMargemRevenda(t);if(m.vl<=0)return "";var s='<div class="cargamc">MC carga: <b style="color:'+_mcCor(m.mcPct)+'">'+m.mcPct.toFixed(1)+'%</b>';if(m.fretePago!=null){s+=' &middot; apos frete pago: <b style="color:'+_mcCor(m.mcPctLiq)+'">'+m.mcPctLiq.toFixed(1)+'%</b>';if(m.acima)s+=' <span class="mc-warn">&#9888; frete acima da tabela +'+fmtMoney(m.delta)+'</span>';}s+='</div>';return s;}
+function freteFootHtmlRevenda(t,fr){
+  const _neg=!!(fr&&fr.refFrete==="negociado");
+  return '<div class="tf-line"><span>Preco frete (tabela)</span><b>'+fmtMoney(fr.total)+'</b></div>'+
+    '<div class="tf-line"><span>R$/ton efetivo</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+
+    (_neg?'<div class="tf-line"><span>Frete negociado (industria, '+fmtMoney(fr.negTon)+'/ton)</span><b>'+fmtMoney(fr.negTotal)+'</b></div>':'')+
+    (t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo ('+(_neg?"negociado":"preco")+' - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'');
+}
+
 function truckCardRevenda(t){
   const load=truckLoadRevenda(t),cap=t.cap,pct=cap?load/cap*100:0;
   const card=el("div","truck");card.dataset.truck=t.id;
@@ -8405,12 +8447,13 @@ function truckCardRevenda(t){
   card.innerHTML=
     '<div class="truck-head"><div class="th-top"><div><div class="th-rota">'+_hesc(t.rota||"Rota nao informada")+' <span class="pill">REVENDA</span></div>'+
     '<div class="th-tipo">'+VEHICLES[String(cap)]+' &middot; '+fmtKg(cap)+'</div></div>'+
-    '<div class="th-actions"><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div></div>'+
+    '<div class="th-actions"><button class="icobtn edit" title="Editar">&#9998;</button><button class="icobtn del" title="Excluir">&#128465;</button></div></div>'+margemLineRevenda(t)+'</div>'+
     (routeMismatchRevenda(t)?'<div class="route-warn" style="background:#FFF3CD;color:#8a6d3b;border:1px solid #FFE08A;border-radius:8px;padding:7px 10px;margin:8px 0 0;font-size:11.5px;font-weight:600">&#9888; Pedidos de rotas diferentes nesta carga.</div>':'')+
     '<div class="progress-wrap"><div class="progress-top"><span>'+fmtKg(load)+' / '+fmtKg(cap)+'</span><span>'+pct.toFixed(0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+fillCls+'" style="width:'+Math.min(pct,100)+'%"></div></div><div class="bate '+bateCls+'">'+bate+'</div></div>'+
     '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button></div>'+
     foraDaPlanilhaAvisoHtml(assigned)+
-    '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="revbody-'+t.id+'">'+(assigned.length?'':'Arraste pedidos de revenda aqui')+'</div>';
+    '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="revbody-'+t.id+'">'+(assigned.length?'':'Arraste pedidos de revenda aqui')+'</div>'+
+    '<div class="truck-foot">'+freteFootHtmlRevenda(t,loadFreightRevenda(t))+'</div>';
   const body=card.querySelector("#revbody-"+t.id);
   if(assigned.length){assigned.sort(cmpPedidos);assigned.forEach(p=>body.appendChild(pedidoCard(p,true)));}
   card.querySelector(".btn-auto").addEventListener("click",()=>autoFillRevenda(t));
@@ -10062,9 +10105,15 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.26.0";
+  var APP_VERSION="1.27.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.27.0",data:"05/09/2026",itens:[
+      ["NOVO","Frete e margem na carga de revenda. O cartão da carga de revenda passou a mostrar a MC da carga no cabeçalho e o rodapé de frete com o preço de tabela e o R$/ton efetivo, no mesmo formato do Formador."],
+      ["MELHORIA","A conta é exatamente a mesma das cargas normais: o preço vem do frete do próprio pedido, o rateio é por peso e os pedidos do mesmo cliente e cidade são agrupados. Nada foi recalculado de forma diferente para revenda."],
+      ["MELHORIA","A regra do frete negociado de indústria também vale para revenda: quando a carga tiver pedido do canal indústria e um frete negociado informado, o saldo passa a ser calculado sobre o valor negociado, e não sobre a tabela."],
+      ["MELHORIA","As linhas de frete pago e saldo só aparecem quando o frete pago estiver informado, como já acontece nas cargas normais. Esses campos são preenchidos na etapa de contratação, que ainda será liberada para revenda numa próxima entrega."]
+    ]},
     {versao:"1.26.0",data:"05/09/2026",itens:[
       ["NOVO","Auto-Preencher na carga de revenda. O cartão da carga de revenda ganhou o mesmo botão do Formador: se a carga ainda não tem rota, o sistema escolhe a rota com mais volume disponível e encaixa os pedidos de revenda dela, respeitando a capacidade do veículo e o limite de pedidos por tipo de veículo."],
       ["MELHORIA","A ordem de escolha é a mesma da carga normal: pedido priorizado primeiro, depois maior margem, depois maior volume e por último a entrega mais próxima."],
