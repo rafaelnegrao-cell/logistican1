@@ -7263,7 +7263,8 @@ function findHeaderRow(aoa){
    "sumiu e estava so no banco" (normal, so a contagem), e avisa quando um pedido antes
    marcado volta a aparecer. Fica na tela ate o operador fechar. So exibicao. */
 function snapPedFora(p){
-  const t=state.trucks.filter(x=>x.id===p.assignedTo)[0];
+  const lista=(p&&p.revenda===true)?(state.trucksRevenda||[]):state.trucks;   /* 1.30.0 */
+  const t=lista.filter(x=>x.id===p.assignedTo)[0];
   return {pedido:String(p.pedido),cliente:p.cliente||"",
     carga:t?((t.numeroCarga?((t.filialCarga?t.filialCarga+" ":"")+"Carga "+t.numeroCarga+" · "):"")+(t.rota||"sem rota")+" · "+etapaDaCarga(t.status)):""};
 }
@@ -7494,7 +7495,8 @@ function updatePrioMeta(){const e=$("#prioMeta");if(!e)return;const n=state.prio
 function isEmbarked(p){ // pedido ja embarcado: historico de gestao, fora do planejamento atual
   if(p.embarcado===true)return true;
   if(p.assignedTo==null)return false;
-  const t=state.trucks.find(t=>t.id===p.assignedTo);
+  const lista=(p&&p.revenda===true)?(state.trucksRevenda||[]):state.trucks;   /* 1.30.0 */
+  const t=lista.find(t=>t.id===p.assignedTo);
   return !!(t&&t.status==="embarcada");
 }
 const bancoPeds=()=>state.pedidos.filter(p=>!p.fob&&inScope(p)&&!isEmbarked(p));              // banco = nao-FOB, no escopo, ainda nao embarcado
@@ -7684,7 +7686,8 @@ function etapaDaCarga(st){var m={montada:"Em montagem",parcial:"Fechado Parcial"
 function tabDaCarga(st){var m={montada:"formador",parcial:"parcial",fechada:"fechadas",contratada:"contratadas",embarcada:"embarcadas"};return m[st]||"formador";}
 function localizaPedido(p){
   if(p.fob)return {etapa:"Pedidos FOB / Retira",tab:"fob",det:""};
-  var t=state.trucks.filter(function(x){return x.id===p.assignedTo;})[0];
+  const lista=(p&&p.revenda===true)?(state.trucksRevenda||[]):state.trucks;   /* 1.30.0 */
+  var t=lista.filter(function(x){return x.id===p.assignedTo;})[0];
   if(t)return {etapa:etapaDaCarga(t.status),tab:tabDaCarga(t.status),det:(t.numeroCarga?((t.filialCarga?t.filialCarga+" ":"")+"Carga "+t.numeroCarga+" \u00b7 "):"")+(t.rota||"")};
   if(p.embarcado)return {etapa:"Embarcado",tab:"embarcadas",det:""};
   return null;
@@ -8634,7 +8637,10 @@ function revFiltroVals(){
   return {filial:g("Filial"),rota:g("Rota"),cidade:g("Cidade"),uf:g("Uf"),vend:g("Vend"),busca:g("Busca")};
 }
 function revFiltrosAtivos(){const f=revFiltroVals();return !!(f.filial||f.rota||f.cidade||f.uf||f.vend||f.busca);}
-function revPeds(){return (state.pedidosRevenda||[]).filter(inScope);}
+/* 1.30.0 - espelha o bancoPeds() do Formador: tira o embarcado do universo da aba.
+   NAO copia o "!p.fob" de la: o ingest grava fob tambem no pedido de revenda e a aba
+   FOB le so state.pedidos, entao um revenda-FOB sumiria do app inteiro. */
+function revPeds(){return (state.pedidosRevenda||[]).filter(p=>inScope(p)&&!isEmbarked(p));}
 function buildRevFilters(){
   const esc=s=>String(s).replace(/"/g,"&quot;");
   const ps=revPeds();
@@ -8648,7 +8654,10 @@ function buildRevFilters(){
 }
 function renderRevenda(){
   const body=$("#revBody");if(!body)return;
-  const todos=revPeds();
+  /* 1.30.0 - o banco mostra so o que esta solto, como o renderPedidos() do Formador
+     faz com bancoPeds().filter(p=>p.assignedTo===null). Antes um pedido ja alocado
+     continuava no banco e podia ser arrastado para uma segunda carga. */
+  const todos=revPeds().filter(p=>p.assignedTo===null);
   setBadge("rev",todos.length);
   buildRevFilters();
   const f=revFiltroVals();
@@ -9144,7 +9153,7 @@ function closeModal(){$("#overlay").classList.remove("open");state.editingTruck=
 function pdRow(lbl,val){return '<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--grade)"><span style="color:var(--cinza);font-size:12.5px">'+lbl+'</span><span style="font-weight:600;font-size:12.5px;text-align:right">'+(val==null||val===""?"&mdash;":val)+'</span></div>';}
 function pedStatusTxt(p){
   if(p.embarcado===true)return "Embarcado / Retirado"+(p.embarcadoAt?" em "+fmtDateBr(p.embarcadoAt):"");
-  if(p.assignedTo!=null){const t=state.trucks.find(x=>x.id===p.assignedTo);if(t){const st={montada:"em montagem",parcial:"fechado parcial",fechada:"aguardando contratacao",contratada:"programada",embarcada:"embarcada"}[t.status]||t.status;return "Em carga "+(t.placa||t.transp||t.id)+" ("+st+")";}}
+  if(p.assignedTo!=null){const lista=(p&&p.revenda===true)?(state.trucksRevenda||[]):state.trucks;   /* 1.30.0 */const t=lista.find(x=>x.id===p.assignedTo);if(t){const st={montada:"em montagem",parcial:"fechado parcial",fechada:"aguardando contratacao",contratada:"programada",embarcada:"embarcada"}[t.status]||t.status;return "Em carga "+(t.placa||t.transp||t.id)+" ("+st+")";}}
   return "Disponivel no banco";
 }
 function openPedDetail(p){
@@ -10276,9 +10285,15 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.29.0";
+  var APP_VERSION="1.30.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.30.0",data:"05/09/2026",itens:[
+      ["CORRECAO","O banco da aba Revenda mostrava pedidos que já estavam dentro de uma carga e pedidos já embarcados. Agora mostra apenas os pedidos soltos, como o banco do Formador de Cargas. Isso impede que um pedido já alocado seja arrastado para uma segunda carga."],
+      ["CORRECAO","O detalhe de um pedido de revenda que está dentro de uma carga dizia \"Disponível no banco\". Agora informa corretamente a carga e a etapa em que ele está."],
+      ["MELHORIA","As funções que localizam um pedido passaram a reconhecer as cargas de revenda. O comportamento para os pedidos do Formador de Cargas não mudou."],
+      ["MELHORIA","O contador da aba Revenda passou a mostrar os pedidos disponíveis para montar, no lugar da carteira inteira, igual ao contador do Formador de Cargas."]
+    ]},
     {versao:"1.29.0",data:"05/09/2026",itens:[
       ["NOVO","Cargas de revenda agora são contratadas. O cartão da carga de revenda fechada ganhou o botão Contratar veículo, com a mesma regra das cargas normais: a data prevista de embarque é o único campo obrigatório."],
       ["NOVO","A aba Aguardando Contratação passou a mostrar as cargas de revenda junto com as normais, marcadas com o selo REVENDA. O cartão de revenda traz Ver detalhes, Transporte, Reabrir e Contratar veículo."],
