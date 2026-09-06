@@ -7461,7 +7461,7 @@ function mergePedidosRevenda(old,fresh,fileNums){
   fresh.forEach(np=>{const key=String(np.pedido);
     if(histNums.has(key))return;
     const ex=byNum[key];
-    if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;}
+    if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;np.freteVenda=ex.freteVenda;}   /* 1.33.0: o freteVenda e digitado pelo operador; sem esta linha ele seria apagado a cada reimportacao */
     result.push(np);});
   return result;
 }
@@ -7648,6 +7648,40 @@ function entregaTag(p){
 /* Selo do pedido preservado (estava em carga e sumiu da planilha). So exibicao. */
 function foraDaPlanilhaTag(p){return (p&&p.foraDaPlanilha)?'<span class="tag fora">&#9888; Saiu da planilha</span>':"";}
 function foraDaPlanilhaLinha(p){return (p&&p.foraDaPlanilha)?'<div class="tc-fora">&#9888; Saiu da planilha</div>':"";}
+/* ===== 1.33.0 - FRETE DE VENDA DA REVENDA =====================================
+   A venda de revenda nao tem tabela de frete: o comercial embute um valor no preco
+   e esse e o TETO daquele pedido. O operador informa no cartao do pedido. Enquanto
+   faltar, o pedido fica marcado como pendente (banco e cartao da carga) e contribui
+   0 para a referencia da carga. Molde: os tres foraDaPlanilha* logo acima.        */
+function fvPendente(p){return !!(p&&p.revenda===true&&!(p.freteVenda>0));}
+function fvTag(p){return fvPendente(p)?'<span class="tag fora">&#9888; Sem frete de venda</span>':"";}
+function fvCampoHtml(p){
+  if(!(p&&p.revenda===true))return "";
+  const v=(p.freteVenda>0)?p.freteVenda:"";
+  return '<div class="pc-fv" style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 7px;background:#f4f8fb;border:1px solid var(--grade);border-radius:7px">'+
+    '<label for="fv_'+p.id+'" style="font-size:10px;font-weight:700;color:var(--cinza);white-space:nowrap">&#128666; Frete venda R$/ton</label>'+
+    '<input type="number" min="0" step="0.01" class="fvinp" id="fv_'+p.id+'" draggable="false" value="'+v+'" placeholder="informar" style="flex:1;min-width:0;font-size:11px;padding:3px 5px;border:1px solid var(--grade);border-radius:5px">'+
+  '</div>';
+}
+function fvAvisoHtml(ps){
+  const n=(ps||[]).filter(fvPendente).length;
+  if(!n)return "";
+  return '<div class="cl-fora">&#9888; '+n+' pedido(s) desta carga ainda estao sem o frete de venda. Enquanto faltar, o Frete venda (teto) e o saldo desta carga ficam incompletos. Informe o frete de venda no cartao de cada pedido.</div>';
+}
+function wireFreteVenda(c,p){
+  const i=c.querySelector(".fvinp");if(!i)return;
+  i.addEventListener("click",e=>e.stopPropagation());
+  i.addEventListener("mousedown",e=>e.stopPropagation());
+  i.addEventListener("change",e=>{
+    e.stopPropagation();
+    const de=(p.freteVenda>0)?p.freteVenda:0, v=parseNum(i.value);
+    if(v===de)return;
+    if(v>0)p.freteVenda=v; else delete p.freteVenda;
+    renderAll();
+    toast(v>0?("Frete de venda do pedido #"+p.pedido+": "+fmtMoney(v)+"/ton."):("Frete de venda do pedido #"+p.pedido+" removido."),v>0?"ok":"info");
+    logAction("frete_venda_revenda","#"+p.pedido+": "+(de>0?fmtMoney(de):"-")+" -> "+(v>0?fmtMoney(v):"-"));
+  });
+}
 function foraDaPlanilhaAvisoHtml(ps){
   const n=(ps||[]).filter(p=>p&&p.foraDaPlanilha).length;
   if(!n)return "";
@@ -7660,7 +7694,7 @@ function pedidoCard(p,inTruck,somenteLeitura,semBotaoAdd){
     const fr=c.dataset.frete||0;
     c.innerHTML='<button class="tc-rem" title="Remover">&times;</button>'+
       '<div class="tc-top"><div><span class="tc-ped">#'+p.pedido+(p.bloqueado?' &#128274;':'')+'</span><div class="tc-cli">'+(p.cliente||"-")+'</div>'+(p.cidade?'<div class="tc-cid">&#128205; '+p.cidade+(p.uf?'/'+p.uf:'')+'</div>':'')+(p.entrega!=null&&!isNaN(p.entrega)?'<div class="tc-cid">&#128197; Entrega '+fmtDateBr(p.entrega)+'</div>':'')+'</div><span class="tc-peso">'+fmtKg(p.peso)+'</span></div>'+
-      foraDaPlanilhaLinha(p)+'<div class="tc-frete" data-frete>Frete rateado: --</div>';
+      foraDaPlanilhaLinha(p)+((p&&p.revenda===true)?fvCampoHtml(p):'<div class="tc-frete" data-frete>Frete rateado: --</div>');   /* 1.33.0 */
     c.querySelector(".tc-rem").addEventListener("click",e=>{e.stopPropagation();unassign(p);});
   } else {
     const mcCls=p.mcPct<0?"var(--risco)":(p.mcPct>0?"var(--ok)":"var(--cinza)");
@@ -7669,11 +7703,13 @@ function pedidoCard(p,inTruck,somenteLeitura,semBotaoAdd){
     c.innerHTML=
       '<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+lockI+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
       '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div>'+((somenteLeitura||semBotaoAdd)?'':'<button class="pc-add" title="Adicionar a uma carga">+ Carga</button>')+'</div></div>'+
-      '<div class="pc-tags">'+foraDaPlanilhaTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
+      '<div class="pc-tags">'+foraDaPlanilhaTag(p)+fvTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
       (p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
-      '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>';
+      '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>'+
+      fvCampoHtml(p);   /* 1.33.0: so quando p.revenda===true */
     const _add=c.querySelector(".pc-add");if(_add)_add.addEventListener("click",e=>{e.stopPropagation();quickAssign(p);});
   }
+  if(p&&p.revenda===true)wireFreteVenda(c,p);   /* 1.33.0 */
   if(!somenteLeitura){
     c.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",p.id);c.classList.add("dragging");});
     c.addEventListener("dragend",()=>c.classList.remove("dragging"));
@@ -8466,17 +8502,23 @@ function loadFreightRevenda(t){
   const ps=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id);
   if(!ps.length&&t.freteSnap)return t.freteSnap;   // carga embarcada: o snapshot manda
   const kg=ps.reduce((s,p)=>s+p.peso,0);
-  let total=0;{const _grp={};ps.forEach(p=>{const _k=norm(p.cliente)+"|"+norm(p.cidade)+"|"+norm(p.uf);(_grp[_k]=_grp[_k]||[]).push(p);});Object.keys(_grp).forEach(_k=>{const g=_grp[_k];const gkg=g.reduce((s,p)=>s+p.peso,0);const heavy=g.reduce((a,b)=>b.peso>a.peso?b:a,g[0]);var _rt=freteTabelaRate(heavy.rota,heavy.rotaCod,gkg);if(!(_rt>0))_rt=heavy.frete||0;total+=(gkg/1000)*_rt;});}
+  /* 1.33.0 - a revenda nao tem tabela de frete. A referencia (teto) da carga e a soma
+     dos fretes de VENDA informados pedido a pedido. Sai a consulta a freteTabelaRate e
+     ao p.frete: nenhum dos dois e referencia valida aqui. Pedido sem freteVenda
+     contribui 0 e a carga aparece sinalizada como pendente. */
+  let total=0;ps.forEach(p=>{total+=(p.peso/1000)*(p.freteVenda||0);});
   const rate=kg>0?total/(kg/1000):0;
-  const sumP=kg||1, sumV=ps.reduce((s,p)=>s+(p.valor||0),0);
+  const sumV=ps.reduce((s,p)=>s+(p.valor||0),0);
   const alloc={};
-  ps.forEach(p=>{alloc[p.id]=total*(p.peso/sumP);});
+  ps.forEach(p=>{alloc[p.id]=(p.peso/1000)*(p.freteVenda||0);});   /* 1.33.0: exato por pedido, nao rateado por peso */
   const pagoTon=t.fretePago||0, pagoTotal=pagoTon*kg/1000;
-  const temIndustria=cargaTemIndustriaRevenda(t);
-  const negTon=(temIndustria&&t.freteNegociado>0)?t.freteNegociado:0;
-  const negTotal=negTon>0?negTon*kg/1000:0;
-  const refFrete=negTon>0?"negociado":"tabela";
-  const saldo=negTon>0?(negTotal-pagoTotal):(total-pagoTotal);
+  /* 1.33.0 - o frete negociado de industria (1.20.0) NAO se aplica a revenda: o
+     freteVenda e o unico teto. Continua valendo integralmente nas cargas normais, no
+     loadFreight(). Os quatro campos seguem no retorno porque o freteSnap do embarque
+     (3d-2) congela os 10 e esse contrato nao pode mudar. */
+  const temIndustria=false, negTon=0, negTotal=0;
+  const refFrete="venda";
+  const saldo=total-pagoTotal;
   return {total,kg,alloc,rate,sumV,pagoTon,pagoTotal,saldo,refFrete,negTon,negTotal,temIndustria};
 }
 /* 1.32.0 - fonte de frete conforme a natureza da carga, para o Saldo frete do topo.
@@ -8484,18 +8526,23 @@ function loadFreightRevenda(t){
    entra na conta (a tabela da rota nao e referencia valida para ela) e devolve 0 --
    exatamente o "return s" que existia dentro do reduce do renderKpis. */
 function saldoDe(t){
-  const fr=(t&&t.revenda===true)?loadFreightRevenda(t):loadFreight(t);
-  if(fr.temIndustria&&!(fr.negTon>0))return 0;
+  const _rev=(t&&t.revenda===true);
+  const fr=_rev?loadFreightRevenda(t):loadFreight(t);
+  /* 1.33.0 - a regra da 1.20.0 vale so para carga NORMAL. Na revenda o teto e o
+     freteVenda; e a carga de revenda ja embarcada traz temIndustria:true congelado
+     no freteSnap, o que a zerava indevidamente no Saldo frete do topo. */
+  if(!_rev&&fr.temIndustria&&!(fr.negTon>0))return 0;
   return fr.saldo;
 }
 function cargaMargemRevenda(t){var ps=(state.pedidosRevenda||[]).filter(function(p){return p.assignedTo===t.id;});var mc=0,vl=0,tons=0,ftab=0;ps.forEach(function(p){mc+=(p.mcRs||0);vl+=(p.vl||0);tons+=(p.peso||0)/1000;ftab+=((p.peso||0)/1000)*(p.frete||0);});var mcPct=vl>0?mc/vl*100:0;var fpago=(t.fretePago>0)?t.fretePago*tons:null;var mcLiq=mc,mcPctLiq=mcPct,acima=false,delta=0;if(fpago!=null){delta=fpago-ftab;mcLiq=mc-delta;mcPctLiq=vl>0?mcLiq/vl*100:0;acima=delta>0.5;}return{mc:mc,vl:vl,mcPct:mcPct,mcLiq:mcLiq,mcPctLiq:mcPctLiq,freteTab:ftab,fretePago:fpago,acima:acima,delta:delta,tons:tons};}
 function margemLineRevenda(t){var m=cargaMargemRevenda(t);if(m.vl<=0)return "";var s='<div class="cargamc">MC carga: <b style="color:'+_mcCor(m.mcPct)+'">'+m.mcPct.toFixed(1)+'%</b>';if(m.fretePago!=null){s+=' &middot; apos frete pago: <b style="color:'+_mcCor(m.mcPctLiq)+'">'+m.mcPctLiq.toFixed(1)+'%</b>';if(m.acima)s+=' <span class="mc-warn">&#9888; frete acima da tabela +'+fmtMoney(m.delta)+'</span>';}s+='</div>';return s;}
 function freteFootHtmlRevenda(t,fr){
   const _neg=!!(fr&&fr.refFrete==="negociado");
-  return '<div class="tf-line"><span>Preco frete (tabela)</span><b>'+fmtMoney(fr.total)+'</b></div>'+
-    '<div class="tf-line"><span>R$/ton efetivo</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+
+  const _vnd=!!(fr&&fr.refFrete==="venda");   /* 1.33.0: carga embarcada antes da 3f traz "tabela" e mantem o rotulo antigo */
+  return '<div class="tf-line"><span>'+(_vnd?"Frete venda (teto)":"Preco frete (tabela)")+'</span><b>'+fmtMoney(fr.total)+'</b></div>'+
+    '<div class="tf-line"><span>'+(_vnd?"R$/ton medio de venda":"R$/ton efetivo")+'</span><b>'+(fr.rate?fmtMoney(fr.rate):"-")+'</b></div>'+
     (_neg?'<div class="tf-line"><span>Frete negociado (industria, '+fmtMoney(fr.negTon)+'/ton)</span><b>'+fmtMoney(fr.negTotal)+'</b></div>':'')+
-    (t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo ('+(_neg?"negociado":"preco")+' - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'');
+    (t.fretePago?'<div class="tf-line"><span>Frete pago ('+fmtMoney(fr.pagoTon)+'/ton)</span><b>'+fmtMoney(fr.pagoTotal)+'</b></div><div class="tf-line"><span>Saldo ('+(_neg?"negociado":(_vnd?"venda":"preco"))+' - pago)</span><b class="'+(fr.saldo>=0?"saldo-pos":"saldo-neg")+'">'+fmtMoney(fr.saldo)+'</b></div>':'');
 }
 
 /* ===== ETAPAS DA CARGA DE REVENDA (1.28.0) =====
@@ -8569,7 +8616,7 @@ function stageCardRevenda(t,cfg){
     prog+
     (cfg.infoHtml||"")+
     (cfg.warnHtml||"")+
-    foraDaPlanilhaAvisoHtml(ps)+
+    foraDaPlanilhaAvisoHtml(ps)+fvAvisoHtml(ps)+   /* 1.33.0 */
     pedidosResumoHtml(ps)+
     '<div class="clactions">'+(cfg.actions||"")+'</div>'+
     '<div class="cl-foot">'+freteFootHtmlRevenda(t,fr)+'</div>';
@@ -8600,7 +8647,7 @@ function truckCardRevenda(t){
     '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button>'+
       '<button class="btn-parcial" '+(assigned.length?'':'disabled')+' title="Fechar parcial: aguarda mais pedidos ate atingir '+MIN_CLOSE_PCT+'%">&#9201; Fechar Parcial</button>'+
       '<button class="btn-close" '+(assigned.length?'':'disabled')+' title="Fechar carga (minimo '+MIN_CLOSE_PCT+'% da capacidade)">&#9989; Fechar Carga</button></div>'+
-    foraDaPlanilhaAvisoHtml(assigned)+
+    foraDaPlanilhaAvisoHtml(assigned)+fvAvisoHtml(assigned)+   /* 1.33.0 */
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="revbody-'+t.id+'">'+(assigned.length?'':'Arraste pedidos de revenda aqui')+'</div>'+
     '<div class="truck-foot">'+freteFootHtmlRevenda(t,loadFreightRevenda(t))+'</div>';
   const body=card.querySelector("#revbody-"+t.id);
@@ -10315,9 +10362,18 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.32.0";
+  var APP_VERSION="1.33.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.33.0",data:"06/09/2026",itens:[
+      ["NOVO","Cada pedido de revenda ganhou o campo Frete venda (R$/ton), informado pelo operador direto no cartão do pedido. É o valor de frete que o comercial embutiu no preço da venda e que serve de teto daquele pedido. A revenda não tem tabela de frete."],
+      ["NOVO","O preço de referência e o saldo da carga de revenda passaram a usar a soma dos fretes de venda dos pedidos, no lugar da tabela de frete. Na tela, o campo aparece como Frete venda (teto). As cargas do Formador de Cargas seguem usando a tabela, sem nenhuma mudança."],
+      ["NOVO","O frete negociado de indústria deixou de valer para as cargas de revenda, onde o frete de venda é o único teto. Ele continua valendo integralmente para as cargas normais."],
+      ["NOVO","Pedido de revenda sem o frete de venda informado aparece sinalizado em dois lugares: no cartão do pedido e num aviso no cartão da carga que o contém, com a contagem de quantos faltam."],
+      ["MELHORIA","O frete de venda fica guardado no pedido e sobrevive à reimportação da planilha enquanto o pedido existir."],
+      ["MELHORIA","Cargas de revenda já embarcadas continuam mostrando exatamente os números congelados no embarque, com o rótulo antigo, sem serem recalculadas."],
+      ["MELHORIA","Nesta versão nada é bloqueado: pedidos de revenda sem frete de venda ainda podem ser montados em carga, apenas ficam sinalizados. O bloqueio virá na próxima versão."]
+    ]},
     {versao:"1.32.0",data:"05/09/2026",itens:[
       ["NOVO","Os indicadores do topo passaram a somar as cargas de revenda junto com as normais: cargas em montagem, aguardando contratação, contratadas, embarcadas, o peso alocado e o saldo de frete. É um número único, sem separação por tipo de carga."],
       ["NOVO","O saldo de frete do topo usa a tabela de frete da revenda para as cargas de revenda. A regra continua a mesma: carga sem frete pago informado não entra, e carga de indústria só entra quando o frete negociado foi informado."],
@@ -10984,11 +11040,11 @@ netBoot();
       '</div></div>';
     var mcCor=function(v){return v<0?"neg":(v<8?"warn":"pos");};
     h+='<div class="cd-sec"><div class="cd-sec-h">Frete e margem</div><div class="cd-grid">'+
-      info("Preco frete (tabela)",fmtMoney(fr.total))+
-      info("R$/ton efetivo",fr.rate?fmtMoney(fr.rate):"-")+
+      info(fr.refFrete==="venda"?"Frete venda (teto)":"Preco frete (tabela)",fmtMoney(fr.total))+   /* 1.33.0 */
+      info(fr.refFrete==="venda"?"R$/ton medio de venda":"R$/ton efetivo",fr.rate?fmtMoney(fr.rate):"-")+
       info("Frete pago",t.fretePago?(fmtMoney(fr.pagoTotal)+" ("+fmtMoney(fr.pagoTon)+"/ton)"):"a definir")+
       (fr.refFrete==="negociado"?info("Frete negociado (industria)",fmtMoney(fr.negTotal)+" ("+fmtMoney(fr.negTon)+"/ton)"):"")+
-      info("Saldo ("+(fr.refFrete==="negociado"?"negociado":"preco")+" - pago)",t.fretePago?fmtMoney(fr.saldo):"a definir",t.fretePago?(fr.saldo>=0?"pos":"neg"):"")+
+      info("Saldo ("+(fr.refFrete==="negociado"?"negociado":(fr.refFrete==="venda"?"venda":"preco"))+" - pago)",t.fretePago?fmtMoney(fr.saldo):"a definir",t.fretePago?(fr.saldo>=0?"pos":"neg"):"")+
       info("MC da carga",m.vl>0?m.mcPct.toFixed(1)+"%":"-",m.vl>0?mcCor(m.mcPct):"")+
       info("MC apos frete pago",(m.fretePago!=null&&m.vl>0)?m.mcPctLiq.toFixed(1)+"%":"-",(m.fretePago!=null&&m.vl>0)?mcCor(m.mcPctLiq):"")+
       '</div>'+(m.acima?'<div class="cd-alert">&#9888; Frete pago esta '+fmtMoney(m.delta)+' acima da tabela.</div>':'')+'</div>';
