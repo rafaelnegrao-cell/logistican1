@@ -7132,7 +7132,17 @@ function detectCols(headers){
     tipoFrete:find([n=>n==="tipofrete",n=>n.includes("tipofrete")]),
     contaFrete:find([n=>n.includes("contafrete"),n=>n==="conta"]),
     emissao:find([n=>n.includes("dataemissao"),n=>n.includes("dtemissao"),n=>n==="emissao",n=>(n.includes("emissao")&&!n.includes("nota"))]),
-    faixa:find([n=>n.includes("faixafrete"),n=>n==="faixa",n=>n.includes("faixa")]),
+    /* 1.34.0 - "Faixa de Peso" (varejo) e "Faixa Frete (R$/t)" (frete de venda da revenda)
+       coexistem na planilha e precisam ser distinguiveis. O primeiro matcher aqui era
+       includes("faixafrete"), que fazia esta chave -- a de PESO -- roubar a coluna de frete.
+       Agora a de peso vem primeiro e a de frete e excluida. O ultimo matcher permanece como
+       rede: numa planilha que so tenha "Faixa Frete", a chave volta a resolver como antes e
+       a tabela de frete do varejo continua sendo montada. */
+    faixa:find([n=>n.includes("faixa")&&n.includes("peso"),n=>n==="faixa",n=>n.includes("faixa")&&!n.includes("frete"),n=>n.includes("faixa")]),
+    /* 1.34.0 - a coluna do frete de venda da revenda. Exige "faixa" E "frete" juntos, entao
+       nunca casa com "Faixa de Peso CIF". Chave nova: o find e independente por chave, logo
+       acrescenta-la nao altera cols.faixa nem cols.frete. */
+    faixaFreteVenda:find([n=>n.includes("faixa")&&n.includes("frete")&&!n.includes("custo")&&!n.includes("pago")]),
     rotaFil:find([n=>n==="rotafilial",n=>n.includes("rotafilial")]),
     km:find([n=>n==="distkm",n=>n.includes("distkm"),n=>n.includes("km")]),
     produto:find([n=>n==="nomecurto",n=>n.includes("nomecurto"),n=>n==="produto",n=>n.includes("produto")&&!n.includes("mix")&&!n.includes("tipo")]),
@@ -7322,7 +7332,7 @@ function ingest(rows){
   const G={};
   rows.forEach((r,i)=>{
     const praw=r[cols.pedido]; let key=(praw==null||String(praw).trim()==="")?("__r"+i):String(praw).trim();
-    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",canal:"",prio:false,revenda:false,entrega:null,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,custoFreteTot:0,produtos:[],pesos:[],itens:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
+    if(!G[key]){G[key]={pedido:key,cliente:"",filial:"",cidade:"",uf:cols.uf?(r[cols.uf]||""):"",rota:"",rotaCod:cols.rotaCod?r[cols.rotaCod]:"",rotaFil:cols.rotaFil?r[cols.rotaFil]:"",km:cols.km?parseNum(r[cols.km]):0,faixa:cols.faixa?r[cols.faixa]:"",vendedor:"",canal:"",prio:false,revenda:false,entrega:null,finRaw:"",tipo:cols.tipoFrete?r[cols.tipoFrete]:"",frete:cols.frete?parseNum(r[cols.frete]):0,fvSoma:0,fvN:0,custoFreteTot:0,produtos:[],pesos:[],itens:[],valor:0,icms:0,mcRs:0,mcW:0,pesoMc:0};}
     const g=G[key];
     if(cols.produto&&r[cols.produto]!=null&&String(r[cols.produto]).trim()!==""){const p=String(r[cols.produto]).trim();if(g.produtos.indexOf(p)===-1)g.produtos.push(p);}
     const pw=cols.peso?parseNum(r[cols.peso]):0; g.pesos.push(pw);
@@ -7337,6 +7347,11 @@ function ingest(rows){
     if(cols.emissao){const de=parseDateBr(r[cols.emissao]);if(de!=null)g.emissao=(g.emissao==null)?de:Math.min(g.emissao,de);}
     if(cols.contaFrete&&(g.contaFrete==null)&&r[cols.contaFrete]!=null&&String(r[cols.contaFrete]).trim()!=="")g.contaFrete=String(r[cols.contaFrete]).trim();
     if(cols.custoFrete)g.custoFreteTot+=(parseNum(r[cols.custoFrete])||0);
+    /* 1.34.0 - frete de venda da revenda: o valor se repete em cada item do pedido, entao
+       a media das linhas devolve o valor unico (somar multiplicaria pelo numero de itens).
+       So entram linhas com valor > 0: lacuna nao dilui a media, e o FOB -- que vem zerado
+       porque o cliente paga o frete -- termina com nenhuma linha contada e resultado 0. */
+    if(cols.faixaFreteVenda){const _fv=parseNum(r[cols.faixaFreteVenda]);if(_fv>0){g.fvSoma+=_fv;g.fvN++;}}
     if(cols.tipoFrete&&isFOB(r[cols.tipoFrete]))g.tipo="Destinatario";
     ["cliente","filial","cidade","rota","vendedor","canal"].forEach(f=>{const ck=cols[f];if(ck&&!g[f]&&r[ck])g[f]=r[ck];});
     if(cols.uf&&!g.uf&&r[cols.uf])g.uf=r[cols.uf];
@@ -7369,7 +7384,7 @@ function ingest(rows){
     const _o={id:"",pedido:g.pedido,cliente:g.cliente,filial:cleanFil(g.filial),cidade:g.cidade,
       rota:g.rota,rotaCod:g.rotaCod,rotaFil:cleanIcon(g.rotaFil),km:g.km,faixa:cleanFaixa(g.faixa),uf:String(g.uf||"").trim().toUpperCase(),vendedor:cleanVend(g.vendedor),canal:String(g.canal||"").trim(),peso,valor:g.valor,icms:g.icms,vlLiq:vl,mcRs:g.mcRs,mcPct,vl:mcDenom,
       prio,prioFile,bloqueado:bloq,override,apto,fob,tipo:g.tipo,frete:freteRate,finRaw:g.finRaw,cor,produtos:g.produtos,itens:(g.itens||[]),entrega:g.entrega,emissao:(g.emissao!=null?g.emissao:null),contaFrete:(g.contaFrete||(isFOB(g.tipo)?"Destinatario":"Emitente")),assignedTo:null,score:0};
-    if(g.revenda){nRevenda++;_o.id="R"+pedsRev.length;_o.revenda=true;pedsRev.push(_o);return;}  // espaco de ids proprio: "R"
+    if(g.revenda){nRevenda++;_o.id="R"+pedsRev.length;_o.revenda=true;_o.freteVenda=(g.fvN>0)?(g.fvSoma/g.fvN):0;pedsRev.push(_o);return;}   /* 1.34.0: so a revenda recebe o campo; o pedido normal segue sem ele */  // espaco de ids proprio: "R"
     _o.id="P"+peds.length;peds.push(_o);
   });
   // MERGE: novo arquivo define o conjunto de trabalho; mantem como historico SOMENTE os pedidos ja embarcados
@@ -7398,6 +7413,9 @@ function ingest(rows){
   logAction("import_pedidos",peds.length+" p/ carga / "+nNew+" novos / "+nUpd+" atualizados / "+nEmb+" embarcados historico / "+nDrop+" removidos / "+nRevenda+" de revenda / arquivo: "+(state.fileName||"-"));
   const aptos=state.pedidos.filter(p=>p.apto),nf=peds.filter(p=>p.fob).length;
   toast(peds.length+" pedidos para carga: "+nNew+" novos, "+nUpd+" atualizados &middot; "+nEmb+" embarcados mantidos no historico"+(nDrop?" &middot; "+nDrop+" removidos (sairam do arquivo)":"")+(nRevenda?" &middot; "+nRevenda+" de revenda":"")+".","ok",8500);
+  /* 1.34.0 - sem a coluna de frete de venda o teto de toda carga de revenda fica zerado,
+     e nao ha mais campo manual para corrigir. Avisa em vez de falhar em silencio. */
+  if(nRevenda&&!cols.faixaFreteVenda)toast("Atencao: a coluna \"Faixa Frete (R$/t)\" nao foi encontrada na planilha. O frete de venda dos "+nRevenda+" pedido(s) de revenda ficou zerado, e com ele o teto e o saldo das cargas de revenda. Confira o arquivo exportado do ERP.","err",12000);
 }
 
 /* merge: novo arquivo = pedidos a trabalhar; embarcados ficam salvos como historico (gestao) */
@@ -7461,7 +7479,7 @@ function mergePedidosRevenda(old,fresh,fileNums){
   fresh.forEach(np=>{const key=String(np.pedido);
     if(histNums.has(key))return;
     const ex=byNum[key];
-    if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;np.freteVenda=ex.freteVenda;}   /* 1.33.0: o freteVenda e digitado pelo operador; sem esta linha ele seria apagado a cada reimportacao */
+    if(ex){np.assignedTo=ex.assignedTo;np.etaFob=ex.etaFob;np.embarcado=ex.embarcado;np.embarcadoAt=ex.embarcadoAt;}
     result.push(np);});
   return result;
 }
@@ -7648,44 +7666,6 @@ function entregaTag(p){
 /* Selo do pedido preservado (estava em carga e sumiu da planilha). So exibicao. */
 function foraDaPlanilhaTag(p){return (p&&p.foraDaPlanilha)?'<span class="tag fora">&#9888; Saiu da planilha</span>':"";}
 function foraDaPlanilhaLinha(p){return (p&&p.foraDaPlanilha)?'<div class="tc-fora">&#9888; Saiu da planilha</div>':"";}
-/* ===== 1.33.0 - FRETE DE VENDA DA REVENDA =====================================
-   A venda de revenda nao tem tabela de frete: o comercial embute um valor no preco
-   e esse e o TETO daquele pedido. O operador informa no cartao do pedido. Enquanto
-   faltar, o pedido fica marcado como pendente (banco e cartao da carga) e contribui
-   0 para a referencia da carga. Molde: os tres foraDaPlanilha* logo acima.        */
-function fvPendente(p){return !!(p&&p.revenda===true&&!p.fob&&!(p.freteVenda>0));}   /* 1.33.1: FOB de revenda nao tem frete de venda (o cliente retira; a N1 nao paga frete) */
-/* 1.33.2 - explica a AUSENCIA do campo de frete de venda: pedido de revenda FOB e
-   retirado pelo cliente, a N1 nao paga frete, entao nao ha teto a informar. Sem esta
-   tag o cartao FOB fica visualmente identico a um CIF, so que sem o campo. */
-function fvFobTag(p){return (p&&p.revenda===true&&p.fob)?'<span class="tag">&#128230; FOB / Retira</span>':"";}
-function fvTag(p){return fvPendente(p)?'<span class="tag fora">&#9888; Sem frete de venda</span>':"";}
-function fvCampoHtml(p){
-  if(!(p&&p.revenda===true&&!p.fob))return "";   /* 1.33.1: o campo so existe em revenda CIF */
-  const v=(p.freteVenda>0)?p.freteVenda:"";
-  return '<div class="pc-fv" style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 7px;background:#f4f8fb;border:1px solid var(--grade);border-radius:7px">'+
-    '<label for="fv_'+p.id+'" style="font-size:10px;font-weight:700;color:var(--cinza);white-space:nowrap">&#128666; Frete venda R$/ton</label>'+
-    '<input type="number" min="0" step="0.01" class="fvinp" id="fv_'+p.id+'" draggable="false" value="'+v+'" placeholder="informar" style="flex:1;min-width:0;font-size:11px;padding:3px 5px;border:1px solid var(--grade);border-radius:5px">'+
-  '</div>';
-}
-function fvAvisoHtml(ps){
-  const n=(ps||[]).filter(fvPendente).length;
-  if(!n)return "";
-  return '<div class="cl-fora">&#9888; '+n+' pedido(s) desta carga ainda estao sem o frete de venda. Enquanto faltar, o Frete venda (teto) e o saldo desta carga ficam incompletos. Informe o frete de venda no cartao de cada pedido.</div>';
-}
-function wireFreteVenda(c,p){
-  const i=c.querySelector(".fvinp");if(!i)return;
-  i.addEventListener("click",e=>e.stopPropagation());
-  i.addEventListener("mousedown",e=>e.stopPropagation());
-  i.addEventListener("change",e=>{
-    e.stopPropagation();
-    const de=(p.freteVenda>0)?p.freteVenda:0, v=parseNum(i.value);
-    if(v===de)return;
-    if(v>0)p.freteVenda=v; else delete p.freteVenda;
-    renderAll();
-    toast(v>0?("Frete de venda do pedido #"+p.pedido+": "+fmtMoney(v)+"/ton."):("Frete de venda do pedido #"+p.pedido+" removido."),v>0?"ok":"info");
-    logAction("frete_venda_revenda","#"+p.pedido+": "+(de>0?fmtMoney(de):"-")+" -> "+(v>0?fmtMoney(v):"-"));
-  });
-}
 function foraDaPlanilhaAvisoHtml(ps){
   const n=(ps||[]).filter(p=>p&&p.foraDaPlanilha).length;
   if(!n)return "";
@@ -7698,7 +7678,7 @@ function pedidoCard(p,inTruck,somenteLeitura,semBotaoAdd){
     const fr=c.dataset.frete||0;
     c.innerHTML='<button class="tc-rem" title="Remover">&times;</button>'+
       '<div class="tc-top"><div><span class="tc-ped">#'+p.pedido+(p.bloqueado?' &#128274;':'')+'</span><div class="tc-cli">'+(p.cliente||"-")+'</div>'+(p.cidade?'<div class="tc-cid">&#128205; '+p.cidade+(p.uf?'/'+p.uf:'')+'</div>':'')+(p.entrega!=null&&!isNaN(p.entrega)?'<div class="tc-cid">&#128197; Entrega '+fmtDateBr(p.entrega)+'</div>':'')+'</div><span class="tc-peso">'+fmtKg(p.peso)+'</span></div>'+
-      foraDaPlanilhaLinha(p)+((p&&p.revenda===true)?fvCampoHtml(p):'<div class="tc-frete" data-frete>Frete rateado: --</div>');   /* 1.33.0 */
+      foraDaPlanilhaLinha(p)+'<div class="tc-frete" data-frete>Frete rateado: --</div>';
     c.querySelector(".tc-rem").addEventListener("click",e=>{e.stopPropagation();unassign(p);});
   } else {
     const mcCls=p.mcPct<0?"var(--risco)":(p.mcPct>0?"var(--ok)":"var(--cinza)");
@@ -7707,13 +7687,11 @@ function pedidoCard(p,inTruck,somenteLeitura,semBotaoAdd){
     c.innerHTML=
       '<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+lockI+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
       '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div>'+((somenteLeitura||semBotaoAdd)?'':'<button class="pc-add" title="Adicionar a uma carga">+ Carga</button>')+'</div></div>'+
-      '<div class="pc-tags">'+foraDaPlanilhaTag(p)+fvFobTag(p)+fvTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
+      '<div class="pc-tags">'+foraDaPlanilhaTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
       (p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
-      '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>'+
-      fvCampoHtml(p);   /* 1.33.0: so quando p.revenda===true */
+      '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>';
     const _add=c.querySelector(".pc-add");if(_add)_add.addEventListener("click",e=>{e.stopPropagation();quickAssign(p);});
   }
-  if(p&&p.revenda===true)wireFreteVenda(c,p);   /* 1.33.0 */
   if(!somenteLeitura){
     c.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",p.id);c.classList.add("dragging");});
     c.addEventListener("dragend",()=>c.classList.remove("dragging"));
@@ -8627,7 +8605,7 @@ function stageCardRevenda(t,cfg){
     prog+
     (cfg.infoHtml||"")+
     (cfg.warnHtml||"")+
-    foraDaPlanilhaAvisoHtml(ps)+fvAvisoHtml(ps)+   /* 1.33.0 */
+    foraDaPlanilhaAvisoHtml(ps)+
     pedidosResumoHtml(ps)+
     '<div class="clactions">'+(cfg.actions||"")+'</div>'+
     '<div class="cl-foot">'+freteFootHtmlRevenda(t,fr)+'</div>';
@@ -8658,7 +8636,7 @@ function truckCardRevenda(t){
     '<div class="truck-auto"><button class="btn-auto">&#9889; Auto-Preencher</button>'+
       '<button class="btn-parcial" '+(assigned.length?'':'disabled')+' title="Fechar parcial: aguarda mais pedidos ate atingir '+MIN_CLOSE_PCT+'%">&#9201; Fechar Parcial</button>'+
       '<button class="btn-close" '+(assigned.length?'':'disabled')+' title="Fechar carga (minimo '+MIN_CLOSE_PCT+'% da capacidade)">&#9989; Fechar Carga</button></div>'+
-    foraDaPlanilhaAvisoHtml(assigned)+fvAvisoHtml(assigned)+   /* 1.33.0 */
+    foraDaPlanilhaAvisoHtml(assigned)+
     '<div class="truck-body'+(assigned.length?'':' empty-drop')+'" id="revbody-'+t.id+'">'+(assigned.length?'':'Arraste pedidos de revenda aqui')+'</div>'+
     '<div class="truck-foot">'+freteFootHtmlRevenda(t,loadFreightRevenda(t))+'</div>';
   const body=card.querySelector("#revbody-"+t.id);
@@ -10373,9 +10351,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.33.2";
+  var APP_VERSION="1.34.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.34.0",data:"06/09/2026",itens:[
+      ["NOVO","O frete de venda dos pedidos de revenda passou a vir da própria planilha, da coluna Faixa Frete (R$/t), no lugar de ser digitado à mão. Como o valor se repete em cada item do pedido, o sistema usa a média das linhas que têm valor, o que devolve o valor único do pedido."],
+      ["NOVO","Pedidos FOB / Retira de revenda vêm com o frete zerado na planilha, porque o cliente paga o frete. Eles continuam com frete de venda zero e seguem fora do teto da carga."],
+      ["MELHORIA","O campo Frete venda R$/ton, o aviso Sem frete de venda e a etiqueta FOB / Retira saíram do cartão do pedido de revenda. O valor agora vem sempre do arquivo e é recalculado a cada importação, então não há mais nada a preencher nem a controlar."],
+      ["CORRECAO","A detecção da coluna Faixa de Peso estava sendo confundida com a coluna Faixa Frete quando as duas apareciam na planilha. Agora cada uma é identificada corretamente, e a tabela de frete do Formador de Cargas volta a ser organizada pela faixa de peso."],
+      ["MELHORIA","Se a coluna Faixa Frete (R$/t) não for encontrada na planilha, a importação passa a avisar, em vez de deixar o teto das cargas de revenda zerado sem explicação."]
+    ]},
     {versao:"1.33.2",data:"06/09/2026",itens:[
       ["MELHORIA","O cartão do pedido de revenda FOB / Retira passou a exibir a etiqueta FOB / Retira. Ela deixa claro por que aquele pedido não pede o frete de venda: o cliente retira a mercadoria e a N1 não paga frete, então não há teto a informar."]
     ]},
