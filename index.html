@@ -8479,6 +8479,15 @@ function loadFreightRevenda(t){
   const saldo=negTon>0?(negTotal-pagoTotal):(total-pagoTotal);
   return {total,kg,alloc,rate,sumV,pagoTon,pagoTotal,saldo,refFrete,negTon,negTotal,temIndustria};
 }
+/* 1.32.0 - fonte de frete conforme a natureza da carga, para o Saldo frete do topo.
+   A regra da 1.20.0 vem junto: carga de INDUSTRIA sem frete negociado informado nao
+   entra na conta (a tabela da rota nao e referencia valida para ela) e devolve 0 --
+   exatamente o "return s" que existia dentro do reduce do renderKpis. */
+function saldoDe(t){
+  const fr=(t&&t.revenda===true)?loadFreightRevenda(t):loadFreight(t);
+  if(fr.temIndustria&&!(fr.negTon>0))return 0;
+  return fr.saldo;
+}
 function cargaMargemRevenda(t){var ps=(state.pedidosRevenda||[]).filter(function(p){return p.assignedTo===t.id;});var mc=0,vl=0,tons=0,ftab=0;ps.forEach(function(p){mc+=(p.mcRs||0);vl+=(p.vl||0);tons+=(p.peso||0)/1000;ftab+=((p.peso||0)/1000)*(p.frete||0);});var mcPct=vl>0?mc/vl*100:0;var fpago=(t.fretePago>0)?t.fretePago*tons:null;var mcLiq=mc,mcPctLiq=mcPct,acima=false,delta=0;if(fpago!=null){delta=fpago-ftab;mcLiq=mc-delta;mcPctLiq=vl>0?mcLiq/vl*100:0;acima=delta>0.5;}return{mc:mc,vl:vl,mcPct:mcPct,mcLiq:mcLiq,mcPctLiq:mcPctLiq,freteTab:ftab,fretePago:fpago,acima:acima,delta:delta,tons:tons};}
 function margemLineRevenda(t){var m=cargaMargemRevenda(t);if(m.vl<=0)return "";var s='<div class="cargamc">MC carga: <b style="color:'+_mcCor(m.mcPct)+'">'+m.mcPct.toFixed(1)+'%</b>';if(m.fretePago!=null){s+=' &middot; apos frete pago: <b style="color:'+_mcCor(m.mcPctLiq)+'">'+m.mcPctLiq.toFixed(1)+'%</b>';if(m.acima)s+=' <span class="mc-warn">&#9888; frete acima da tabela +'+fmtMoney(m.delta)+'</span>';}s+='</div>';return s;}
 function freteFootHtmlRevenda(t,fr){
@@ -8899,10 +8908,12 @@ function renderEmbarcadas(){
   if(!cs.length&&!_fobPer.length){body.innerHTML='<div class="empty">'+(periodoAtivo("fEmb")?"Nenhuma carga embarcada no periodo escolhido.":"Nenhuma carga ou pedido embarcado ainda.")+'</div>';return;}
   body.innerHTML="";
   (function(){
-    /* 1.31.0 - o quadro de KPI da aba segue 100% Formador; a soma da revenda e a 3e. */
-    const csForm=cs.filter(t=>!(t&&t.revenda===true));
-    const idsC={};csForm.forEach(t=>{idsC[t.id]=1;});
-    const pedsCif=state.pedidos.filter(p=>idsC[p.assignedTo]);
+    /* 1.32.0 - o quadro passa a somar a revenda junto (numero unico). O pedsCif tem de
+       ler as duas listas: sem isso a carga de revenda entraria em "Cargas embarcadas"
+       contribuindo 0 kg em "Toneladas embarcadas". A secao FOB abaixo nao e afetada:
+       fobEmb/_fobPer derivam so de state.pedidos. */
+    const idsC={};cs.forEach(t=>{idsC[t.id]=1;});
+    const pedsCif=state.pedidos.concat(state.pedidosRevenda||[]).filter(p=>idsC[p.assignedTo]);
     const kgCif=pedsCif.reduce((s,p)=>s+(p.peso||0),0);
     const kgFob=_fobPer.reduce((s,p)=>s+(p.peso||0),0);
     const nPed=pedsCif.length+_fobPer.length, kgTot=kgCif+kgFob;
@@ -8912,7 +8923,7 @@ function renderEmbarcadas(){
     const d=el("div","embkpis");
     d.innerHTML='<div class="ek"><span class="ek-v">'+fmtT(kgTot)+'</span><span class="ek-l">Toneladas embarcadas</span><span class="ek-s">CIF '+fmtT(kgCif)+(kgFob>0?' &middot; FOB '+fmtT(kgFob):'')+'</span></div>'+
       '<div class="ek"><span class="ek-v">'+nPed+'</span><span class="ek-l">Pedidos embarcados</span><span class="ek-s">CIF '+pedsCif.length+(_fobPer.length?' &middot; FOB '+_fobPer.length:'')+'</span></div>'+
-      '<div class="ek"><span class="ek-v">'+csForm.length+'</span><span class="ek-l">Cargas embarcadas</span><span class="ek-s">'+(csForm.length?fmtT(kgCif/Math.max(csForm.length,1))+' por carga':'&nbsp;')+'</span></div>'+
+      '<div class="ek"><span class="ek-v">'+cs.length+'</span><span class="ek-l">Cargas embarcadas</span><span class="ek-s">'+(cs.length?fmtT(kgCif/Math.max(cs.length,1))+' por carga':'&nbsp;')+'</span></div>'+
       '<div class="ek per"><span class="ek-p">'+per+'</span></div>';
     body.appendChild(d);
   })();
@@ -9131,7 +9142,9 @@ function renderKpis(){
   const fob=fobPeds().filter(pred).length;
   const pesoTot=bp.reduce((s,p)=>s+p.peso,0);
   const dispPeso=bp.filter(p=>p.assignedTo===null&&p.apto).reduce((s,p)=>s+p.peso,0);
-  const aloc=state.pedidos.filter(p=>p.assignedTo!==null&&inScope(p)&&pred(p)&&!isEmbarked(p)).reduce((s,p)=>s+p.peso,0);
+  /* 1.32.0 - o peso alocado soma tambem os pedidos de revenda em carga, para os
+     indicadores do topo ficarem coerentes entre si. */
+  const aloc=state.pedidos.concat(state.pedidosRevenda||[]).filter(p=>p.assignedTo!==null&&inScope(p)&&pred(p)&&!isEmbarked(p)).reduce((s,p)=>s+p.peso,0);
   const truckInFilter=t=>state.pedidos.some(p=>p.assignedTo===t.id&&inScope(p)&&pred(p));
   if($("#kAptos"))$("#kAptos").textContent=aptos;
   if($("#kLib"))$("#kLib").textContent=lib;
@@ -9139,19 +9152,17 @@ function renderKpis(){
   if($("#kFob"))$("#kFob").textContent=fob;
   if($("#kPesoTot"))$("#kPesoTot").textContent=fmtT(pesoTot);
   $("#kPeso").textContent=fmtT(dispPeso);
-  if($("#kCargas"))$("#kCargas").textContent=state.trucks.filter(t=>t.status==="montada"&&truckInScope(t)).length;
-  if($("#kFech"))$("#kFech").textContent=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t)).length;
-  const contr=state.trucks.filter(t=>t.status==="contratada"&&truckInScope(t));
+  if($("#kCargas"))$("#kCargas").textContent=state.trucks.concat(state.trucksRevenda||[]).filter(t=>t.status==="montada"&&truckInScope(t)).length;   /* 1.32.0 */
+  if($("#kFech"))$("#kFech").textContent=state.trucks.concat(state.trucksRevenda||[]).filter(t=>t.status==="fechada"&&truckInScope(t)).length;   /* 1.32.0 */
+  const contr=state.trucks.concat(state.trucksRevenda||[]).filter(t=>t.status==="contratada"&&truckInScope(t));   /* 1.32.0 */
   if($("#kContr"))$("#kContr").textContent=contr.length;
-  const emb=state.trucks.filter(t=>t.status==="embarcada"&&truckInScope(t));
+  const emb=state.trucks.concat(state.trucksRevenda||[]).filter(t=>t.status==="embarcada"&&truckInScope(t));   /* 1.32.0 */
   if($("#kEmb"))$("#kEmb").textContent=emb.length;
   /* Carga sem frete pago nao entra (o saldo dela seria o preco de tabela inteiro). Desde a
      1.20.0, carga de INDUSTRIA sem frete negociado informado tambem fica de fora: a tabela
      da rota nao e referencia valida para ela. Com o negociado informado, entra normalmente. */
   const saldo=contr.concat(emb).filter(truckInScope).filter(t=>t.fretePago>0).reduce(function(s,t){
-    const fr=loadFreight(t);
-    if(fr.temIndustria&&!(fr.negTon>0))return s;
-    return s+fr.saldo;
+    return s+saldoDe(t);   /* 1.32.0: saldoDe escolhe loadFreight/loadFreightRevenda e aplica a regra acima */
   },0);
   const ks=$("#kSaldo");ks.textContent=(saldo>=0?"":"-")+"R$ "+Math.abs(saldo).toLocaleString("pt-BR",{maximumFractionDigits:0});
   const ksc=$("#kSaldoCard");if(ksc){ksc.classList.toggle("green",saldo>=0);ksc.classList.toggle("alert",saldo<0);ksc.classList.toggle("neutral",false);}
@@ -10304,9 +10315,16 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.31.0";
+  var APP_VERSION="1.32.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.32.0",data:"05/09/2026",itens:[
+      ["NOVO","Os indicadores do topo passaram a somar as cargas de revenda junto com as normais: cargas em montagem, aguardando contratação, contratadas, embarcadas, o peso alocado e o saldo de frete. É um número único, sem separação por tipo de carga."],
+      ["NOVO","O saldo de frete do topo usa a tabela de frete da revenda para as cargas de revenda. A regra continua a mesma: carga sem frete pago informado não entra, e carga de indústria só entra quando o frete negociado foi informado."],
+      ["NOVO","O quadro de indicadores da aba Cargas Embarcadas também passou a somar as cargas de revenda, incluindo a tonelagem e a contagem de pedidos."],
+      ["CORRECAO","O detalhe da carga de revenda mostrava o número sem a marca R-, diferente do que aparece no cartão. Agora os dois mostram o mesmo, por exemplo Carga R-21."],
+      ["MELHORIA","A seção de pedidos FOB / Retira e a exportação de romaneios seguem contando apenas o Formador de Cargas."]
+    ]},
     {versao:"1.31.0",data:"05/09/2026",itens:[
       ["NOVO","Cargas de revenda agora embarcam. O cartão da carga de revenda contratada ganhou os botões Embarcado e Cancelar, com as mesmas regras das cargas normais."],
       ["NOVO","A aba Cargas Embarcadas passou a mostrar as cargas de revenda junto com as normais, marcadas com o selo REVENDA. O cartão de revenda traz Ver detalhes, Voltar p/ Contratadas e Cancelar."],
@@ -10948,7 +10966,7 @@ netBoot();
     var _eRev=(t&&t.revenda===true);   /* 1.28.0: a mesma janela serve as duas listas */
     var ps=(_eRev?(state.pedidosRevenda||[]):(state.pedidos||[])).filter(function(p){return p.assignedTo===t.id;}).sort(cmpPedidos);
     var fr=_eRev?loadFreightRevenda(t):loadFreight(t), load=fr.kg, pct=t.cap?load/t.cap*100:0, m=_eRev?cargaMargemRevenda(t):cargaMargem(t);
-    var num=t.numeroCarga?((t.filialCarga?t.filialCarga+" \u00b7 ":"")+"Carga "+t.numeroCarga):"(sem numero \u2014 gerado na contratacao)";
+    var num=t.numeroCarga?((t.filialCarga?t.filialCarga+" \u00b7 ":"")+"Carga "+((t&&t.revenda===true)?"R-":"")+t.numeroCarga)   /* 1.32.0: bate com o cargaTag do cartao */:"(sem numero \u2014 gerado na contratacao)";
     g("cdTitulo").innerHTML='&#128666; '+esc(t.rota||"Rota nao informada")+' <span class="cd-st">'+esc(STATUS[t.status]||t.status)+'</span>';
 
     var h='<div class="cd-ph"><div><b>N1 ALIMENTOS</b><span>Detalhes da carga</span></div><div>'+new Date().toLocaleString("pt-BR")+'</div></div>';
