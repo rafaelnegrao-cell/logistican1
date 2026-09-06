@@ -7654,6 +7654,10 @@ function foraDaPlanilhaLinha(p){return (p&&p.foraDaPlanilha)?'<div class="tc-for
    faltar, o pedido fica marcado como pendente (banco e cartao da carga) e contribui
    0 para a referencia da carga. Molde: os tres foraDaPlanilha* logo acima.        */
 function fvPendente(p){return !!(p&&p.revenda===true&&!p.fob&&!(p.freteVenda>0));}   /* 1.33.1: FOB de revenda nao tem frete de venda (o cliente retira; a N1 nao paga frete) */
+/* 1.33.2 - explica a AUSENCIA do campo de frete de venda: pedido de revenda FOB e
+   retirado pelo cliente, a N1 nao paga frete, entao nao ha teto a informar. Sem esta
+   tag o cartao FOB fica visualmente identico a um CIF, so que sem o campo. */
+function fvFobTag(p){return (p&&p.revenda===true&&p.fob)?'<span class="tag">&#128230; FOB / Retira</span>':"";}
 function fvTag(p){return fvPendente(p)?'<span class="tag fora">&#9888; Sem frete de venda</span>':"";}
 function fvCampoHtml(p){
   if(!(p&&p.revenda===true&&!p.fob))return "";   /* 1.33.1: o campo so existe em revenda CIF */
@@ -7703,7 +7707,7 @@ function pedidoCard(p,inTruck,somenteLeitura,semBotaoAdd){
     c.innerHTML=
       '<div class="pc-top"><div class="pc-left"><span class="pc-ped">#'+p.pedido+lockI+'</span><div class="pc-cli">'+(p.cliente||"-")+'</div></div>'+
       '<div class="pc-right"><div class="pc-peso">'+Math.round(p.peso).toLocaleString("pt-BR")+' <small>kg</small></div>'+((somenteLeitura||semBotaoAdd)?'':'<button class="pc-add" title="Adicionar a uma carga">+ Carga</button>')+'</div></div>'+
-      '<div class="pc-tags">'+foraDaPlanilhaTag(p)+fvTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
+      '<div class="pc-tags">'+foraDaPlanilhaTag(p)+fvFobTag(p)+fvTag(p)+entregaTag(p)+(p.filial?'<span class="tag filial">'+p.filial+'</span>':'')+(p.cidade?'<span class="tag">'+p.cidade+'</span>':'')+(p.rota?'<span class="tag rota">'+p.rota+'</span>':'')+(p.prio?'<span class="tag prio">Prioridade</span>':'')+statusTag+'<span class="tag score">Score '+p.score.toFixed(0)+'</span></div>'+
       (p.produtos.length?'<div class="pc-mix"><b>Mix:</b> '+p.produtos.slice(0,4).join(", ")+(p.produtos.length>4?" +"+(p.produtos.length-4):"")+'</div>':'')+
       '<div class="pc-mc" style="color:'+mcCls+'">MC '+p.mcPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+'%</div>'+
       fvCampoHtml(p);   /* 1.33.0: so quando p.revenda===true */
@@ -10369,9 +10373,12 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.33.1";
+  var APP_VERSION="1.33.2";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.33.2",data:"06/09/2026",itens:[
+      ["MELHORIA","O cartão do pedido de revenda FOB / Retira passou a exibir a etiqueta FOB / Retira. Ela deixa claro por que aquele pedido não pede o frete de venda: o cliente retira a mercadoria e a N1 não paga frete, então não há teto a informar."]
+    ]},
     {versao:"1.33.1",data:"06/09/2026",itens:[
       ["CORRECAO","O campo Frete venda e o aviso \"Sem frete de venda\" apareciam tambem nos pedidos de revenda FOB / Retira, onde o cliente retira a mercadoria e a N1 nao paga frete. Nesses pedidos nao ha frete de venda a informar, e agora o campo e o aviso nao aparecem mais."],
       ["CORRECAO","Numa carga de revenda que misture pedidos CIF e FOB, o Frete venda (teto) passou a somar apenas os pedidos CIF. O peso da carga continua contando todos os pedidos, e o R$/ton medio de venda passou a considerar apenas a parte que tem frete de venda."]
