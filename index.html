@@ -6748,7 +6748,19 @@ const GEO_CENT={"RO":[-10.83,-63.34,"Rondônia"],"AC":[-8.77,-70.55,"Acre"],"AM"
     <div class="modal-body">
       <div class="fld"><label>Tipo de veiculo</label><select id="revMTipo"></select></div>
       <div class="fld"><label>Rota (opcional &mdash; herda do primeiro pedido)</label><input id="revMRota" placeholder="ex.: BAURU/SP" autocomplete="off"></div>
-      <div class="pal-hint">Transportadora, frete e data de embarque sao informados na etapa de contratacao, mais adiante.</div>
+      <div class="pal-hint" id="revMHint">Transportadora, frete e data de embarque sao informados na etapa de contratacao, mais adiante.</div>
+      <div id="revTranspBox" class="hidden">
+        <div class="fld-grid">
+          <div class="fld"><label>Transportadora (cadastrada) <span style="color:var(--cinza);font-weight:400">(opcional)</span></label><input id="revMTransp" list="carrierList" placeholder="busque/escolha uma cadastrada" autocomplete="off"></div>
+          <div class="fld"><label>Placa <span style="color:var(--cinza);font-weight:400">(opcional)</span></label><input id="revMPlaca" placeholder="Nao informado" autocomplete="off"></div>
+        </div>
+        <div class="fld-grid" style="margin-top:8px">
+          <div class="fld"><label>Motorista <span style="color:var(--cinza);font-weight:400">(opcional)</span></label><input id="revMMot" placeholder="Nao informado" autocomplete="off"></div>
+          <div class="fld"><label>Frete/ton pago <span style="color:var(--cinza);font-weight:400">(opcional)</span></label><input id="revMFretePago" placeholder="0,00" autocomplete="off"></div>
+        </div>
+        <div class="fld" style="margin-top:8px"><label>Previsao de embarque <b style="color:var(--verde)">(obrigatoria para contratar)</b></label><input type="date" id="revMEta"></div>
+        <div class="pal-hint">Para cadastrar uma transportadora nova, use o modal de Transporte do Formador de Cargas ou a aba Cadastros.</div>
+      </div>
     </div>
     <div class="modal-foot"><button class="btn ghost" id="revModalCancel">Cancelar</button><button class="btn primary" id="revModalSave">Salvar</button></div>
   </div>
@@ -8312,11 +8324,24 @@ function routeMismatchRevenda(t){if(!t||!t.rota||!t.rota.trim())return false;con
 function openModalRevenda(t){
   if(!requirePerm("criarCarga"))return;
   _revTruck=t||null;
+  /* 1.29.0 - modal de dois modos: montagem (criar/editar) e transporte (contratacao). */
+  const _tr=!!(t&&t.status&&t.status!=="montada");
   const sel=$("#revMTipo");
   if(sel)sel.innerHTML=Object.keys(VEHICLES).sort((a,b)=>b-a).map(c=>'<option value="'+c+'">'+VEHICLES[c]+' &middot; '+fmtKg(+c)+'</option>').join("");
-  $("#revModalTitle").textContent=t?"Editar Carga de Revenda":"Nova Carga de Revenda";
+  $("#revModalTitle").textContent=_tr?"Transporte da Carga de Revenda":(t?"Editar Carga de Revenda":"Nova Carga de Revenda");
   if(sel)sel.value=t?String(t.cap):"33000";
   $("#revMRota").value=t?(t.rota||""):"";
+  const _box=$("#revTranspBox"),_hint=$("#revMHint");
+  if(_box)_box.classList.toggle("hidden",!_tr);
+  if(_hint)_hint.classList.toggle("hidden",_tr);
+  if(_tr){
+    refreshCarrierList();
+    $("#revMTransp").value=t.transp||"";
+    $("#revMPlaca").value=t.placa||"";
+    $("#revMMot").value=t.mot||"";
+    $("#revMFretePago").value=t.fretePago?t.fretePago:"";
+    $("#revMEta").value=t.eta||"";
+  }
   $("#revOverlay").classList.add("open");
 }
 function fecharModalRevenda(){$("#revOverlay").classList.remove("open");_revTruck=null;}
@@ -8325,6 +8350,22 @@ function salvarCargaRevenda(){
   const cap=parseInt($("#revMTipo").value,10);
   if(!cap){toast("Selecione o tipo de veiculo.","err");return;}
   const rota=$("#revMRota").value.trim();
+  /* 1.29.0 - modo transporte: so quando a carga ja saiu da montagem. O caminho
+     de montagem abaixo segue identico ao da 1.25.0. */
+  const _box=$("#revTranspBox");
+  if(_revTruck&&_box&&!_box.classList.contains("hidden")){
+    const _tp=$("#revMTransp").value.trim();
+    if(_tp&&!isRegisteredCarrier(_tp)){toast("Transportadora nao cadastrada. Cadastre no Formador de Cargas ou na aba Cadastros, ou escolha uma da lista.","err",7000);return;}
+    _revTruck.cap=cap;_revTruck.rota=rota;
+    _revTruck.transp=_tp;
+    _revTruck.placa=$("#revMPlaca").value.trim();
+    _revTruck.mot=$("#revMMot").value.trim();
+    _revTruck.fretePago=parseNum($("#revMFretePago").value);
+    _revTruck.eta=$("#revMEta").value||"";
+    logAction("editar_transporte_revenda",_revTruck.id+" "+(rota||"sem rota")+" | "+(_tp||"sem transportadora")+" "+(_revTruck.placa||"")+(_revTruck.eta?" | embarque "+_revTruck.eta:""));
+    toast("Transporte da carga de revenda atualizado.","ok");
+    fecharModalRevenda();renderAll();return;
+  }
   state.trucksRevenda=state.trucksRevenda||[];
   if(_revTruck){
     _revTruck.cap=cap;_revTruck.rota=rota;
@@ -8692,10 +8733,21 @@ function entregaRangeTexto(t){
   if(!r)return "&mdash;";
   return "mais proxima "+fmtDateBr(r.min)+" &middot; mais distante "+fmtDateBr(r.max);
 }
+/* >>> Gemeo: entregaRangeCarga()/entregaRangeTexto(). Correcao num deve ser avaliada no outro. <<< */
+function entregaRangeCargaRevenda(t){
+  const ds=(state.pedidosRevenda||[]).filter(p=>p.assignedTo===t.id).map(p=>p.entrega).filter(v=>v!=null&&!isNaN(v));
+  if(!ds.length)return null;
+  return {min:Math.min.apply(null,ds),max:Math.max.apply(null,ds)};
+}
+function entregaRangeTextoRevenda(t){
+  const r=entregaRangeCargaRevenda(t);
+  if(!r)return "&mdash;";
+  return "mais proxima "+fmtDateBr(r.min)+" &middot; mais distante "+fmtDateBr(r.max);
+}
 function etaFechadaHtml(t){
   return '<div class="cl-eta"><label for="eta_'+t.id+'">&#128197; Previsao de embarque</label>'+
     '<input type="date" class="etainp" id="eta_'+t.id+'" value="'+_hesc(t.eta||"")+'">'+
-    '<span class="cl-eta-info">Entrega dos pedidos: '+entregaRangeTexto(t)+'</span></div>';
+    '<span class="cl-eta-info">Entrega dos pedidos: '+((t&&t.revenda===true)?entregaRangeTextoRevenda(t):entregaRangeTexto(t))+'</span></div>';
 }
 function definirPrevisaoEmbarque(t,iso){
   if(!requireScope(t))return;
@@ -8714,16 +8766,17 @@ function wireEtaFechada(card,t){
   i.addEventListener("change",e=>{e.stopPropagation();definirPrevisaoEmbarque(t,i.value);});
 }
 function renderFechadas(){
-  const todasF=state.trucks.filter(t=>t.status==="fechada"&&truckInScope(t));
+  const todasF=state.trucks.concat(state.trucksRevenda||[]).filter(t=>t.status==="fechada"&&truckInScope(t));   /* 1.29.0: aba compartilhada */
   buildTabFilters("fFec",todasF);
   const fechadas=filtraCargas(todasF,"fFec");
   setBadge("fech",todasF.length);
   $("#fechMeta").textContent=fechadas.length+(fechadas.length===1?" carga":" cargas")+(tabFiltrosAtivos("fFec")?(" de "+todasF.length+" (filtrado)"):"");
-  $("#btnExportFech").disabled=todasF.length===0;
+  $("#btnExportFech").disabled=todasF.filter(t=>!(t&&t.revenda===true)).length===0;   /* 1.29.0: o export le so state.trucks */
   const body=$("#fechBody");
   if(!fechadas.length){body.innerHTML='<div class="empty">Nenhuma carga fechada ainda. Monte uma carga e clique em "Fechar Carga".</div>';return;}
   body.innerHTML="";
   fechadas.forEach(t=>{
+    const _eRev=(t&&t.revenda===true);   /* 1.29.0 */
     const ok=podeProgramar(t);          // 1.14.0: so a data prevista de embarque trava
     const pill=(t.belowMin?' <span class="pill" style="background:#FFE08A;color:#8a6d3b">ABAIXO DO MINIMO</span>':'');
     const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"a contratar")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):'<span class="eta-warn">a definir</span>')+'</b></span>'+(t.history&&t.history.length?'<span>Alteracoes: <b>'+t.history.length+'</b></span>':'')+'</div>'+etaFechadaHtml(t);
@@ -8731,21 +8784,25 @@ function renderFechadas(){
     const warn=!ok
       ?'<div class="cl-warn">&#9888; Informe a <b>data prevista de embarque</b> para programar esta carga. Ela e o <b>unico campo obrigatorio</b> &mdash; transportadora, placa, motorista e frete/ton pago sao <b>opcionais</b> e podem ser preenchidos depois.</div>'
       :(_falta.length?'<div class="cl-note">&#10003; Pronta para programar (a data ja esta definida). Ainda em branco, e <b>opcional</b>: '+_falta.join(", ")+'. Pode preencher agora ou depois de programar.</div>':'');
-    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
-    const r=stageCard(t,{pill:pill+seloProdHtml(t),infoHtml:info,warnHtml:warn,actions:acts});
+    const acts=_eRev
+      ?'<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>'
+      :'<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn edt">&#9998; Transporte</button><button class="clbtn anttb">&#128200; Piso ANTT</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn divb">&#128226; Divulgacao</button><button class="clbtn embd">&#128197; Embarque</button>'+libProdBtnHtml(t)+'<button class="clbtn reab">Reabrir</button><button class="clbtn contr primary" '+(ok?'':'disabled')+'>&#128667; Contratar veiculo</button>';
+    const r=_eRev
+      ?stageCardRevenda(t,{pill:pill+pillRevenda(t),infoHtml:info,warnHtml:warn,actions:acts})
+      :stageCard(t,{pill:pill+seloProdHtml(t),infoHtml:info,warnHtml:warn,actions:acts});
     const card=r.card;
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
-    card.querySelector(".reab").addEventListener("click",()=>reabrirCarga(t));
-    wireLibProd(card,t);
+    card.querySelector(".reab").addEventListener("click",()=>_eRev?reabrirCargaRevenda(t):reabrirCarga(t));
+    if(!_eRev)wireLibProd(card,t);
     wireEtaFechada(card,t);
-    card.querySelector(".edt").addEventListener("click",()=>openModal(t));
-    card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
+    card.querySelector(".edt").addEventListener("click",()=>_eRev?openModalRevenda(t):openModal(t));
+    if(!_eRev)card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
     const _eb=card.querySelector(".embd");if(_eb)_eb.addEventListener("click",()=>editarEmbarque(t));
     const _db=card.querySelector(".divb");if(_db)_db.addEventListener("click",()=>window.openDivulg&&window.openDivulg(t));
     const _a2=card.querySelector(".anttb");if(_a2)_a2.addEventListener("click",()=>window.openAntt&&window.openAntt(t));
     const _r2=card.querySelector(".romb");if(_r2)_r2.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
     const cb=card.querySelector(".contr");
-    if(ok)cb.addEventListener("click",()=>veiculoContratado(t));
+    if(ok)cb.addEventListener("click",()=>_eRev?veiculoContratadoRevenda(t):veiculoContratado(t));
     else cb.addEventListener("click",()=>toast("Falta apenas a data prevista de embarque: informe no campo Previsao de embarque do proprio cartao (ou em Transporte) para programar. Transportadora, placa, motorista e frete/ton pago sao opcionais.","info",8000));
     body.appendChild(card);
   });
@@ -8758,6 +8815,13 @@ function veiculoContratado(t){
   if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date()),_fk=truckFilial(t),_key=_fk+"|"+_wk;state.cargaSeq[_key]=(state.cargaSeq[_key]||0)+1;t.numeroCarga=state.cargaSeq[_key];t.semana=_wk;t.filialCarga=_fk;pushHist(t,{tipo:"Numero de carga gerado",de:"fechada",para:"contratada",motivo:"Carga "+_fk+" No "+t.numeroCarga});}t.status="contratada";t.contractedAt=new Date();renderAll();setTab("contratadas");
   toast("Veiculo contratado para \""+(t.rota||"-")+"\". Movido para Cargas Contratadas.","ok");logAction("contratar",(t.rota||"")+" - "+(t.transp||""));
 }
+/* >>> Gemeo: veiculoContratado(). Correcao num deve ser avaliada no outro. <<< */
+function veiculoContratadoRevenda(t){
+  if(!requirePerm("contratar"))return;
+  if(!podeProgramar(t)){toast("Informe a data prevista de embarque para programar esta carga. Ela e o unico campo obrigatorio: transportadora, placa, motorista e frete/ton pago sao opcionais.","err",8000);return;}
+  if(!t.numeroCarga){state.cargaSeq=state.cargaSeq||{};var _wk=weekKeyN(new Date()),_fk=truckFilialRevenda(t),_key=_fk+"|"+_wk;state.cargaSeq[_key]=(state.cargaSeq[_key]||0)+1;t.numeroCarga=state.cargaSeq[_key];t.semana=_wk;t.filialCarga=_fk;pushHist(t,{tipo:"Numero de carga gerado",de:"fechada",para:"contratada",motivo:"Carga "+_fk+" No "+t.numeroCarga});}t.status="contratada";t.contractedAt=new Date();renderAll();setTab("contratadas");
+  toast("Veiculo contratado para \""+(t.rota||"-")+"\". Movido para Cargas Contratadas.","ok");logAction("contratar_revenda",(t.rota||"")+" - "+(t.transp||""));
+}
 function embarcarCarga(t){
   if(!requirePerm("embarcar"))return;
   if(!requireScope(t))return;
@@ -8767,19 +8831,24 @@ function embarcarCarga(t){
 
 /* PAINEL CONTRATADAS */
 function renderContratadas(){
-  const todas=state.trucks.filter(t=>t.status==="contratada"&&truckInScope(t));
+  const todas=state.trucks.concat(state.trucksRevenda||[]).filter(t=>t.status==="contratada"&&truckInScope(t));   /* 1.29.0: aba compartilhada */
   buildTabFilters("fCon",todas);
   const cs=filtraCargas(todas.filter(t=>noPeriodo(t,"contratada","fContr")),"fCon");
   setBadge("contr",todas.length);
   $("#contrMeta").textContent=cs.length+(cs.length===1?" carga":" cargas")+((periodoAtivo("fContr")||tabFiltrosAtivos("fCon"))?(" de "+todas.length+" (filtrado)"):"");
-  $("#btnExportContr").disabled=cs.length===0;
+  $("#btnExportContr").disabled=cs.filter(t=>!(t&&t.revenda===true)).length===0;   /* 1.29.0: o export le so state.trucks */
   const body=$("#contrBody");
   if(!cs.length){body.innerHTML='<div class="empty">'+(periodoAtivo("fContr")?"Nenhuma carga programada no periodo escolhido.":"Nenhum caminhao contratado ainda.")+'</div>';return;}
   body.innerHTML="";
   cs.forEach(t=>{
+    const _eRev=(t&&t.revenda===true);   /* 1.29.0 */
     const info='<div class="clinfo2"><span>Transp: <b>'+(t.transp||"-")+'</b></span><span>Placa: <b>'+(t.placa||"-")+'</b></span><span>Embarque: <b>'+(t.eta?fmtEta(t.eta):"-")+'</b></span></div>';
-    const acts='<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar</button><button class="clbtn canc">Cancelar</button><button class="clbtn emb primary">&#128666; Embarcado</button>';
-    const r=stageCard(t,{headStyle:"background:linear-gradient(135deg,#0a5d44,#008D67)",pill:' <span class="pill contr">PROGRAMADA</span>',infoHtml:info,actions:acts});
+    const acts=_eRev
+      ?'<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn reab">Voltar</button>'
+      :'<button class="clbtn det">&#128269; Ver detalhes</button><button class="clbtn mapb">&#128506; Mapa</button><button class="clbtn romb">&#128203; Romaneios</button><button class="clbtn reab">Voltar</button><button class="clbtn canc">Cancelar</button><button class="clbtn emb primary">&#128666; Embarcado</button>';
+    const r=_eRev
+      ?stageCardRevenda(t,{headStyle:"background:linear-gradient(135deg,#0a5d44,#008D67)",pill:' <span class="pill contr">PROGRAMADA</span>'+pillRevenda(t),infoHtml:info,actions:acts})
+      :stageCard(t,{headStyle:"background:linear-gradient(135deg,#0a5d44,#008D67)",pill:' <span class="pill contr">PROGRAMADA</span>',infoHtml:info,actions:acts});
     const card=r.card;
     const d0=card.querySelector(".det");if(d0)d0.innerHTML="&#128269; Ver detalhes ("+r.ps.length+")";
     card.querySelector(".reab").addEventListener("click",()=>{
@@ -8788,12 +8857,12 @@ function renderContratadas(){
       if(!m){toast("Motivo obrigatorio.","err");return;}
       t.status="fechada";pushHist(t,{tipo:"Reversao de status",de:"contratada",para:"fechada",motivo:m});
       renderAll();setTab("fechadas");toast("Carga retornada para Aguardando Contratacao. Numero preservado.","info");
-      logAction("reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": contratada -> fechada | Motivo: "+m);
+      logAction(_eRev?"reverter_status_revenda":"reverter_status",(t.numeroCarga?"Carga "+t.numeroCarga+" ":"")+(t.rota||"")+": contratada -> fechada | Motivo: "+m);
     });
     const _r3=card.querySelector(".romb");if(_r3)_r3.addEventListener("click",()=>window.openRomaneios&&window.openRomaneios(t));
-    const _cc=card.querySelector(".canc");if(_cc)_cc.addEventListener("click",()=>cancelarCarga(t));
-    card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
-    card.querySelector(".emb").addEventListener("click",()=>embarcarCarga(t));
+    const _cc=_eRev?null:card.querySelector(".canc");if(_cc)_cc.addEventListener("click",()=>cancelarCarga(t));
+    if(!_eRev)card.querySelector(".mapb").addEventListener("click",()=>openMap(t));
+    if(!_eRev)card.querySelector(".emb").addEventListener("click",()=>embarcarCarga(t));
     body.appendChild(card);
   });
 }
@@ -9462,6 +9531,7 @@ function plantasDoPerfil(){
 }
 function truckActionInScope(t){
   if(!t)return true;
+  if(t.revenda===true)return true;   /* 1.29.0: revenda nao tem escopo por planta */
   if(!CUR.profile||CUR.profile.master)return true;
   const fl=(CUR.profile.filiais)||[];
   if(!fl.length)return true;
@@ -10206,9 +10276,18 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.28.0";
+  var APP_VERSION="1.29.0";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.29.0",data:"05/09/2026",itens:[
+      ["NOVO","Cargas de revenda agora são contratadas. O cartão da carga de revenda fechada ganhou o botão Contratar veículo, com a mesma regra das cargas normais: a data prevista de embarque é o único campo obrigatório."],
+      ["NOVO","A aba Aguardando Contratação passou a mostrar as cargas de revenda junto com as normais, marcadas com o selo REVENDA. O cartão de revenda traz Ver detalhes, Transporte, Reabrir e Contratar veículo."],
+      ["NOVO","A aba Cargas Contratadas também passou a mostrar as cargas de revenda, com Ver detalhes e Voltar. O botão Voltar devolve a carga para Aguardando Contratação preservando o número já gerado."],
+      ["NOVO","O número da carga de revenda usa o mesmo contador semanal por planta das cargas normais e aparece com a marca R- (por exemplo, Carga R-6), para diferenciar sem criar uma numeração paralela."],
+      ["NOVO","O modal da carga de revenda ganhou os campos de transporte: transportadora, placa, motorista, frete/ton pago e previsão de embarque. Eles aparecem somente na etapa de contratação; na montagem o modal continua com tipo de veículo e rota."],
+      ["MELHORIA","A data de entrega dos pedidos mostrada no cartão da carga de revenda passou a ler os pedidos de revenda. Antes aparecia em branco."],
+      ["MELHORIA","Cargas de revenda continuam fora da exportação de romaneios e da liberação para o PCP, que seguem lendo apenas as cargas do Formador de Cargas."]
+    ]},
     {versao:"1.28.0",data:"05/09/2026",itens:[
       ["NOVO","Cargas de revenda agora fecham. O cartão da carga de revenda ganhou os botões Fechar Parcial e Fechar Carga, com as mesmas regras das cargas normais: o fechamento definitivo exige no mínimo 90% da capacidade, e fechar abaixo disso pede confirmação, motivo e a permissão específica."],
       ["NOVO","A aba Fechado Parcial passou a mostrar as cargas de revenda junto com as normais, identificadas pela etiqueta REVENDA. De lá dá para ver os detalhes, auto-preencher, reabrir e fechar a carga de revenda."],
