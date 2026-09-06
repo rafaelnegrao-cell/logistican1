@@ -7653,10 +7653,10 @@ function foraDaPlanilhaLinha(p){return (p&&p.foraDaPlanilha)?'<div class="tc-for
    e esse e o TETO daquele pedido. O operador informa no cartao do pedido. Enquanto
    faltar, o pedido fica marcado como pendente (banco e cartao da carga) e contribui
    0 para a referencia da carga. Molde: os tres foraDaPlanilha* logo acima.        */
-function fvPendente(p){return !!(p&&p.revenda===true&&!(p.freteVenda>0));}
+function fvPendente(p){return !!(p&&p.revenda===true&&!p.fob&&!(p.freteVenda>0));}   /* 1.33.1: FOB de revenda nao tem frete de venda (o cliente retira; a N1 nao paga frete) */
 function fvTag(p){return fvPendente(p)?'<span class="tag fora">&#9888; Sem frete de venda</span>':"";}
 function fvCampoHtml(p){
-  if(!(p&&p.revenda===true))return "";
+  if(!(p&&p.revenda===true&&!p.fob))return "";   /* 1.33.1: o campo so existe em revenda CIF */
   const v=(p.freteVenda>0)?p.freteVenda:"";
   return '<div class="pc-fv" style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 7px;background:#f4f8fb;border:1px solid var(--grade);border-radius:7px">'+
     '<label for="fv_'+p.id+'" style="font-size:10px;font-weight:700;color:var(--cinza);white-space:nowrap">&#128666; Frete venda R$/ton</label>'+
@@ -8506,11 +8506,18 @@ function loadFreightRevenda(t){
      dos fretes de VENDA informados pedido a pedido. Sai a consulta a freteTabelaRate e
      ao p.frete: nenhum dos dois e referencia valida aqui. Pedido sem freteVenda
      contribui 0 e a carga aparece sinalizada como pendente. */
-  let total=0;ps.forEach(p=>{total+=(p.peso/1000)*(p.freteVenda||0);});
-  const rate=kg>0?total/(kg/1000):0;
+  /* 1.33.1 - o frete de venda nao se aplica a pedido FOB de revenda: o cliente retira e a
+     N1 nao paga frete, entao nao ha teto a informar. Em carga mista o PESO conta todos os
+     pedidos, mas o TETO soma so os CIF. O filtro e explicito porque na 1.33.0 o campo
+     aparecia indevidamente nos FOB: um valor eventualmente digitado la fica inerte, sem
+     ser apagado do pedido. */
+  const psV=ps.filter(p=>!p.fob);
+  let total=0;psV.forEach(p=>{total+=(p.peso/1000)*(p.freteVenda||0);});
+  const kgVenda=psV.reduce((s,p)=>s+p.peso,0);
+  const rate=kgVenda>0?total/(kgVenda/1000):0;
   const sumV=ps.reduce((s,p)=>s+(p.valor||0),0);
   const alloc={};
-  ps.forEach(p=>{alloc[p.id]=(p.peso/1000)*(p.freteVenda||0);});   /* 1.33.0: exato por pedido, nao rateado por peso */
+  ps.forEach(p=>{alloc[p.id]=p.fob?0:(p.peso/1000)*(p.freteVenda||0);});   /* 1.33.0: exato por pedido, nao rateado por peso · 1.33.1: FOB nao rateia */
   const pagoTon=t.fretePago||0, pagoTotal=pagoTon*kg/1000;
   /* 1.33.0 - o frete negociado de industria (1.20.0) NAO se aplica a revenda: o
      freteVenda e o unico teto. Continua valendo integralmente nas cargas normais, no
@@ -10362,9 +10369,13 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.33.0";
+  var APP_VERSION="1.33.1";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.33.1",data:"06/09/2026",itens:[
+      ["CORRECAO","O campo Frete venda e o aviso \"Sem frete de venda\" apareciam tambem nos pedidos de revenda FOB / Retira, onde o cliente retira a mercadoria e a N1 nao paga frete. Nesses pedidos nao ha frete de venda a informar, e agora o campo e o aviso nao aparecem mais."],
+      ["CORRECAO","Numa carga de revenda que misture pedidos CIF e FOB, o Frete venda (teto) passou a somar apenas os pedidos CIF. O peso da carga continua contando todos os pedidos, e o R$/ton medio de venda passou a considerar apenas a parte que tem frete de venda."]
+    ]},
     {versao:"1.33.0",data:"06/09/2026",itens:[
       ["NOVO","Cada pedido de revenda ganhou o campo Frete venda (R$/ton), informado pelo operador direto no cartão do pedido. É o valor de frete que o comercial embutiu no preço da venda e que serve de teto daquele pedido. A revenda não tem tabela de frete."],
       ["NOVO","O preço de referência e o saldo da carga de revenda passaram a usar a soma dos fretes de venda dos pedidos, no lugar da tabela de frete. Na tela, o campo aparece como Frete venda (teto). As cargas do Formador de Cargas seguem usando a tabela, sem nenhuma mudança."],
