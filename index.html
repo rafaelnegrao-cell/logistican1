@@ -7019,14 +7019,28 @@ async function netAll(){
   throw ultimo||new Error("sem resposta do servidor");
 }
 async function netInit(){
+  /* 1.35.1 - o registro local do navegador (AUDKEY) passa a ser lido ANTES da rede.
+     Antes so o catch o lia, e o caminho online fazia AUD=all.audit.data: acoes gravadas
+     offline eram descartadas sem nunca terem sido enviadas. O mergeAudit toma o lado
+     LOCAL do AUD corrente, entao esta leitura precisa vir primeiro. */
+  try{const _r=localStorage.getItem(AUDKEY);if(_r){const _a=JSON.parse(_r);if(_a&&typeof _a==="object"){AUD=_a;AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];}}}catch(_){}
+  /* assinatura barata do retrato: quantidade de logs, de sessoes e a soma dos logoutAt.
+     Serve para saber se a fusao acrescentou algo que o servidor ainda nao tinha, sem
+     serializar o registro inteiro. */
+  const _audSig=o=>[(o&&o.logs?o.logs.length:0),(o&&o.sessions?o.sessions.length:0),(o&&o.sessions?o.sessions.reduce((s,x)=>s+((x&&x.logoutAt)||0),0):0)].join("|");
   try{
     const all=await netAll();NET.on=true;
     if(all.auth&&all.auth.data&&typeof all.auth.data==="object")auth=all.auth.data;
     auth.users=auth.users||[];auth.profiles=auth.profiles||[];NET.authRev=all.auth?all.auth.rev:0;
     NET.appData=all.app&&all.app.data?all.app.data:null;NET.appRev=all.app?all.app.rev:0;
-    AUD=all.audit&&all.audit.data?all.audit.data:{sessions:[],logs:[]};AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];NET.audRev=all.audit?all.audit.rev:0;
+    const _rem=all.audit&&all.audit.data?all.audit.data:{sessions:[],logs:[]};
+    const _sigRem=_audSig(_rem);
+    mergeAudit(_rem);NET.audRev=all.audit?all.audit.rev:0;
+    /* so envia quando a fusao encontrou algo que so existia aqui. Sem esta condicao todo
+       boot empurraria o registro inteiro (ate 20.000 entradas) de volta ao servidor. */
+    if(_audSig(AUD)!==_sigRem)saveAudit();
     return true;
-  }catch(e){NET.on=false;try{const r=localStorage.getItem(AUDKEY);if(r){AUD=JSON.parse(r);AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];}}catch(_){}return false;}
+  }catch(e){NET.on=false;return false;}   /* o AUD ja veio do localStorage acima */
 }
 let _pollTimer=null;
 async function netBoot(){
@@ -7047,7 +7061,7 @@ async function netPoll(){
     if(rev.audit>NET.audRev){const au=await apiGet("/audit");if(au.data)mergeAudit(au.data);NET.audRev=au.rev;if(state.tab==="monitoria")renderMonitoria();} // so leitura: nunca grava por aqui
   }catch(e){}
 }
-async function refreshAudit(){if(!NET.on)return;try{const a=await apiGet("/audit");if(a.data){AUD=a.data;AUD.sessions=AUD.sessions||[];AUD.logs=AUD.logs||[];NET.audRev=a.rev;}}catch(e){}}
+async function refreshAudit(){if(!NET.on)return;try{const a=await apiGet("/audit");if(a.data){mergeAudit(a.data);NET.audRev=a.rev;}}catch(e){}   /* 1.35.1: era AUD=a.data, sobrescrita cega -- abrir a Monitoria apagava acao ainda no debounce do pushAudit. So leitura, como o netPoll. */}
 /* ===== MERGE DO LOG DE AUDITORIA (1.16.0) =====
    O poll traz o log do servidor, mas o pushAudit tem debounce de 900 ms: pode existir acao
    local ainda nao enviada dentro do AUD. Substituir cego (AUD=remoto) apagaria essa acao.
@@ -10357,9 +10371,14 @@ netBoot();
 /* ===== Central de Novidades — padrao ADM de Vendas ===== */
 (function(){
   "use strict";
-  var APP_VERSION="1.35.0";
+  var APP_VERSION="1.35.1";
   /* tipos: NOVO | MELHORIA | CORRECAO */
   var CHANGELOG=[
+    {versao:"1.35.1",data:"06/09/2026",itens:[
+      ["CORRECAO","Ações registradas enquanto o sistema estava sem conexão podiam ser perdidas. Ao reabrir com a conexão de volta, o registro do servidor substituía o do navegador antes que as ações locais fossem enviadas. Agora o registro do navegador é lido primeiro e unido ao do servidor, e o que só existia aqui é enviado."],
+      ["CORRECAO","Abrir a aba Monitoria também podia descartar uma ação recém-feita que ainda estava a caminho do servidor. A aba passou a unir o registro em vez de substituí-lo, como o restante do sistema já fazia."],
+      ["MELHORIA","A união do registro não duplica nem apaga nenhuma entrada, e o envio ao servidor só acontece quando existe algo que ele ainda não tem."]
+    ]},
     {versao:"1.35.0",data:"06/09/2026",itens:[
       ["CORRECAO","Na carga de revenda, a MC após frete usava a coluna de frete antiga como referência, enquanto o saldo já usava o frete de venda vindo da planilha. Os dois números apontavam para referências diferentes no mesmo cartão. Agora a margem usa o mesmo frete de venda que o saldo."],
       ["MELHORIA","Antes de o frete pago ser informado, a margem da carga de revenda reflete o teto do frete de venda. Depois de informado, ela é ajustada pela diferença entre o pago e esse teto."],
